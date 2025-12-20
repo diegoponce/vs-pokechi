@@ -1,0 +1,103 @@
+{
+  "name": "pokechi",
+  "displayName": "Pokechi",
+  "description": "Your Pokémon companion in VS Code. Evolve your Pokémon by coding!",
+  "repository": {
+    "type": "github",
+    "url": "https://github.com/d9once/vs-pokechi"
+  },
+  "publisher": "d9once",
+  "version": "1.0.1",
+  "engines": {
+    "vscode": "^1.64.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "keywords": [
+    "pokemon",
+    "pet",
+    "evolution",
+    "productivity",
+    "motivation",
+    "companion"
+  ],
+  "license": "MIT",
+  "activationEvents": [
+    "*",
+    "onView:pokechiView"
+  ],
+  "icon": "icon.png",
+  "main": "./out/extension/extension.js",
+  "contributes": {
+    "views": {
+      "explorer": [
+        {
+          "type": "webview",
+          "id": "pokechiView",
+          "name": "Pokechi",
+          "when": "pokechi.position == 'explorer'"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "pokechi.showPanel",
+        "title": "Pokechi: Show Panel"
+      },
+      {
+        "command": "pokechi.spawnNewPokemon",
+        "title": "Pokechi: New Pokemon"
+      },
+      {
+        "command": "pokechi.openExplorer",
+        "title": "Pokechi: Open Explorer View"
+      }
+    ],
+    "configuration": [
+      {
+        "properties": {
+          "pokechi.scaleFactor": {
+            "type": "number",
+            "default": 1,
+            "minimum": 0.5,
+            "maximum": 1.5,
+            "description": "The scale factor to apply to all pokemon (smaller values make pokemon smaller, larger values make them bigger)",
+            "scope": "window"
+          },
+          "pokechi.position": {
+            "type": "string",
+            "enum": [
+              "panel",
+              "explorer"
+            ],
+            "default": "panel",
+            "description": "Where to show your Pokechi pokemon (panel or explorer view)",
+            "enumItemLabels": [
+              "Panel",
+              "Explorer"
+            ]
+          }
+        }
+      }
+    ]
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile:panel": "webpack",
+    "compile:extension": "tsc -p ./tsconfig.extension.json",
+    "compile": "npm run compile:panel && npm run compile:extension",
+    "watch": "tsc -watch -p ./tsconfig.extension.json"
+  },
+  "devDependencies": {
+    "@types/node": "14.x",
+    "@types/vscode": "^1.64.0",
+    "typescript": "^4.5.5",
+    "webpack": "^5.70.0",
+    "webpack-cli": "^4.9.2"
+  },
+  "dependencies": {
+    "ts-loader": "^9.2.8"
+  }
+}
+
