@@ -4,7 +4,7 @@
   "description": "Your Pokémon companion in VS Code. Evolve your Pokémon by coding!",
   "repository": {
     "type": "github",
-    "url": "https://github.com/d9once/vs-pokechi"
+    "url": "https://github.com/diegoponce/vs-pokechi"
   },
   "publisher": "d9once",
   "version": "1.0.1",
