@@ -26,7 +26,7 @@ const state: State = {
 
 const TICK_INTERVAL_MS = 100
 const POKEBALL_SIZE = 32
-const POKEMON_BASE_SIZE = 50 // Aumentado 20% (32 * 1.2 = 38.4)
+const POKEMON_BASE_SIZE = 50 // Increased by 20% (32 * 1.2 = 38.4)
 
 function getPokemonSpritePath(pokemon: UserPokemon, isIdle = false): string {
   if (pokemon.level === 0) {
@@ -114,7 +114,7 @@ function tick(): void {
     return
   }
 
-  // Si está en hover, no mover
+  // If hovered, do not move
   if (state.isHovered) {
     if (pokemon.state !== 'idle') {
       pokemon.state = 'idle'
@@ -123,7 +123,7 @@ function tick(): void {
     return
   }
 
-  // Si estaba en idle por hover, cambiar a walking
+  // If it was idle because of hover, switch back to walking
   if (pokemon.state === 'idle' && !state.isHovered) {
     pokemon.state = 'walking'
     updatePokemonDisplay(pokemon)
@@ -181,7 +181,7 @@ export const app = ({
   updatePokemonDisplay(userPokemon)
   startAnimation()
 
-  // Agregar event listeners para hover
+  // Add hover event listeners
   const container = document.getElementById('container')
   if (container) {
     container.addEventListener('mouseenter', () => {

@@ -2,9 +2,12 @@ import * as vscode from 'vscode'
 import { UserPokemon } from './types'
 import { PokemonType } from '../common/types'
 import {
+  ALL_EVOLUTION_LINES,
+  EvolutionLine,
   getRandomBasePokemon,
   getEvolutionLine,
   getPokemonByLevel,
+  getPokemonLevel,
 } from '../common/pokemon-evolutions'
 import { POKEMON_DATA } from '../common/pokemon-data'
 
@@ -22,13 +25,21 @@ function getRequiredXPForLevel(level: number): number {
   if (level === 2) {
     return DEFAULT_XP_FOR_SECOND_EVOLUTION
   }
-  // Para niveles superiores, incrementar progresivamente
+  // For higher levels, increase progressively
   return DEFAULT_XP_FOR_SECOND_EVOLUTION + (level - 2) * 50
 }
 
 function loadFromStorage(context: vscode.ExtensionContext): UserPokemon | undefined {
   const storedPokemon = context.globalState.get<UserPokemon>('pokemon')
-  return storedPokemon
+  if (!storedPokemon) {
+    return undefined
+  }
+
+  const pokemonData = POKEMON_DATA[storedPokemon.type]
+  return {
+    ...storedPokemon,
+    id: storedPokemon.id ?? (pokemonData ? pokemonData.id : 0),
+  }
 }
 
 function loadPokedexFromStorage(context: vscode.ExtensionContext): PokemonType[] {
@@ -61,6 +72,42 @@ export class PokemonState {
     return _pokedex
   }
 
+  static createPokemonFromPokedex(
+    context: vscode.ExtensionContext,
+    pokemonType: PokemonType
+  ): UserPokemon | undefined {
+    const evolutionLine = PokemonState.getEvolutionLineForPokemon(pokemonType)
+    if (!evolutionLine) {
+      return undefined
+    }
+
+    const scaleFactor = vscode.workspace
+      .getConfiguration()
+      .get('pokechi.scaleFactor', 1.0)
+    const pokemonData = POKEMON_DATA[pokemonType]
+    const pokemonName = pokemonData ? pokemonData.name : pokemonType
+    const pokemonId = pokemonData ? pokemonData.id : 0
+    const level = getPokemonLevel(pokemonType, evolutionLine)
+
+    const pokemon: UserPokemon = {
+      id: pokemonId,
+      type: pokemonType,
+      name: pokemonName,
+      level,
+      xp: 0,
+      evolutionLine: [evolutionLine.base, ...evolutionLine.evolutions],
+      state: level === 1 ? 'idle' : 'walking',
+      scale: scaleFactor,
+      isTransitionIn: false,
+      leftPosition: 0,
+      direction: 'right',
+    }
+
+    _pokemon = pokemon
+    PokemonState.savePokemon(context)
+    return pokemon
+  }
+
   static savePokedex(context: vscode.ExtensionContext): Thenable<void> {
     if (!_pokedex) {
       _pokedex = []
@@ -68,9 +115,17 @@ export class PokemonState {
     return context.globalState.update('pokedex', _pokedex)
   }
 
+  private static getEvolutionLineForPokemon(
+    pokemonType: PokemonType
+  ): EvolutionLine | undefined {
+    return ALL_EVOLUTION_LINES.find(
+      (line) => line.base === pokemonType || line.evolutions.indexOf(pokemonType) >= 0
+    )
+  }
+
   static discoverPokemon(context: vscode.ExtensionContext, pokemonType: PokemonType): boolean {
     const pokedex = PokemonState.getPokedex(context)
-    if (pokedex.includes(pokemonType)) {
+    if (pokedex.indexOf(pokemonType) >= 0) {
       return false
     }
 
@@ -81,7 +136,7 @@ export class PokemonState {
   }
 
   static isPokemonDiscovered(context: vscode.ExtensionContext, pokemonType: PokemonType): boolean {
-    return PokemonState.getPokedex(context).includes(pokemonType)
+    return PokemonState.getPokedex(context).indexOf(pokemonType) >= 0
   }
 
   static createNewPokemon(context: vscode.ExtensionContext): UserPokemon {
@@ -100,8 +155,10 @@ export class PokemonState {
 
     const pokemonData = POKEMON_DATA[basePokemon]
     const pokemonName = pokemonData ? pokemonData.name : basePokemon
+    const pokemonId = pokemonData ? pokemonData.id : 0
 
     const pokemon: UserPokemon = {
+      id: pokemonId,
       type: basePokemon,
       name: pokemonName,
       level: 0,
@@ -151,10 +208,12 @@ export class PokemonState {
     const nextLevel = pokemon.level + 1
     const nextPokemon = getPokemonByLevel(evolutionLine, nextLevel)
 
-    // Actualizar nombre del pokemon usando POKEMON_DATA
+    // Update the Pokémon name using POKEMON_DATA
     const nextPokemonData = POKEMON_DATA[nextPokemon]
     const nextPokemonName = nextPokemonData ? nextPokemonData.name : nextPokemon
+    const nextPokemonId = nextPokemonData ? nextPokemonData.id : pokemon.id
 
+    pokemon.id = nextPokemonId
     pokemon.type = nextPokemon
     pokemon.name = nextPokemonName
     pokemon.level = nextLevel
