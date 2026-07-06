@@ -31,7 +31,13 @@ function loadFromStorage(context: vscode.ExtensionContext): UserPokemon | undefi
   return storedPokemon
 }
 
+function loadPokedexFromStorage(context: vscode.ExtensionContext): PokemonType[] {
+  const storedPokedex = context.globalState.get<PokemonType[]>('pokedex')
+  return Array.isArray(storedPokedex) ? storedPokedex : []
+}
+
 let _pokemon: UserPokemon | undefined
+let _pokedex: PokemonType[] | undefined
 
 export class PokemonState {
   static getPokemon(context: vscode.ExtensionContext): UserPokemon | undefined {
@@ -46,6 +52,36 @@ export class PokemonState {
       return context.globalState.update('pokemon', _pokemon)
     }
     return Promise.resolve()
+  }
+
+  static getPokedex(context: vscode.ExtensionContext): PokemonType[] {
+    if (!_pokedex) {
+      _pokedex = loadPokedexFromStorage(context)
+    }
+    return _pokedex
+  }
+
+  static savePokedex(context: vscode.ExtensionContext): Thenable<void> {
+    if (!_pokedex) {
+      _pokedex = []
+    }
+    return context.globalState.update('pokedex', _pokedex)
+  }
+
+  static discoverPokemon(context: vscode.ExtensionContext, pokemonType: PokemonType): boolean {
+    const pokedex = PokemonState.getPokedex(context)
+    if (pokedex.includes(pokemonType)) {
+      return false
+    }
+
+    pokedex.push(pokemonType)
+    _pokedex = pokedex
+    PokemonState.savePokedex(context)
+    return true
+  }
+
+  static isPokemonDiscovered(context: vscode.ExtensionContext, pokemonType: PokemonType): boolean {
+    return PokemonState.getPokedex(context).includes(pokemonType)
   }
 
   static createNewPokemon(context: vscode.ExtensionContext): UserPokemon {
@@ -102,7 +138,7 @@ export class PokemonState {
     return pokemon.level < maxLevel
   }
 
-  static evolvePokemon(pokemon: UserPokemon): boolean {
+  static evolvePokemon(context: vscode.ExtensionContext, pokemon: UserPokemon): boolean {
     if (!PokemonState.canEvolve(pokemon)) {
       return false
     }
@@ -125,6 +161,8 @@ export class PokemonState {
     pokemon.xp = 0
     pokemon.state = nextLevel === 1 ? 'idle' : 'walking'
     pokemon.isTransitionIn = true
+
+    PokemonState.discoverPokemon(context, nextPokemon)
 
     return true
   }

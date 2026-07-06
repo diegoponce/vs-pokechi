@@ -66,7 +66,7 @@ export class XPTracker {
     PokemonState.savePokemon(this.context)
 
     if (PokemonState.canEvolve(pokemon)) {
-      const evolved = PokemonState.evolvePokemon(pokemon)
+      const evolved = PokemonState.evolvePokemon(this.context, pokemon)
       if (evolved) {
         PokemonState.savePokemon(this.context)
         const pokemonName = pokemon.name

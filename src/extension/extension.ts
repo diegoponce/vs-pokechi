@@ -2,6 +2,7 @@ import path = require('node:path')
 import * as crypto from 'node:crypto'
 import * as vscode from 'vscode'
 import { PokemonState } from './pokemon-state'
+import { PokedexPanel } from './pokedex-panel'
 import { UserPokemon, Position } from './types'
 import { XPTracker, setUpdateCallbacks } from './xp-tracker'
 
@@ -522,15 +523,22 @@ class PokechiViewProvider
 const PokechiState = {
   panel: undefined as PokemonPanel | undefined,
   explorerView: undefined as PokechiViewProvider | undefined,
+  pokedex: undefined as PokedexPanel | undefined,
 }
 
 let xpTracker: XPTracker | undefined
 
 export function activate(context: vscode.ExtensionContext) {
-  PokemonState.getPokemon(context)
+  const currentPokemon = PokemonState.getPokemon(context)
+  if (currentPokemon && currentPokemon.level > 0) {
+    PokemonState.discoverPokemon(context, currentPokemon.type)
+  }
 
   const pokemonPanel = new PokemonPanel(context)
   PokechiState.panel = pokemonPanel
+
+  const pokedexPanel = new PokedexPanel(context)
+  PokechiState.pokedex = pokedexPanel
 
   const pokechiViewProvider = new PokechiViewProvider(context)
   PokechiState.explorerView = pokechiViewProvider
@@ -581,6 +589,19 @@ export function activate(context: vscode.ExtensionContext) {
   )
 
   context.subscriptions.push(
+    vscode.commands.registerCommand('pokechi.showPokedex', () => {
+      if (PokechiState.pokedex?.panel) {
+        PokechiState.pokedex.panel.reveal(vscode.ViewColumn.Two)
+        PokechiState.pokedex.updateContent()
+        return
+      }
+
+      PokechiState.pokedex = new PokedexPanel(context)
+      PokechiState.pokedex.createPanel()
+    })
+  )
+
+  context.subscriptions.push(
     vscode.commands.registerCommand('pokechi.spawnNewPokemon', () => {
       const position = getConfigurationPosition()
 
@@ -610,6 +631,10 @@ export function activate(context: vscode.ExtensionContext) {
           } else if (position === 'explorer' && PokechiState.explorerView?._view) {
             PokechiState.explorerView.updateContent()
           }
+        }
+
+        if (PokechiState.pokedex?.panel) {
+          PokechiState.pokedex.updateContent()
         }
 
         if (position === 'panel' && PokechiState.panel?.panel) {
@@ -674,6 +699,16 @@ export function activate(context: vscode.ExtensionContext) {
         PokechiState.panel.createPanel(panel)
       },
     })
+
+    vscode.window.registerWebviewPanelSerializer('pokedexPanel', {
+      async deserializeWebviewPanel(
+        panel: vscode.WebviewPanel,
+        _state: unknown
+      ) {
+        PokechiState.pokedex = new PokedexPanel(context)
+        PokechiState.pokedex.createPanel(panel)
+      },
+    })
   }
 
   context.subscriptions.push(
@@ -727,6 +762,9 @@ export function activate(context: vscode.ExtensionContext) {
       }
       if (PokechiState.explorerView && getConfigurationPosition() === 'explorer') {
         PokechiState.explorerView.updateViews(pokemon, isXPUpdate)
+      }
+      if (PokechiState.pokedex?.panel) {
+        PokechiState.pokedex.updateContent()
       }
     },
     (title: string) => {
