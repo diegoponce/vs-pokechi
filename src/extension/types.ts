@@ -15,5 +15,15 @@ export interface UserPokemon {
   isHovered?: boolean
 }
 
+// Progress kept for an evolution line the user has already raised. Keyed by the
+// base species so every stage of a line shares one slot.
+export interface RosterEntry {
+  type: PokemonType
+  level: number
+  xp: number
+}
+
+export type Roster = { [basePokemon: string]: RosterEntry }
+
 export type Position = 'panel' | 'explorer'
 

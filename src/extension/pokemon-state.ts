@@ -1,13 +1,14 @@
 import * as vscode from 'vscode'
-import { UserPokemon } from './types'
+import { Roster, RosterEntry, UserPokemon } from './types'
 import { PokemonType } from '../common/types'
 import {
-  ALL_EVOLUTION_LINES,
   EvolutionLine,
   getRandomBasePokemon,
   getEvolutionLine,
+  getEvolutionLineContaining,
   getPokemonByLevel,
   getPokemonLevel,
+  hasFurtherEvolution,
 } from '../common/pokemon-evolutions'
 import { POKEMON_DATA } from '../common/pokemon-data'
 
@@ -29,16 +30,25 @@ function getRequiredXPForLevel(level: number): number {
   return DEFAULT_XP_FOR_SECOND_EVOLUTION + (level - 2) * 50
 }
 
+function getPokemonId(pokemonType: PokemonType): number {
+  const pokemonData = POKEMON_DATA[pokemonType]
+  return pokemonData ? pokemonData.id : 0
+}
+
+function getPokemonName(pokemonType: PokemonType): string {
+  const pokemonData = POKEMON_DATA[pokemonType]
+  return pokemonData ? pokemonData.name : pokemonType
+}
+
 function loadFromStorage(context: vscode.ExtensionContext): UserPokemon | undefined {
   const storedPokemon = context.globalState.get<UserPokemon>('pokemon')
   if (!storedPokemon) {
     return undefined
   }
 
-  const pokemonData = POKEMON_DATA[storedPokemon.type]
   return {
     ...storedPokemon,
-    id: storedPokemon.id ?? (pokemonData ? pokemonData.id : 0),
+    id: storedPokemon.id ?? getPokemonId(storedPokemon.type),
   }
 }
 
@@ -47,8 +57,17 @@ function loadPokedexFromStorage(context: vscode.ExtensionContext): PokemonType[]
   return Array.isArray(storedPokedex) ? storedPokedex : []
 }
 
+function loadRosterFromStorage(context: vscode.ExtensionContext): Roster {
+  const storedRoster = context.globalState.get<Roster>('roster')
+  if (!storedRoster || typeof storedRoster !== 'object') {
+    return {}
+  }
+  return storedRoster
+}
+
 let _pokemon: UserPokemon | undefined
 let _pokedex: PokemonType[] | undefined
+let _roster: Roster | undefined
 
 export class PokemonState {
   static getPokemon(context: vscode.ExtensionContext): UserPokemon | undefined {
@@ -72,42 +91,6 @@ export class PokemonState {
     return _pokedex
   }
 
-  static createPokemonFromPokedex(
-    context: vscode.ExtensionContext,
-    pokemonType: PokemonType
-  ): UserPokemon | undefined {
-    const evolutionLine = PokemonState.getEvolutionLineForPokemon(pokemonType)
-    if (!evolutionLine) {
-      return undefined
-    }
-
-    const scaleFactor = vscode.workspace
-      .getConfiguration()
-      .get('pokechi.scaleFactor', 1.0)
-    const pokemonData = POKEMON_DATA[pokemonType]
-    const pokemonName = pokemonData ? pokemonData.name : pokemonType
-    const pokemonId = pokemonData ? pokemonData.id : 0
-    const level = getPokemonLevel(pokemonType, evolutionLine)
-
-    const pokemon: UserPokemon = {
-      id: pokemonId,
-      type: pokemonType,
-      name: pokemonName,
-      level,
-      xp: 0,
-      evolutionLine: [evolutionLine.base, ...evolutionLine.evolutions],
-      state: level === 1 ? 'idle' : 'walking',
-      scale: scaleFactor,
-      isTransitionIn: false,
-      leftPosition: 0,
-      direction: 'right',
-    }
-
-    _pokemon = pokemon
-    PokemonState.savePokemon(context)
-    return pokemon
-  }
-
   static savePokedex(context: vscode.ExtensionContext): Thenable<void> {
     if (!_pokedex) {
       _pokedex = []
@@ -115,15 +98,10 @@ export class PokemonState {
     return context.globalState.update('pokedex', _pokedex)
   }
 
-  private static getEvolutionLineForPokemon(
+  static discoverPokemon(
+    context: vscode.ExtensionContext,
     pokemonType: PokemonType
-  ): EvolutionLine | undefined {
-    return ALL_EVOLUTION_LINES.find(
-      (line) => line.base === pokemonType || line.evolutions.indexOf(pokemonType) >= 0
-    )
-  }
-
-  static discoverPokemon(context: vscode.ExtensionContext, pokemonType: PokemonType): boolean {
+  ): boolean {
     const pokedex = PokemonState.getPokedex(context)
     if (pokedex.indexOf(pokemonType) >= 0) {
       return false
@@ -135,14 +113,113 @@ export class PokemonState {
     return true
   }
 
-  static isPokemonDiscovered(context: vscode.ExtensionContext, pokemonType: PokemonType): boolean {
+  static isPokemonDiscovered(
+    context: vscode.ExtensionContext,
+    pokemonType: PokemonType
+  ): boolean {
     return PokemonState.getPokedex(context).indexOf(pokemonType) >= 0
+  }
+
+  static getRoster(context: vscode.ExtensionContext): Roster {
+    if (!_roster) {
+      _roster = loadRosterFromStorage(context)
+    }
+    return _roster
+  }
+
+  static saveRoster(context: vscode.ExtensionContext): Thenable<void> {
+    if (!_roster) {
+      _roster = {}
+    }
+    return context.globalState.update('roster', _roster)
+  }
+
+  // Stores the progress of the pokemon currently out, so switching to another
+  // line and back does not lose any XP.
+  static rememberActivePokemon(context: vscode.ExtensionContext): void {
+    const pokemon = PokemonState.getPokemon(context)
+    if (!pokemon || pokemon.level === 0) {
+      return
+    }
+
+    const basePokemon = pokemon.evolutionLine[0] as PokemonType
+    if (!basePokemon) {
+      return
+    }
+
+    const roster = PokemonState.getRoster(context)
+    roster[basePokemon] = {
+      type: pokemon.type,
+      level: pokemon.level,
+      xp: pokemon.xp,
+    }
+    _roster = roster
+    PokemonState.saveRoster(context)
+  }
+
+  private static buildPokemon(
+    evolutionLine: EvolutionLine,
+    entry: RosterEntry,
+    scaleFactor: number
+  ): UserPokemon {
+    return {
+      id: getPokemonId(entry.type),
+      type: entry.type,
+      name: getPokemonName(entry.type),
+      level: entry.level,
+      xp: entry.xp,
+      evolutionLine: [evolutionLine.base, ...evolutionLine.evolutions],
+      state: 'walking',
+      scale: scaleFactor,
+      isTransitionIn: false,
+      leftPosition: 0,
+      direction: 'right',
+    }
+  }
+
+  // Brings out a pokemon picked in the Pokedex. Progress for that evolution
+  // line is restored when the user has raised it before, so nothing is lost.
+  static selectPokemonFromPokedex(
+    context: vscode.ExtensionContext,
+    pokemonType: PokemonType
+  ): UserPokemon | undefined {
+    const evolutionLine = getEvolutionLineContaining(pokemonType)
+    if (!evolutionLine) {
+      return undefined
+    }
+
+    PokemonState.rememberActivePokemon(context)
+
+    const scaleFactor = vscode.workspace
+      .getConfiguration()
+      .get('pokechi.scaleFactor', 1.0)
+
+    const roster = PokemonState.getRoster(context)
+    const storedEntry = roster[evolutionLine.base]
+    const entry: RosterEntry = storedEntry ?? {
+      type: pokemonType,
+      level: getPokemonLevel(pokemonType, evolutionLine),
+      xp: 0,
+    }
+
+    const pokemon = PokemonState.buildPokemon(evolutionLine, entry, scaleFactor)
+
+    _pokemon = pokemon
+    PokemonState.savePokemon(context)
+
+    roster[evolutionLine.base] = entry
+    _roster = roster
+    PokemonState.saveRoster(context)
+
+    return pokemon
   }
 
   static createNewPokemon(context: vscode.ExtensionContext): UserPokemon {
     const scaleFactor = vscode.workspace
       .getConfiguration()
       .get('pokechi.scaleFactor', 1.0)
+
+    PokemonState.rememberActivePokemon(context)
 
     const basePokemon = getRandomBasePokemon()
     const evolutionLine = getEvolutionLine(basePokemon)
@@ -153,14 +230,10 @@ export class PokemonState {
 
     const evolutionLineArray = [basePokemon, ...evolutionLine.evolutions]
 
-    const pokemonData = POKEMON_DATA[basePokemon]
-    const pokemonName = pokemonData ? pokemonData.name : basePokemon
-    const pokemonId = pokemonData ? pokemonData.id : 0
-
     const pokemon: UserPokemon = {
-      id: pokemonId,
+      id: getPokemonId(basePokemon),
       type: basePokemon,
-      name: pokemonName,
+      name: getPokemonName(basePokemon),
       level: 0,
       xp: 0,
       evolutionLine: evolutionLineArray,
@@ -180,22 +253,29 @@ export class PokemonState {
     return getRequiredXPForLevel(pokemon.level)
   }
 
+  // False once a pokemon has reached the last stage of its line, including
+  // species that never evolve at all.
+  static hasFurtherEvolution(pokemon: UserPokemon): boolean {
+    const evolutionLine = getEvolutionLine(pokemon.evolutionLine[0] as PokemonType)
+    if (!evolutionLine) {
+      return false
+    }
+    return hasFurtherEvolution(evolutionLine, pokemon.level)
+  }
+
   static canEvolve(pokemon: UserPokemon): boolean {
     const requiredXP = PokemonState.getRequiredXP(pokemon)
     if (pokemon.xp < requiredXP) {
       return false
     }
 
-    const evolutionLine = getEvolutionLine(pokemon.evolutionLine[0] as PokemonType)
-    if (!evolutionLine) {
-      return false
-    }
-
-    const maxLevel = evolutionLine.evolutions.length + 1
-    return pokemon.level < maxLevel
+    return PokemonState.hasFurtherEvolution(pokemon)
   }
 
-  static evolvePokemon(context: vscode.ExtensionContext, pokemon: UserPokemon): boolean {
+  static evolvePokemon(
+    context: vscode.ExtensionContext,
+    pokemon: UserPokemon
+  ): boolean {
     if (!PokemonState.canEvolve(pokemon)) {
       return false
     }
@@ -208,20 +288,16 @@ export class PokemonState {
     const nextLevel = pokemon.level + 1
     const nextPokemon = getPokemonByLevel(evolutionLine, nextLevel)
 
-    // Update the Pokémon name using POKEMON_DATA
-    const nextPokemonData = POKEMON_DATA[nextPokemon]
-    const nextPokemonName = nextPokemonData ? nextPokemonData.name : nextPokemon
-    const nextPokemonId = nextPokemonData ? nextPokemonData.id : pokemon.id
-
-    pokemon.id = nextPokemonId
+    pokemon.id = getPokemonId(nextPokemon)
     pokemon.type = nextPokemon
-    pokemon.name = nextPokemonName
+    pokemon.name = getPokemonName(nextPokemon)
     pokemon.level = nextLevel
     pokemon.xp = 0
     pokemon.state = nextLevel === 1 ? 'idle' : 'walking'
     pokemon.isTransitionIn = true
 
     PokemonState.discoverPokemon(context, nextPokemon)
+    PokemonState.rememberActivePokemon(context)
 
     return true
   }
@@ -231,4 +307,3 @@ export class PokemonState {
     pokemon.isTransitionIn = false
   }
 }
-
