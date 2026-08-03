@@ -221,7 +221,7 @@ export class PokedexPanel {
         : lockedSpriteUri
       const name = discovered ? escapeHtml(entry.name) : '???'
       const label = discovered
-        ? `Show ${escapeHtml(entry.name)}${isActive ? ', currently out' : ''}`
+        ? `Show ${escapeHtml(entry.name)}${isActive ? ', currently active' : ''}`
         : 'Undiscovered pokemon'
       const cry = POKEMON_DATA[entry.type] ? POKEMON_DATA[entry.type].cry : ''
       const tooltip = discovered && cry ? ` title="${escapeHtml(cry)}"` : ''
@@ -241,8 +241,8 @@ export class PokedexPanel {
           <div class="card-top">
             <span class="pokemon-id">#${padPokemonId(entry.id)}</span>
             <span class="generation-chip">${getGenerationLabel(entry.generation)}</span>
+            <span class="active-badge">Active</span>
           </div>
-          <span class="active-badge">Out</span>
           <div class="sprite-frame">
             <img class="sprite" src="${spriteUri}" alt="" loading="lazy" />
           </div>
@@ -300,6 +300,10 @@ export class PokedexPanel {
       display: flex;
       flex-direction: column;
       gap: 4px;
+      /* Flex items do not shrink past their content by default, which let the
+         subtitle run underneath the counter. */
+      min-width: 0;
+      flex: 1 1 260px;
     }
 
     h1 {
@@ -317,6 +321,7 @@ export class PokedexPanel {
     }
 
     .counter {
+      flex: 0 0 auto;
       display: flex;
       align-items: baseline;
       gap: 6px;
@@ -518,22 +523,26 @@ export class PokedexPanel {
       letter-spacing: 0.14em;
     }
 
+    /* The badge takes the generation chip's slot rather than stacking under it:
+       one chip per card, no overlap, and no reflow when a card becomes active.
+       The generation is still available through the filter above. */
     .active-badge {
       display: none;
-      position: absolute;
-      inset-inline-end: 8px;
-      inset-block-start: 26px;
-      padding: 1px 6px;
+      padding: 2px 8px;
       border-radius: 999px;
       background: var(--vscode-badge-background);
       color: var(--vscode-badge-foreground);
       font-size: 9px;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
+      font-weight: 600;
+      white-space: nowrap;
     }
 
     .pokemon-card.active .active-badge {
-      display: block;
+      display: inline-block;
+    }
+
+    .pokemon-card.active .generation-chip {
+      display: none;
     }
 
     @media (max-width: 640px) {
