@@ -378,6 +378,11 @@ class PokemonPanel extends PokechiContentProvider {
         }
       )
 
+    // Closing the panel clears this, and everything that pushes updates goes
+    // through PokechiState, so reopening has to claim the slot back or the new
+    // panel never hears about XP again.
+    PokechiState.panel = this
+
     const pokemon = PokemonState.getPokemon(this._context)
     if (pokemon) {
       this.panel.title = pokemon.level === 0 ? 'Your Pokemon' : pokemon.name
@@ -621,33 +626,27 @@ export function activate(context: vscode.ExtensionContext) {
   )
 
   context.subscriptions.push(
-    vscode.commands.registerCommand('pokechi.showPanel', () => {
-      return new Promise<void>((resolve) => {
-        const position = getConfigurationPosition()
+    vscode.commands.registerCommand('pokechi.showPanel', async () => {
+      // Asking for the panel is a clear enough request to switch to it.
+      // Sending the user to the settings page instead just looked broken.
+      if (getConfigurationPosition() !== 'panel') {
+        _isViewSwitching = true
+        await vscode.workspace
+          .getConfiguration()
+          .update('pokechi.position', 'panel', vscode.ConfigurationTarget.Global)
+        _isViewSwitching = false
+      }
 
-        if (position !== 'panel') {
-          vscode.window.showInformationMessage(
-            'Pokechi is currently set to display in the explorer view. You can change this in the settings.'
-          )
-          vscode.commands.executeCommand(
-            'workbench.action.openSettings',
-            'pokechi.position'
-          )
-          resolve()
-          return
-        }
+      if (PokechiState.panel?.panel) {
+        PokechiState.panel.panel.reveal(vscode.ViewColumn.Two)
+        return
+      }
 
-        if (PokechiState.panel?.panel) {
-          resolve()
-          return
-        }
+      pokemonPanel.createPanel()
 
-        const panel = pokemonPanel.createPanel()
-
-        setTimeout(() => {
-          resolve()
-        }, 100)
-      })
+      // Callers post to the webview as soon as this resolves, and a webview
+      // that has not finished loading drops what it is sent.
+      await new Promise<void>((resolve) => setTimeout(resolve, 100))
     })
   )
 

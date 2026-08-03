@@ -102,8 +102,10 @@ test('a new pokemon starts as a pokeball at level 0', () => {
   assert.strictEqual(pokemon.state, 'pokeball')
 })
 
+// Thresholds are read rather than hardcoded, so tuning the XP curve does not
+// break these tests over a rule that still holds.
 test('it does not hatch before reaching the required XP', () => {
-  PokemonState.addXP(pokemon, 499)
+  PokemonState.addXP(pokemon, PokemonState.getRequiredXP(pokemon) - 1)
   assert.strictEqual(PokemonState.canEvolve(pokemon), false)
 })
 
@@ -119,7 +121,7 @@ test('hatching records the species in the pokedex', () => {
 })
 
 test('evolving moves to the next stage and resets XP', () => {
-  PokemonState.addXP(pokemon, 1000)
+  PokemonState.addXP(pokemon, PokemonState.getRequiredXP(pokemon))
   assert.strictEqual(PokemonState.evolvePokemon(context, pokemon), true)
   assert.strictEqual(pokemon.type, 'charmeleon')
   assert.strictEqual(pokemon.level, 2)
