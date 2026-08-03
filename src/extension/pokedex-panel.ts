@@ -1,5 +1,6 @@
 import * as vscode from 'vscode'
 import { PokemonState } from './pokemon-state'
+import { generateNonce } from './nonce'
 import { PokemonGeneration, PokemonType } from '../common/types'
 import { POKEMON_DATA } from '../common/pokemon-data'
 
@@ -10,17 +11,25 @@ interface PokedexEntry {
   generation: PokemonGeneration
 }
 
-const POKEDEX_ENTRIES: PokedexEntry[] = Object.keys(POKEMON_DATA).map((type) => {
-  const pokemonData = POKEMON_DATA[type as PokemonType]
+const POKEDEX_ENTRIES: PokedexEntry[] = Object.keys(POKEMON_DATA)
+  .map((type) => {
+    const pokemonData = POKEMON_DATA[type as PokemonType]
 
-  return {
-    type: type as PokemonType,
-    id: pokemonData.id,
-    name: pokemonData.name,
-    generation: pokemonData.generation,
-  }
-})
+    return {
+      type: type as PokemonType,
+      id: pokemonData.id,
+      name: pokemonData.name,
+      generation: pokemonData.generation,
+    }
+  })
   .sort((left, right) => left.id - right.id)
+
+// Cards are addressed by their position in the grid rather than by species, so
+// the markup of a locked card gives nothing away.
+const POKEDEX_INDEX_BY_TYPE: { [type: string]: number } = {}
+POKEDEX_ENTRIES.forEach((entry, index) => {
+  POKEDEX_INDEX_BY_TYPE[entry.type] = index
+})
 
 function padPokemonId(id: number): string {
   const text = String(id)
@@ -47,19 +56,26 @@ function getSpritePath(type: PokemonType): string {
   return `${generation}/${type}/default_idle_8fps.gif`
 }
 
-function generateNonce(): string {
-  const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'
-  let value = ''
-
-  for (let index = 0; index < 32; index += 1) {
-    value += alphabet.charAt(Math.floor(Math.random() * alphabet.length))
-  }
-
+// Names come from POKEMON_DATA, which contains apostrophes (Farfetch'd), so
+// anything interpolated into the markup gets escaped.
+function escapeHtml(value: string): string {
   return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+}
+
+interface PokedexSnapshot {
+  discovered: PokemonType[]
+  activeType: PokemonType | undefined
 }
 
 export class PokedexPanel {
   panel: vscode.WebviewPanel | undefined
+  private disposables: vscode.Disposable[] = []
+  private lastSnapshot: string | undefined
 
   constructor(private readonly context: vscode.ExtensionContext) {}
 
@@ -80,75 +96,152 @@ export class PokedexPanel {
 
     this.panel.onDidDispose(
       () => {
-        this.panel = undefined
+        this.dispose()
       },
       null,
       this.context.subscriptions
     )
 
-    this.panel.webview.onDidReceiveMessage((message) => {
-      switch (message.command) {
-        case 'show-pokemon':
-          if (message.pokemonType) {
-            vscode.window.showWarningMessage(
-              `Showing ${message.pokemonType} from the Pokédex.`
-            )
-            void vscode.commands.executeCommand(
-              'pokechi.selectPokemonFromPokedex',
-              { pokemonType: message.pokemonType, pokemonId: message.pokemonId }
-            )
-          }
-          break
-      }
-    })
+    this.disposables.push(
+      this.panel.webview.onDidReceiveMessage((message) => {
+        switch (message.command) {
+          case 'show-pokemon':
+            if (message.pokemonType) {
+              void vscode.commands.executeCommand(
+                'pokechi.selectPokemonFromPokedex',
+                { pokemonType: message.pokemonType }
+              )
+            }
+            break
+        }
+      })
+    )
 
     this.updateContent()
     return this.panel
   }
 
+  dispose(): void {
+    this.panel = undefined
+    this.lastSnapshot = undefined
+    this.disposables.forEach((disposable) => disposable.dispose())
+    this.disposables = []
+  }
+
+  private getSnapshot(): PokedexSnapshot {
+    const activePokemon = PokemonState.getPokemon(this.context)
+
+    return {
+      discovered: PokemonState.getPokedex(this.context),
+      // A pokemon still inside its Pokeball has not been revealed yet, so it
+      // must not light up its card in the grid.
+      activeType:
+        activePokemon && activePokemon.level > 0 ? activePokemon.type : undefined,
+    }
+  }
+
+  private getSpriteUri(webview: vscode.Webview, spritePath: string): string {
+    return webview
+      .asWebviewUri(
+        vscode.Uri.joinPath(this.context.extensionUri, 'media', spritePath)
+      )
+      .toString()
+  }
+
+  private setTitle(discoveredCount: number): void {
+    if (this.panel) {
+      this.panel.title = `Pokechidex (${discoveredCount}/${POKEDEX_ENTRIES.length})`
+    }
+  }
+
+  // Full rebuild of the webview. Only worth doing when the panel is created or
+  // restored: it emits every card and restarts all the sprite animations.
   updateContent(): void {
     if (!this.panel) {
       return
     }
 
-    const webview = this.panel.webview
-    this.panel.title = `Pokechidex (${PokemonState.getPokedex(this.context).length}/${POKEDEX_ENTRIES.length})`
-    this.panel.webview.html = this.getWebviewContent(webview)
+    const snapshot = this.getSnapshot()
+    this.lastSnapshot = JSON.stringify(snapshot)
+    this.setTitle(snapshot.discovered.length)
+    this.panel.webview.html = this.getWebviewContent(this.panel.webview, snapshot)
   }
 
-  private getWebviewContent(webview: vscode.Webview): string {
+  // Cheap update used while the user codes. Sends only what changed, so typing
+  // does not rebuild a grid of several hundred animated sprites.
+  refresh(): void {
+    if (!this.panel) {
+      return
+    }
+
+    const snapshot = this.getSnapshot()
+    const serialized = JSON.stringify(snapshot)
+    if (serialized === this.lastSnapshot) {
+      return
+    }
+    this.lastSnapshot = serialized
+
+    const webview = this.panel.webview
+    this.setTitle(snapshot.discovered.length)
+
+    this.panel.webview.postMessage({
+      command: 'pokedex-update',
+      data: {
+        activeType: snapshot.activeType,
+        discoveredCount: snapshot.discovered.length,
+        discovered: snapshot.discovered
+          .filter((type) => POKEDEX_INDEX_BY_TYPE[type] !== undefined)
+          .map((type) => ({
+            index: POKEDEX_INDEX_BY_TYPE[type],
+            type,
+            name: POKEMON_DATA[type] ? POKEMON_DATA[type].name : type,
+            spriteUri: this.getSpriteUri(webview, getSpritePath(type)),
+          })),
+      },
+    })
+  }
+
+  private getWebviewContent(
+    webview: vscode.Webview,
+    snapshot: PokedexSnapshot
+  ): string {
     const nonce = generateNonce()
-    const pokedex = new Set(PokemonState.getPokedex(this.context))
-    const activePokemon = PokemonState.getPokemon(this.context)
-    const activePokemonId = activePokemon ? activePokemon.id : undefined
+    const pokedex = new Set(snapshot.discovered)
+    const lockedSpriteUri = this.getSpriteUri(webview, 'pokeball.gif')
     const discoveredCount = pokedex.size
     const totalCount = POKEDEX_ENTRIES.length
-    const cards = POKEDEX_ENTRIES.map((entry) => {
+
+    const cards = POKEDEX_ENTRIES.map((entry, index) => {
       const discovered = pokedex.has(entry.type)
-      const isActive = activePokemonId === entry.id
-      const spritePath = discovered ? getSpritePath(entry.type) : 'pokeball.gif'
-      const spriteUri = webview.asWebviewUri(
-        vscode.Uri.joinPath(this.context.extensionUri, 'media', spritePath)
-      )
+      const isActive = snapshot.activeType === entry.type
+      // Locked cards carry no name, sprite or species id, so the grid never
+      // spoils something the user has not met yet, not even in the DOM.
+      const spriteUri = discovered
+        ? this.getSpriteUri(webview, getSpritePath(entry.type))
+        : lockedSpriteUri
+      const name = discovered ? escapeHtml(entry.name) : '???'
+      const label = discovered
+        ? `Show ${escapeHtml(entry.name)}${isActive ? ', currently out' : ''}`
+        : 'Undiscovered pokemon'
 
       return `
         <button
           type="button"
-          class="pokemon-card ${discovered ? 'discovered' : 'locked'} ${isActive ? 'active' : ''}"
-          data-pokemon-type="${entry.type}"
-          data-pokemon-id="${entry.id}"
-          ${discovered ? '' : 'disabled'}
+          class="pokemon-card ${discovered ? 'discovered' : 'locked'}${isActive ? ' active' : ''}"
+          data-index="${index}"
+          ${discovered ? `data-pokemon-type="${entry.type}"` : 'disabled'}
           aria-pressed="${isActive ? 'true' : 'false'}"
-          aria-label="${discovered ? `Show ${entry.name}` : 'Pokemon blocked'}${isActive ? ', currently shown' : ''}"
+          aria-label="${label}"
         >
           <div class="card-top">
             <span class="pokemon-id">#${padPokemonId(entry.id)}</span>
             <span class="generation-chip">${getGenerationLabel(entry.generation)}</span>
           </div>
+          <span class="active-badge">Out</span>
           <div class="sprite-frame">
-            <img class="sprite" src="${spriteUri}" alt="${discovered ? entry.name : 'Locked pokemon'}" />
+            <img class="sprite" src="${spriteUri}" alt="" loading="lazy" />
           </div>
-          <div class="pokemon-name">${discovered ? entry.name : '???'}</div>
+          <div class="pokemon-name">${name}</div>
         </button>
       `
     }).join('')
@@ -157,37 +250,28 @@ export class PokedexPanel {
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${webview.cspSource} 'nonce-${nonce}'; img-src ${webview.cspSource} https:; font-src ${webview.cspSource}; script-src 'nonce-${nonce}';">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${webview.cspSource} 'nonce-${nonce}'; img-src ${webview.cspSource}; font-src ${webview.cspSource}; script-src 'nonce-${nonce}';">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Pokechidex</title>
   <style nonce="${nonce}">
     :root {
-      color-scheme: dark;
-      --bg: #0f172a;
-      --bg-2: #111827;
-      --card: rgba(15, 23, 42, 0.88);
-      --card-border: rgba(148, 163, 184, 0.2);
-      --text: #e2e8f0;
-      --muted: #94a3b8;
-      --accent: #f59e0b;
-      --accent-soft: rgba(245, 158, 11, 0.18);
-      --lock: rgba(148, 163, 184, 0.14);
+      --card-bg: var(--vscode-editorWidget-background, var(--vscode-editor-background));
+      --card-border: var(--vscode-widget-border, transparent);
+      --muted: var(--vscode-descriptionForeground);
+      --accent: var(--vscode-focusBorder);
     }
 
     html, body {
       margin: 0;
       padding: 0;
-      min-height: 100%;
-      background:
-        radial-gradient(circle at top left, rgba(59, 130, 246, 0.18), transparent 28%),
-        radial-gradient(circle at top right, rgba(245, 158, 11, 0.18), transparent 24%),
-        linear-gradient(180deg, #0b1020 0%, #111827 100%);
-      color: var(--text);
-      font-family: 'Segoe UI', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--vscode-editor-background);
+      color: var(--vscode-foreground);
+      font-family: var(--vscode-font-family);
+      font-size: var(--vscode-font-size);
     }
 
     body {
-      padding: 20px;
+      padding: 16px;
       box-sizing: border-box;
     }
 
@@ -195,7 +279,6 @@ export class PokedexPanel {
       display: flex;
       flex-direction: column;
       gap: 16px;
-      min-height: calc(100vh - 40px);
     }
 
     .header {
@@ -203,138 +286,97 @@ export class PokedexPanel {
       align-items: flex-end;
       justify-content: space-between;
       gap: 16px;
-      padding: 20px 22px;
-      border: 1px solid var(--card-border);
-      border-radius: 20px;
-      background: linear-gradient(135deg, rgba(15, 23, 42, 0.96), rgba(30, 41, 59, 0.86));
-      box-shadow: 0 24px 60px rgba(2, 6, 23, 0.42);
+      flex-wrap: wrap;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--vscode-widget-border, var(--vscode-editorWidget-border, rgba(128, 128, 128, 0.35)));
     }
 
     .title-block {
       display: flex;
       flex-direction: column;
-      gap: 6px;
-    }
-
-    .eyebrow {
-      color: var(--accent);
-      text-transform: uppercase;
-      letter-spacing: 0.18em;
-      font-size: 11px;
-      font-weight: 700;
+      gap: 4px;
     }
 
     h1 {
       margin: 0;
-      font-size: 28px;
-      line-height: 1;
+      font-size: 20px;
+      font-weight: 600;
+      line-height: 1.2;
     }
 
     .subtitle {
       color: var(--muted);
-      font-size: 13px;
+      font-size: 12px;
       margin: 0;
       max-width: 62ch;
     }
 
     .counter {
-      min-width: 120px;
-      padding: 12px 16px;
-      border-radius: 14px;
-      background: var(--accent-soft);
-      border: 1px solid rgba(245, 158, 11, 0.28);
-      text-align: right;
+      display: flex;
+      align-items: baseline;
+      gap: 6px;
+      padding: 6px 12px;
+      border-radius: 999px;
+      background: var(--vscode-badge-background);
+      color: var(--vscode-badge-foreground);
+      white-space: nowrap;
     }
 
     .counter-value {
-      display: block;
-      font-size: 24px;
-      font-weight: 800;
-      color: white;
-      line-height: 1;
+      font-size: 15px;
+      font-weight: 700;
     }
 
     .counter-label {
-      display: block;
-      margin-top: 4px;
-      color: var(--muted);
       font-size: 11px;
       text-transform: uppercase;
-      letter-spacing: 0.12em;
+      letter-spacing: 0.08em;
+      opacity: 0.85;
     }
 
     .grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-      gap: 14px;
-      align-items: stretch;
+      grid-template-columns: repeat(auto-fill, minmax(132px, 1fr));
+      gap: 10px;
     }
 
     .pokemon-card {
       position: relative;
-      overflow: hidden;
-      min-height: 178px;
-      padding: 14px 14px 12px;
-      border-radius: 18px;
-      border: 1px solid var(--card-border);
-      background: linear-gradient(180deg, rgba(30, 41, 59, 0.94), rgba(15, 23, 42, 0.98));
-      box-shadow: 0 18px 40px rgba(2, 6, 23, 0.24);
       display: flex;
       flex-direction: column;
-      gap: 10px;
-      appearance: none;
-      width: 100%;
-      text-align: inherit;
+      gap: 8px;
+      min-height: 160px;
+      padding: 10px;
+      border-radius: 8px;
+      border: 1px solid var(--card-border);
+      background: var(--card-bg);
+      color: inherit;
       font: inherit;
+      text-align: inherit;
+      width: 100%;
+      appearance: none;
       cursor: pointer;
-      transition: transform 140ms ease, border-color 140ms ease, box-shadow 140ms ease;
+      transition: background-color 120ms ease, border-color 120ms ease;
     }
 
-    .pokemon-card:hover {
-      transform: translateY(-2px);
-      border-color: rgba(245, 158, 11, 0.42);
-      box-shadow: 0 22px 44px rgba(2, 6, 23, 0.34);
+    .pokemon-card.discovered:hover {
+      background: var(--vscode-list-hoverBackground);
+      border-color: var(--vscode-contrastActiveBorder, var(--accent));
+    }
+
+    .pokemon-card:focus-visible {
+      outline: 1px solid var(--accent);
+      outline-offset: 2px;
     }
 
     .pokemon-card.active {
-      border-color: rgba(245, 158, 11, 0.82);
-      box-shadow:
-        0 0 0 1px rgba(245, 158, 11, 0.22),
-        0 24px 48px rgba(245, 158, 11, 0.18),
-        0 18px 40px rgba(2, 6, 23, 0.24);
-      transform: translateY(-1px);
-    }
-
-    .pokemon-card.active::before {
-      content: '';
-      position: absolute;
-      inset: 0;
-      border-radius: 18px;
-      pointer-events: none;
-      box-shadow: inset 0 0 0 1px rgba(245, 158, 11, 0.35);
-    }
-
-    .pokemon-card.active .generation-chip {
-      color: #fff3c4;
-      border-color: rgba(245, 158, 11, 0.35);
-      background: rgba(245, 158, 11, 0.14);
-    }
-
-    .pokemon-card.active .pokemon-name {
-      color: #fff7db;
+      border-color: var(--accent);
+      box-shadow: inset 0 0 0 1px var(--accent);
     }
 
     .pokemon-card.locked {
-      background: linear-gradient(180deg, rgba(15, 23, 42, 0.86), rgba(15, 23, 42, 0.98));
-      cursor: not-allowed;
-    }
-
-    .pokemon-card.locked::after {
-      content: '';
-      position: absolute;
-      inset: 0;
-      background: radial-gradient(circle at top, rgba(148, 163, 184, 0.08), transparent 50%);
-      pointer-events: none;
+      cursor: default;
+      opacity: 0.55;
     }
 
     .card-top {
@@ -342,23 +384,22 @@ export class PokedexPanel {
       align-items: center;
       justify-content: space-between;
       gap: 8px;
-      font-size: 11px;
+      font-size: 10px;
+      letter-spacing: 0.06em;
       text-transform: uppercase;
-      letter-spacing: 0.08em;
+      color: var(--muted);
     }
 
     .pokemon-id {
-      color: var(--muted);
-      font-weight: 700;
+      font-weight: 600;
+      font-family: var(--vscode-editor-font-family, monospace);
     }
 
     .generation-chip {
-      padding: 4px 8px;
+      padding: 2px 6px;
       border-radius: 999px;
-      background: rgba(15, 23, 42, 0.7);
-      border: 1px solid rgba(148, 163, 184, 0.14);
-      color: var(--muted);
-      font-size: 10px;
+      border: 1px solid var(--vscode-widget-border, currentColor);
+      font-size: 9px;
       white-space: nowrap;
     }
 
@@ -366,49 +407,47 @@ export class PokedexPanel {
       display: grid;
       place-items: center;
       flex: 1;
-      min-height: 96px;
-      border-radius: 14px;
-      background: linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0));
+      min-height: 84px;
     }
 
     .sprite {
-      width: 76px;
-      height: 76px;
+      width: 72px;
+      height: 72px;
       object-fit: contain;
       image-rendering: pixelated;
-      filter: drop-shadow(0 12px 18px rgba(15, 23, 42, 0.45));
     }
 
-    .pokemon-card.locked .sprite {
-      opacity: 0.92;
-      transform: scale(1.05);
+    .pokemon-name {
+      font-size: 12px;
+      font-weight: 600;
+      text-align: center;
+      text-transform: capitalize;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
 
     .pokemon-card.locked .pokemon-name {
       color: var(--muted);
-      letter-spacing: 0.16em;
+      letter-spacing: 0.14em;
     }
 
-    .pokemon-name {
-      font-size: 14px;
-      font-weight: 700;
-      text-align: center;
-      text-transform: capitalize;
+    .active-badge {
+      display: none;
+      position: absolute;
+      inset-inline-end: 8px;
+      inset-block-start: 26px;
+      padding: 1px 6px;
+      border-radius: 999px;
+      background: var(--vscode-badge-background);
+      color: var(--vscode-badge-foreground);
+      font-size: 9px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
     }
 
-    .hint {
-      color: var(--muted);
-      font-size: 12px;
-      margin-top: -4px;
-    }
-
-    .empty-state {
-      padding: 24px;
-      border: 1px dashed rgba(148, 163, 184, 0.32);
-      border-radius: 18px;
-      color: var(--muted);
-      text-align: center;
-      background: rgba(15, 23, 42, 0.32);
+    .pokemon-card.active .active-badge {
+      display: block;
     }
 
     @media (max-width: 640px) {
@@ -420,69 +459,99 @@ export class PokedexPanel {
         flex-direction: column;
         align-items: flex-start;
       }
-
-      .counter {
-        text-align: left;
-        width: 100%;
-        box-sizing: border-box;
-      }
-
-      h1 {
-        font-size: 24px;
-      }
     }
   </style>
 </head>
 <body>
   <main class="pokedex-shell">
-    <section class="header">
+    <header class="header">
       <div class="title-block">
-        <span class="eyebrow">Pokechi collection</span>
         <h1>Pokechidex</h1>
-        <p class="subtitle">Each unlocked species displays its name and sprite. Undiscovered species remain hidden until you obtain them from a Pokechi Ball or through evolution.</p>
-        <p class="hint">Click a discovered Pokemon to show it in the active view.</p>
+        <p class="subtitle">Species you have met from a Pok&eacute;ball or an evolution. Pick one to bring it out &mdash; each line keeps its own XP, so nothing is lost when you switch.</p>
       </div>
       <div class="counter">
-        <span class="counter-value">${discoveredCount}/${totalCount}</span>
+        <span class="counter-value" id="counter-value">${discoveredCount}/${totalCount}</span>
         <span class="counter-label">Discovered</span>
       </div>
-    </section>
+    </header>
 
     <section class="grid" aria-label="Pokechidex grid">
       ${cards}
     </section>
   </main>
   <script nonce="${nonce}">
-    (function() {
-      let vscode;
+    (function () {
+      var vscode;
       try {
         vscode = acquireVsCodeApi();
       } catch (e) {
         return;
       }
 
-      function setupListeners() {
-        const cards = document.querySelectorAll('[data-pokemon-type]');
-        cards.forEach((card) => {
-          card.addEventListener('click', () => {
-            if (card.disabled) {
-              return;
-            }
+      var grid = document.querySelector('.grid');
+      var counter = document.getElementById('counter-value');
 
-            vscode.postMessage({
-              command: 'show-pokemon',
-              pokemonType: card.dataset.pokemonType,
-              pokemonId: Number(card.dataset.pokemonId),
-            });
+      if (grid) {
+        grid.addEventListener('click', function (event) {
+          var card = event.target.closest('.pokemon-card');
+          if (!card || card.disabled) {
+            return;
+          }
+
+          vscode.postMessage({
+            command: 'show-pokemon',
+            pokemonType: card.dataset.pokemonType
           });
         });
       }
 
-      if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', setupListeners);
-      } else {
-        setupListeners();
+      function unlock(card, entry) {
+        card.classList.remove('locked');
+        card.classList.add('discovered');
+        card.disabled = false;
+        card.dataset.pokemonType = entry.type;
+        card.setAttribute('aria-label', 'Show ' + entry.name);
+
+        var sprite = card.querySelector('.sprite');
+        if (sprite && entry.spriteUri && sprite.src !== entry.spriteUri) {
+          sprite.src = entry.spriteUri;
+        }
+
+        var name = card.querySelector('.pokemon-name');
+        if (name) {
+          name.textContent = entry.name;
+        }
       }
+
+      window.addEventListener('message', function (event) {
+        var message = event.data;
+        if (!message || message.command !== 'pokedex-update') {
+          return;
+        }
+
+        var data = message.data;
+
+        (data.discovered || []).forEach(function (entry) {
+          var card = grid && grid.querySelector('[data-index="' + entry.index + '"]');
+          if (card && card.classList.contains('locked')) {
+            unlock(card, entry);
+          }
+        });
+
+        var cards = grid ? grid.querySelectorAll('.pokemon-card') : [];
+        Array.prototype.forEach.call(cards, function (card) {
+          // Without an active type nothing is out, and locked cards have no
+          // type at all, so neither may match.
+          var isActive =
+            !!data.activeType && card.dataset.pokemonType === data.activeType;
+          card.classList.toggle('active', isActive);
+          card.setAttribute('aria-pressed', isActive ? 'true' : 'false');
+        });
+
+        if (counter && typeof data.discoveredCount === 'number') {
+          counter.textContent = data.discoveredCount + '/${totalCount}';
+        }
+      });
     })();
   </script>
 </body>

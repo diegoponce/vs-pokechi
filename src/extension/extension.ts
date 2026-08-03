@@ -1,93 +1,84 @@
-import * as vscode from "vscode";
-import { PokemonState } from "./pokemon-state";
-import { PokedexPanel } from "./pokedex-panel";
-import { UserPokemon, Position } from "./types";
-import { XPTracker, setUpdateCallbacks } from "./xp-tracker";
-import { PokemonType } from "../common/types";
+import * as vscode from 'vscode'
+import { PokemonState } from './pokemon-state'
+import { PokedexPanel } from './pokedex-panel'
+import { generateNonce } from './nonce'
+import { UserPokemon, Position } from './types'
+import { PokemonType } from '../common/types'
+import { XPTracker, setUpdateCallbacks } from './xp-tracker'
 
 interface PokemonSelectionFromPokedex {
-  pokemonType: PokemonType;
-  pokemonId?: number;
+  pokemonType: PokemonType
 }
 
-let _isViewSwitching = false;
-
-function generateNonce(): string {
-  const alphabet =
-    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-  let value = "";
-
-  for (let index = 0; index < 32; index += 1) {
-    value += alphabet.charAt(Math.floor(Math.random() * alphabet.length));
-  }
-
-  return value;
-}
+let _isViewSwitching = false
 
 function getConfigurationPosition(): Position {
   return vscode.workspace
-    .getConfiguration("pokechi")
-    .get<Position>("position", "panel");
+    .getConfiguration('pokechi')
+    .get<Position>('position', 'panel')
 }
 
 async function updateExtensionPositionContext() {
   await vscode.commands.executeCommand(
-    "setContext",
-    "pokechi.position",
-    getConfigurationPosition(),
-  );
+    'setContext',
+    'pokechi.position',
+    getConfigurationPosition()
+  )
 }
 
 class PokechiContentProvider {
-  protected _extensionUri: vscode.Uri;
-  protected _context: vscode.ExtensionContext;
+  protected _extensionUri: vscode.Uri
+  protected _mediaUri: vscode.Uri
+  protected _context: vscode.ExtensionContext
 
   constructor(context: vscode.ExtensionContext) {
-    this._extensionUri = context.extensionUri;
-    this._context = context;
+    this._extensionUri = context.extensionUri
+    this._mediaUri = vscode.Uri.joinPath(context.extensionUri, 'media')
+    this._context = context
   }
 
   public updateViews(pokemon: UserPokemon, isXPUpdate = true) {
-    if (PokechiState.panel?.panel) {
+    if (PokechiState.panel?.panel && getConfigurationPosition() === 'panel') {
       PokechiState.panel.panel.webview.postMessage({
-        command: "update-pokemon",
+        command: 'update-pokemon',
         data: { userPokemon: pokemon, isXPUpdate },
-      });
+      })
     }
 
-    if (PokechiState.explorerView?._view) {
+    if (
+      PokechiState.explorerView?._view &&
+      getConfigurationPosition() === 'explorer'
+    ) {
       PokechiState.explorerView._view.webview.postMessage({
-        command: "update-pokemon",
+        command: 'update-pokemon',
         data: { userPokemon: pokemon, isXPUpdate },
-      });
+      })
     }
   }
 
   protected getWebviewContent(webview: vscode.Webview) {
     const scriptPathOnDisk = vscode.Uri.joinPath(
       this._extensionUri,
-      "media",
-      "main-bundle.js",
-    );
+      'media',
+      'main-bundle.js'
+    )
     const stylesUriOnDisk = vscode.Uri.joinPath(
       this._extensionUri,
-      "media",
-      "main.css",
-    );
+      'media',
+      'main.css'
+    )
 
-    const scriptUri = webview.asWebviewUri(scriptPathOnDisk);
-    const stylesUri = webview.asWebviewUri(stylesUriOnDisk);
+    const scriptUri = webview.asWebviewUri(scriptPathOnDisk)
+    const stylesUri = webview.asWebviewUri(stylesUriOnDisk)
 
-    const basePokemonUri = webview.asWebviewUri(
-      vscode.Uri.joinPath(this._extensionUri, "media"),
-    );
+    const basePokemonUri = webview.asWebviewUri(this._mediaUri)
 
-    const nonce = generateNonce();
-    const pokemon = PokemonState.getPokemon(this._context);
+    const nonce = generateNonce()
+    const pokemon = PokemonState.getPokemon(this._context)
 
     const isExplorerView =
-      getConfigurationPosition() === "explorer" &&
-      this instanceof PokechiViewProvider;
+      getConfigurationPosition() === 'explorer' &&
+      this instanceof PokechiViewProvider
 
     const extraStyles = isExplorerView
       ? `
@@ -131,10 +122,10 @@ class PokechiContentProvider {
           margin: 0;
         }
       </style>
-    `;
+    `
 
-    const pokemonData = pokemon ? JSON.stringify(pokemon) : "null";
-    const requiredXP = pokemon ? PokemonState.getRequiredXP(pokemon) : 35;
+    const pokemonData = pokemon ? JSON.stringify(pokemon) : 'null'
+    const requiredXP = pokemon ? PokemonState.getRequiredXP(pokemon) : 35
 
     return `<!DOCTYPE html>
     <html lang="en">
@@ -144,8 +135,8 @@ class PokechiContentProvider {
       <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${
         webview.cspSource
       } 'nonce-${nonce}'; img-src ${
-        webview.cspSource
-      } https:; script-src 'nonce-${nonce}';">
+      webview.cspSource
+    } https:; script-src 'nonce-${nonce}';">
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
       <link href="${stylesUri}" rel="stylesheet">
       <title>pokechi</title>
@@ -181,12 +172,20 @@ class PokechiContentProvider {
           background-color: #0078D7;
           transition: width 0.3s ease;
         }
+        .xp-progress-fill.is-max {
+          background-color: #E3A008;
+        }
+        .xp-max {
+          display: none;
+          margin-left: 6px;
+          letter-spacing: 0.08em;
+        }
       </style>
     </head>
     <body>
       <div class="xp-container">
-        <div class="pokemon-name" id="pokemon-name" style="color: white; font-size: 14px; margin-bottom: 4px; font-weight: bold; display: ${pokemon && pokemon.level > 0 ? "block" : "none"};">${pokemon && pokemon.level > 0 ? pokemon.name : ""}</div>
-        <div class="xp-text">XP: <span id="current-xp">0</span> / <span id="required-xp">${requiredXP}</span></div>
+        <div class="pokemon-name" id="pokemon-name" style="color: white; font-size: 14px; margin-bottom: 4px; font-weight: bold; display: ${pokemon && pokemon.level > 0 ? 'block' : 'none'};">${pokemon && pokemon.level > 0 ? pokemon.name : ''}</div>
+        <div class="xp-text">XP: <span id="current-xp">0</span><span id="xp-required-wrap"> / <span id="required-xp">${requiredXP}</span></span><span class="xp-max" id="xp-max">MAX</span></div>
         <div class="xp-progress-bg">
           <div class="xp-progress-fill" id="xp-progress"></div>
         </div>
@@ -247,14 +246,29 @@ class PokechiContentProvider {
           const requiredXPEl = document.getElementById('required-xp');
           const xpProgressFill = document.getElementById('xp-progress');
           
+          const requiredWrapEl = document.getElementById('xp-required-wrap');
+          const maxEl = document.getElementById('xp-max');
+
           if (xpContainer && xpText && currentXPEl && requiredXPEl && xpProgressFill && userPokemon) {
             const requiredXP = getRequiredXPForLevel(userPokemon.level || 0);
             const currentXP = userPokemon.xp || 0;
             const percentage = Math.min(100, Math.max(0, (currentXP / requiredXP) * 100));
-            
+
             currentXPEl.textContent = formatNumber(currentXP);
             requiredXPEl.textContent = formatNumber(requiredXP);
-            xpProgressFill.style.width = percentage + "%";
+
+            // evolutionLine holds every stage, so the last level equals its
+            // length. Species that never evolve reach it as soon as they hatch.
+            const line = userPokemon.evolutionLine;
+            const isFinalStage = Array.isArray(line) && (userPokemon.level || 0) >= line.length;
+
+            if (requiredWrapEl && maxEl) {
+              requiredWrapEl.style.display = isFinalStage ? 'none' : 'inline';
+              maxEl.style.display = isFinalStage ? 'inline' : 'none';
+            }
+
+            xpProgressFill.classList.toggle('is-max', isFinalStage);
+            xpProgressFill.style.width = isFinalStage ? "100%" : percentage + "%";
           }
         }
         
@@ -284,14 +298,14 @@ class PokechiContentProvider {
         });
       </script>
     </body>
-    </html>`;
+    </html>`
   }
 
   protected getUnavailableContent(
     webview: vscode.Webview,
-    currentPosition: Position,
+    currentPosition: Position
   ) {
-    const nonce = generateNonce();
+    const nonce = generateNonce()
 
     return `<!DOCTYPE html>
     <html lang="en">
@@ -335,127 +349,126 @@ class PokechiContentProvider {
         });
       </script>
     </body>
-    </html>`;
+    </html>`
   }
 }
 
 class PokemonPanel extends PokechiContentProvider {
-  panel: vscode.WebviewPanel | undefined;
+  panel: vscode.WebviewPanel | undefined
 
   updateScale(scale: number): Thenable<void> {
     if (!this.panel) {
-      return Promise.resolve();
+      return Promise.resolve()
     }
 
-    const pokemon = PokemonState.getPokemon(this._context);
+    const pokemon = PokemonState.getPokemon(this._context)
     if (!pokemon) {
-      return Promise.resolve();
+      return Promise.resolve()
     }
 
-    pokemon.scale = scale;
-    pokemon.isTransitionIn = false;
+    pokemon.scale = scale
+    pokemon.isTransitionIn = false
 
-    this.updateViews(pokemon);
+    this.updateViews(pokemon)
 
-    return PokemonState.savePokemon(this._context);
+    return PokemonState.savePokemon(this._context)
   }
 
   createPanel(panel?: vscode.WebviewPanel): vscode.WebviewPanel {
     const baseMediaUri = vscode.Uri.joinPath(
       this._context.extensionUri,
-      "media",
-    );
-    const position = getConfigurationPosition();
+      'media'
+    )
+    const position = getConfigurationPosition()
 
     this.panel =
       panel ??
       vscode.window.createWebviewPanel(
-        "pokemonPanel",
-        PokemonState.getPokemon(this._context)?.name || "Pokechi",
+        'pokemonPanel',
+        PokemonState.getPokemon(this._context)?.name || 'Pokechi',
         vscode.ViewColumn.Two,
         {
           enableScripts: true,
           localResourceRoots: [baseMediaUri],
-        },
-      );
+        }
+      )
 
-    const pokemon = PokemonState.getPokemon(this._context);
+    const pokemon = PokemonState.getPokemon(this._context)
     if (pokemon) {
-      this.panel.title = pokemon.level === 0 ? "Your Pokemon" : pokemon.name;
+      this.panel.title = pokemon.level === 0 ? 'Your Pokemon' : pokemon.name
     }
 
     this.panel.onDidDispose(
       () => {
-        this.panel = undefined;
-        PokechiState.panel = undefined;
+        this.panel = undefined
+        PokechiState.panel = undefined
       },
       null,
-      this._context.subscriptions,
-    );
+      this._context.subscriptions
+    )
 
     this.panel.onDidChangeViewState(
       (e) => {
-        if (this.panel?.visible && position === "panel") {
-          this.updateContent();
+        if (this.panel?.visible && position === 'panel') {
+          this.updateContent()
         }
       },
       null,
-      this._context.subscriptions,
-    );
+      this._context.subscriptions
+    )
 
     this.panel.webview.onDidReceiveMessage(
       (message) => {
         switch (message.command) {
-          case "open-settings":
+          case 'open-settings':
             vscode.commands.executeCommand(
-              "workbench.action.openSettings",
-              "pokechi.position",
-            );
-            break;
+              'workbench.action.openSettings',
+              'pokechi.position'
+            )
+            break
         }
       },
       undefined,
-      this._context.subscriptions,
-    );
+      this._context.subscriptions
+    )
 
-    this.updateContent();
+    this.updateContent()
 
-    return this.panel;
+    return this.panel
   }
 
   updateContent() {
     if (!this.panel) {
-      return;
+      return
     }
 
-    const position = getConfigurationPosition();
+    const position = getConfigurationPosition()
 
-    if (position === "explorer") {
+    if (position === 'explorer') {
       this.panel.webview.html = this.getUnavailableContent(
         this.panel.webview,
-        "explorer",
-      );
+        'explorer'
+      )
     } else {
-      this.panel.webview.html = this.getWebviewContent(this.panel.webview);
+      this.panel.webview.html = this.getWebviewContent(this.panel.webview)
 
-      const pokemon = PokemonState.getPokemon(this._context);
+      const pokemon = PokemonState.getPokemon(this._context)
       if (pokemon) {
         if (_isViewSwitching) {
-          pokemon.isTransitionIn = false;
+          pokemon.isTransitionIn = false
         }
 
-        const isXPUpdate = !pokemon.isTransitionIn;
+        const isXPUpdate = !pokemon.isTransitionIn
 
         // Update the panel title
         if (this.panel) {
-          this.panel.title =
-            pokemon.level === 0 ? "Your Pokemon" : pokemon.name;
+          this.panel.title = pokemon.level === 0 ? 'Your Pokemon' : pokemon.name
         }
 
         this.panel.webview.postMessage({
-          command: "update-pokemon",
+          command: 'update-pokemon',
           data: { userPokemon: pokemon, isXPUpdate },
-        });
+        })
       }
     }
   }
@@ -465,68 +478,68 @@ class PokechiViewProvider
   extends PokechiContentProvider
   implements vscode.WebviewViewProvider
 {
-  public static readonly viewType = "pokechiView";
-  _view?: vscode.WebviewView;
+  public static readonly viewType = 'pokechiView'
+  _view?: vscode.WebviewView
 
   resolveWebviewView(
     webviewView: vscode.WebviewView,
     context: vscode.WebviewViewResolveContext,
-    _token: vscode.CancellationToken,
+    _token: vscode.CancellationToken
   ) {
-    this._view = webviewView;
+    this._view = webviewView
 
     webviewView.webview.options = {
       enableScripts: true,
       localResourceRoots: [
         this._extensionUri,
-        vscode.Uri.joinPath(this._extensionUri, "media"),
+        this._mediaUri,
       ],
-    };
+    }
 
-    this.updateContent();
+    this.updateContent()
 
     webviewView.webview.onDidReceiveMessage((data) => {
       switch (data.command) {
-        case "alert":
-          vscode.window.showInformationMessage(data.text);
-          break;
+        case 'alert':
+          vscode.window.showInformationMessage(data.text)
+          break
       }
-    });
+    })
 
     webviewView.onDidChangeVisibility(() => {
       if (webviewView.visible) {
-        this.updateContent();
+        this.updateContent()
       }
-    });
+    })
   }
 
   updateContent() {
     if (!this._view) {
-      return;
+      return
     }
 
-    const position = getConfigurationPosition();
+    const position = getConfigurationPosition()
 
-    if (position === "panel") {
+    if (position === 'panel') {
       this._view.webview.html = this.getUnavailableContent(
         this._view.webview,
-        "panel",
-      );
+        'panel'
+      )
     } else {
-      this._view.webview.html = this.getWebviewContent(this._view.webview);
+      this._view.webview.html = this.getWebviewContent(this._view.webview)
 
-      const pokemon = PokemonState.getPokemon(this._context);
+      const pokemon = PokemonState.getPokemon(this._context)
       if (pokemon) {
         if (_isViewSwitching || pokemon.level > 0) {
-          pokemon.isTransitionIn = false;
+          pokemon.isTransitionIn = false
         }
 
-        const isXPUpdate = !pokemon.isTransitionIn;
+        const isXPUpdate = !pokemon.isTransitionIn
 
         this._view.webview.postMessage({
-          command: "update-pokemon",
+          command: 'update-pokemon',
           data: { userPokemon: pokemon, isXPUpdate },
-        });
+        })
       }
     }
   }
@@ -536,26 +549,32 @@ const PokechiState = {
   panel: undefined as PokemonPanel | undefined,
   explorerView: undefined as PokechiViewProvider | undefined,
   pokedex: undefined as PokedexPanel | undefined,
-};
+}
 
-let xpTracker: XPTracker | undefined;
+let xpTracker: XPTracker | undefined
+
+// The Pokedex panel is created on demand, so this only reaches it when it is
+// already open.
+function refreshPokedex() {
+  PokechiState.pokedex?.refresh()
+}
 
 export function activate(context: vscode.ExtensionContext) {
-  const currentPokemon = PokemonState.getPokemon(context);
+  const currentPokemon = PokemonState.getPokemon(context)
   if (currentPokemon && currentPokemon.level > 0) {
-    PokemonState.discoverPokemon(context, currentPokemon.type);
+    // Anyone upgrading from an earlier version already has a pokemon out, and
+    // it would otherwise be missing from an empty Pokedex.
+    PokemonState.discoverPokemon(context, currentPokemon.type)
+    PokemonState.rememberActivePokemon(context)
   }
 
-  const pokemonPanel = new PokemonPanel(context);
-  PokechiState.panel = pokemonPanel;
+  const pokemonPanel = new PokemonPanel(context)
+  PokechiState.panel = pokemonPanel
 
-  const pokedexPanel = new PokedexPanel(context);
-  PokechiState.pokedex = pokedexPanel;
+  const pokechiViewProvider = new PokechiViewProvider(context)
+  PokechiState.explorerView = pokechiViewProvider
 
-  const pokechiViewProvider = new PokechiViewProvider(context);
-  PokechiState.explorerView = pokechiViewProvider;
-
-  updateExtensionPositionContext();
+  updateExtensionPositionContext()
 
   context.subscriptions.push(
     vscode.window.registerWebviewViewProvider(
@@ -565,313 +584,282 @@ export function activate(context: vscode.ExtensionContext) {
         webviewOptions: {
           retainContextWhenHidden: true,
         },
-      },
-    ),
-  );
+      }
+    )
+  )
 
   context.subscriptions.push(
-    vscode.commands.registerCommand("pokechi.showPanel", () => {
+    vscode.commands.registerCommand('pokechi.showPanel', () => {
       return new Promise<void>((resolve) => {
-        const position = getConfigurationPosition();
+        const position = getConfigurationPosition()
 
-        if (position !== "panel") {
+        if (position !== 'panel') {
           vscode.window.showInformationMessage(
-            "Pokechi is currently set to display in the explorer view. You can change this in the settings.",
-          );
+            'Pokechi is currently set to display in the explorer view. You can change this in the settings.'
+          )
           vscode.commands.executeCommand(
-            "workbench.action.openSettings",
-            "pokechi.position",
-          );
-          resolve();
-          return;
+            'workbench.action.openSettings',
+            'pokechi.position'
+          )
+          resolve()
+          return
         }
 
         if (PokechiState.panel?.panel) {
-          resolve();
-          return;
+          resolve()
+          return
         }
 
-        const panel = pokemonPanel.createPanel();
+        const panel = pokemonPanel.createPanel()
 
         setTimeout(() => {
-          resolve();
-        }, 100);
-      });
-    }),
-  );
+          resolve()
+        }, 100)
+      })
+    })
+  )
 
   context.subscriptions.push(
-    vscode.commands.registerCommand("pokechi.showPokedex", () => {
+    vscode.commands.registerCommand('pokechi.showPokedex', () => {
       if (PokechiState.pokedex?.panel) {
-        PokechiState.pokedex.panel.reveal(vscode.ViewColumn.Two);
-        PokechiState.pokedex.updateContent();
-        return;
+        PokechiState.pokedex.panel.reveal(vscode.ViewColumn.Two)
+        PokechiState.pokedex.refresh()
+        return
       }
 
-      PokechiState.pokedex = new PokedexPanel(context);
-      PokechiState.pokedex.createPanel();
-    }),
-  );
+      PokechiState.pokedex = new PokedexPanel(context)
+      PokechiState.pokedex.createPanel()
+    })
+  )
 
   context.subscriptions.push(
     vscode.commands.registerCommand(
-      "pokechi.selectPokemonFromPokedex",
+      'pokechi.selectPokemonFromPokedex',
       async (selection: PokemonSelectionFromPokedex) => {
-        const { pokemonType, pokemonId } = selection;
-        const selectedPokemon = PokemonState.createPokemonFromPokedex(
+        const pokemon = PokemonState.selectPokemonFromPokedex(
           context,
-          pokemonType,
-        );
+          selection.pokemonType
+        )
 
-        if (!selectedPokemon) {
+        if (!pokemon) {
           vscode.window.showWarningMessage(
-            `Could not show ${pokemonType} from the Pokédex.`,
-          );
-          return;
+            `Could not bring out ${selection.pokemonType}.`
+          )
+          return
         }
 
-        if (typeof pokemonId === "number") {
-          selectedPokemon.id = pokemonId;
-          PokemonState.savePokemon(context);
+        if (pokemon.type !== selection.pokemonType) {
+          // The line was already raised further, and evolution only moves
+          // forward, so the saved stage is what comes out.
+          vscode.window.showInformationMessage(
+            `${pokemon.name} is the stage you had reached on that line.`
+          )
         }
 
-        const position = getConfigurationPosition();
+        const position = getConfigurationPosition()
 
-        if (PokechiState.panel?.panel) {
-          PokechiState.panel.panel.title =
-            selectedPokemon.level === 0 ? "Your Pokemon" : selectedPokemon.name;
-          PokechiState.panel.updateViews(selectedPokemon, false);
-        }
-
-        if (PokechiState.explorerView?._view) {
-          PokechiState.explorerView.updateViews(selectedPokemon, false);
-        }
-
-        if (position === "panel") {
-          if (PokechiState.panel?.panel) {
-            PokechiState.panel.panel.reveal(vscode.ViewColumn.Two);
-            PokechiState.pokedex?.updateContent();
-            return;
+        if (position === 'panel') {
+          if (!PokechiState.panel?.panel) {
+            await vscode.commands.executeCommand('pokechi.showPanel')
           }
-
-          await vscode.commands.executeCommand("pokechi.showPanel");
-          if (PokechiState.panel?.panel) {
-            PokechiState.panel.panel.title =
-              selectedPokemon.level === 0
-                ? "Your Pokemon"
-                : selectedPokemon.name;
-            PokechiState.panel.updateViews(selectedPokemon, false);
+          PokechiState.panel?.panel?.reveal(vscode.ViewColumn.Two)
+          PokechiState.panel?.updateContent()
+        } else {
+          if (!PokechiState.explorerView?._view) {
+            await vscode.commands.executeCommand('workbench.view.explorer')
           }
-          PokechiState.pokedex?.updateContent();
-          return;
+          PokechiState.explorerView?.updateContent()
         }
 
-        if (PokechiState.explorerView?._view) {
-          PokechiState.pokedex?.updateContent();
-          return;
-        }
-
-        await vscode.commands.executeCommand("workbench.view.explorer");
-        if (PokechiState.explorerView?._view) {
-          PokechiState.explorerView.updateViews(selectedPokemon, false);
-        }
-        PokechiState.pokedex?.updateContent();
-      },
-    ),
-  );
+        refreshPokedex()
+      }
+    )
+  )
 
   context.subscriptions.push(
-    vscode.commands.registerCommand("pokechi.spawnNewPokemon", () => {
-      const position = getConfigurationPosition();
+    vscode.commands.registerCommand('pokechi.spawnNewPokemon', () => {
+      const position = getConfigurationPosition()
 
-      if (position === "panel" && !PokechiState.panel?.panel) {
-        vscode.commands.executeCommand("pokechi.showPanel").then(() => {
-          createNewPokemon();
-        });
-        return;
+      if (position === 'panel' && !PokechiState.panel?.panel) {
+        vscode.commands.executeCommand('pokechi.showPanel').then(() => {
+          createNewPokemon()
+        })
+        return
       }
 
-      createNewPokemon();
+      createNewPokemon()
 
       function createNewPokemon() {
-        const pokemon = PokemonState.createNewPokemon(context);
+        const pokemon = PokemonState.createNewPokemon(context)
 
-        let activeProvider: PokechiContentProvider | undefined;
-        if (position === "panel" && PokechiState.panel) {
-          activeProvider = PokechiState.panel;
-        } else if (position === "explorer" && PokechiState.explorerView) {
-          activeProvider = PokechiState.explorerView;
+        let activeProvider: PokechiContentProvider | undefined
+        if (position === 'panel' && PokechiState.panel) {
+          activeProvider = PokechiState.panel
+        } else if (position === 'explorer' && PokechiState.explorerView) {
+          activeProvider = PokechiState.explorerView
         }
 
         if (activeProvider) {
-          // Refresh the full webview content to reset the required XP
-          if (position === "panel" && PokechiState.panel?.panel) {
-            PokechiState.panel.updateContent();
-          } else if (
-            position === "explorer" &&
-            PokechiState.explorerView?._view
-          ) {
-            PokechiState.explorerView.updateContent();
+          // Refresh the whole webview so the required XP is reset
+          if (position === 'panel' && PokechiState.panel?.panel) {
+            PokechiState.panel.updateContent()
+          } else if (position === 'explorer' && PokechiState.explorerView?._view) {
+            PokechiState.explorerView.updateContent()
           }
         }
 
-        if (PokechiState.pokedex?.panel) {
-          PokechiState.pokedex.updateContent();
-        }
+        refreshPokedex()
 
-        if (position === "panel" && PokechiState.panel?.panel) {
-          PokechiState.panel.panel.title =
-            pokemon.level === 0 ? "Your Pokemon" : pokemon.name;
+        if (position === 'panel' && PokechiState.panel?.panel) {
+          PokechiState.panel.panel.title = pokemon.level === 0 ? 'Your Pokemon' : pokemon.name
           PokechiState.panel.panel.webview.postMessage({
-            command: "spawn-pokemon",
+            command: 'spawn-pokemon',
             data: { userPokemon: pokemon },
-          });
+          })
         } else if (
-          position === "explorer" &&
+          position === 'explorer' &&
           PokechiState.explorerView?._view
         ) {
           PokechiState.explorerView._view.webview.postMessage({
-            command: "spawn-pokemon",
+            command: 'spawn-pokemon',
             data: { userPokemon: pokemon },
-          });
+          })
         }
       }
-    }),
-  );
+    })
+  )
 
   context.subscriptions.push(
-    vscode.commands.registerCommand("pokechi.openExplorer", async () => {
-      const position = getConfigurationPosition();
+    vscode.commands.registerCommand('pokechi.openExplorer', async () => {
+      const position = getConfigurationPosition()
 
-      if (position !== "explorer") {
-        _isViewSwitching = true;
+      if (position !== 'explorer') {
+        _isViewSwitching = true
 
         await vscode.workspace
           .getConfiguration()
           .update(
-            "pokechi.position",
-            "explorer",
-            vscode.ConfigurationTarget.Global,
-          );
+            'pokechi.position',
+            'explorer',
+            vscode.ConfigurationTarget.Global
+          )
 
-        _isViewSwitching = false;
+        _isViewSwitching = false
 
         vscode.window
           .showInformationMessage(
-            "Pokechi mode changed to explorer. Look for Pokechi in the Explorer view!",
-            "Show Explorer",
+            'Pokechi mode changed to explorer. Look for Pokechi in the Explorer view!',
+            'Show Explorer'
           )
           .then((selection) => {
-            if (selection === "Show Explorer") {
-              vscode.commands.executeCommand("workbench.view.explorer");
+            if (selection === 'Show Explorer') {
+              vscode.commands.executeCommand('workbench.view.explorer')
             }
-          });
+          })
       } else {
-        vscode.commands.executeCommand("workbench.view.explorer");
+        vscode.commands.executeCommand('workbench.view.explorer')
       }
-    }),
-  );
+    })
+  )
 
   if (vscode.window.registerWebviewPanelSerializer) {
-    vscode.window.registerWebviewPanelSerializer("pokemonPanel", {
+    vscode.window.registerWebviewPanelSerializer('pokemonPanel', {
       async deserializeWebviewPanel(
         panel: vscode.WebviewPanel,
-        _state: unknown,
+        _state: unknown
       ) {
-        PokechiState.panel = new PokemonPanel(context);
-        PokechiState.panel.createPanel(panel);
+        PokechiState.panel = new PokemonPanel(context)
+        PokechiState.panel.createPanel(panel)
       },
-    });
+    })
 
-    vscode.window.registerWebviewPanelSerializer("pokedexPanel", {
+    vscode.window.registerWebviewPanelSerializer('pokedexPanel', {
       async deserializeWebviewPanel(
         panel: vscode.WebviewPanel,
-        _state: unknown,
+        _state: unknown
       ) {
-        PokechiState.pokedex = new PokedexPanel(context);
-        PokechiState.pokedex.createPanel(panel);
+        PokechiState.pokedex = new PokedexPanel(context)
+        PokechiState.pokedex.createPanel(panel)
       },
-    });
+    })
   }
 
   context.subscriptions.push(
     vscode.workspace.onDidChangeConfiguration(
       (e: vscode.ConfigurationChangeEvent): void => {
-        if (e.affectsConfiguration("pokechi.scaleFactor")) {
+        if (e.affectsConfiguration('pokechi.scaleFactor')) {
           const scaleFactor = vscode.workspace
             .getConfiguration()
-            .get("pokechi.scaleFactor", 1.0);
+            .get('pokechi.scaleFactor', 1.0)
 
           if (PokechiState.panel) {
-            PokechiState.panel.updateScale(scaleFactor);
+            PokechiState.panel.updateScale(scaleFactor)
           }
         }
 
-        if (e.affectsConfiguration("pokechi.position")) {
-          _isViewSwitching = true;
+        if (e.affectsConfiguration('pokechi.position')) {
+          _isViewSwitching = true
 
-          updateExtensionPositionContext();
+          updateExtensionPositionContext()
 
           if (PokechiState.panel?.panel) {
-            PokechiState.panel.updateContent();
+            PokechiState.panel.updateContent()
           }
 
           if (PokechiState.explorerView) {
-            PokechiState.explorerView.updateContent();
+            PokechiState.explorerView.updateContent()
           }
 
-          const position = getConfigurationPosition();
-          if (position === "explorer") {
-            vscode.commands.executeCommand("workbench.view.explorer");
+          const position = getConfigurationPosition()
+          if (position === 'explorer') {
+            vscode.commands.executeCommand('workbench.view.explorer')
           }
 
-          _isViewSwitching = false;
+          _isViewSwitching = false
         }
-      },
-    ),
-  );
+      }
+    )
+  )
 
   context.subscriptions.push(
-    vscode.window.onDidChangeActiveTextEditor(updateExtensionPositionContext),
-  );
+    vscode.window.onDidChangeActiveTextEditor(updateExtensionPositionContext)
+  )
 
-  xpTracker = new XPTracker(context);
-
-  // Configure callbacks to refresh views when a Pokémon evolves
+  xpTracker = new XPTracker(context)
+  
+  // Configure callbacks to refresh views when a pokemon evolves
   setUpdateCallbacks(
     (pokemon: UserPokemon, isXPUpdate: boolean) => {
-      if (PokechiState.panel && getConfigurationPosition() === "panel") {
-        PokechiState.panel.updateViews(pokemon, isXPUpdate);
+      if (PokechiState.panel && getConfigurationPosition() === 'panel') {
+        PokechiState.panel.updateViews(pokemon, isXPUpdate)
       }
-      if (
-        PokechiState.explorerView &&
-        getConfigurationPosition() === "explorer"
-      ) {
-        PokechiState.explorerView.updateViews(pokemon, isXPUpdate);
+      if (PokechiState.explorerView && getConfigurationPosition() === 'explorer') {
+        PokechiState.explorerView.updateViews(pokemon, isXPUpdate)
       }
-      if (PokechiState.pokedex?.panel) {
-        PokechiState.pokedex.updateContent();
-      }
+      // Runs on every XP tick, so this has to stay cheap: refresh() sends a
+      // small message and bails out when nothing the grid shows has changed.
+      refreshPokedex()
     },
     (title: string) => {
       if (PokechiState.panel?.panel) {
-        PokechiState.panel.panel.title = title;
+        PokechiState.panel.panel.title = title
       }
-    },
-  );
-
-  xpTracker.start();
+    }
+  )
+  
+  xpTracker.start()
   context.subscriptions.push({
     dispose: () => {
       if (xpTracker) {
-        xpTracker.dispose();
+        xpTracker.dispose()
       }
     },
-  });
+  })
 }
 
 export function deactivate() {
   if (xpTracker) {
-    xpTracker.dispose();
+    xpTracker.dispose()
   }
 }
+

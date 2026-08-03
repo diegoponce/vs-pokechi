@@ -123,20 +123,186 @@ const TWO_STAGE_EVOLUTIONS: EvolutionLine[] = [
   { base: 'clamperl', evolutions: ['huntail'] },
 ]
 
-export const ALL_EVOLUTION_LINES: EvolutionLine[] = [
+// Species that do not evolve. They can still hatch from a Pokeball so every
+// entry in the Pokedex is reachable, but they never gain an evolution stage.
+const SINGLE_STAGE_SPECIES: EvolutionLine[] = [
+  { base: 'farfetchd', evolutions: [] },
+  { base: 'onix', evolutions: [] },
+  { base: 'hitmonlee', evolutions: [] },
+  { base: 'hitmonchan', evolutions: [] },
+  { base: 'lickitung', evolutions: [] },
+  { base: 'chansey', evolutions: [] },
+  { base: 'tangela', evolutions: [] },
+  { base: 'kangaskhan', evolutions: [] },
+  { base: 'mrmime', evolutions: [] },
+  { base: 'scyther', evolutions: [] },
+  { base: 'jynx', evolutions: [] },
+  { base: 'electabuzz', evolutions: [] },
+  { base: 'magmar', evolutions: [] },
+  { base: 'pinsir', evolutions: [] },
+  { base: 'tauros', evolutions: [] },
+  { base: 'lapras', evolutions: [] },
+  { base: 'ditto', evolutions: [] },
+  { base: 'eevee', evolutions: [] },
+  { base: 'vaporeon', evolutions: [] },
+  { base: 'jolteon', evolutions: [] },
+  { base: 'flareon', evolutions: [] },
+  { base: 'porygon', evolutions: [] },
+  { base: 'omanyte', evolutions: [] },
+  { base: 'omastar', evolutions: [] },
+  { base: 'kabuto', evolutions: [] },
+  { base: 'kabutops', evolutions: [] },
+  { base: 'aerodactyl', evolutions: [] },
+  { base: 'snorlax', evolutions: [] },
+  { base: 'articuno', evolutions: [] },
+  { base: 'zapdos', evolutions: [] },
+  { base: 'moltres', evolutions: [] },
+  { base: 'mewtwo', evolutions: [] },
+  { base: 'mew', evolutions: [] },
+  { base: 'crobat', evolutions: [] },
+  { base: 'pichu', evolutions: [] },
+  { base: 'cleffa', evolutions: [] },
+  { base: 'igglybuff', evolutions: [] },
+  { base: 'bellossom', evolutions: [] },
+  { base: 'sudowoodo', evolutions: [] },
+  { base: 'politoed', evolutions: [] },
+  { base: 'aipom', evolutions: [] },
+  { base: 'yanma', evolutions: [] },
+  { base: 'espeon', evolutions: [] },
+  { base: 'umbreon', evolutions: [] },
+  { base: 'murkrow', evolutions: [] },
+  { base: 'slowking', evolutions: [] },
+  { base: 'misdreavus', evolutions: [] },
+  { base: 'wobbuffet', evolutions: [] },
+  { base: 'girafarig', evolutions: [] },
+  { base: 'dunsparce', evolutions: [] },
+  { base: 'gligar', evolutions: [] },
+  { base: 'steelix', evolutions: [] },
+  { base: 'qwilfish', evolutions: [] },
+  { base: 'scizor', evolutions: [] },
+  { base: 'shuckle', evolutions: [] },
+  { base: 'heracross', evolutions: [] },
+  { base: 'sneasel', evolutions: [] },
+  { base: 'corsola', evolutions: [] },
+  { base: 'delibird', evolutions: [] },
+  { base: 'mantine', evolutions: [] },
+  { base: 'skarmory', evolutions: [] },
+  { base: 'houndour', evolutions: [] },
+  { base: 'houndoom', evolutions: [] },
+  { base: 'kingdra', evolutions: [] },
+  { base: 'phanpy', evolutions: [] },
+  { base: 'donphan', evolutions: [] },
+  { base: 'porygon2', evolutions: [] },
+  { base: 'stantler', evolutions: [] },
+  { base: 'smeargle', evolutions: [] },
+  { base: 'tyrogue', evolutions: [] },
+  { base: 'hitmontop', evolutions: [] },
+  { base: 'smoochum', evolutions: [] },
+  { base: 'elekid', evolutions: [] },
+  { base: 'magby', evolutions: [] },
+  { base: 'miltank', evolutions: [] },
+  { base: 'blissey', evolutions: [] },
+  { base: 'raikou', evolutions: [] },
+  { base: 'entei', evolutions: [] },
+  { base: 'suicune', evolutions: [] },
+  { base: 'lugia', evolutions: [] },
+  { base: 'hooh', evolutions: [] },
+  { base: 'celebi', evolutions: [] },
+  { base: 'cascoon', evolutions: [] },
+  { base: 'dustox', evolutions: [] },
+  { base: 'nincada', evolutions: [] },
+  { base: 'ninjask', evolutions: [] },
+  { base: 'shedinja', evolutions: [] },
+  { base: 'azurill', evolutions: [] },
+  { base: 'nosepass', evolutions: [] },
+  { base: 'sableye', evolutions: [] },
+  { base: 'mawile', evolutions: [] },
+  { base: 'plusle', evolutions: [] },
+  { base: 'minun', evolutions: [] },
+  { base: 'volbeat', evolutions: [] },
+  { base: 'illumise', evolutions: [] },
+  { base: 'roselia', evolutions: [] },
+  { base: 'wailmer', evolutions: [] },
+  { base: 'wailord', evolutions: [] },
+  { base: 'torkoal', evolutions: [] },
+  { base: 'spinda', evolutions: [] },
+  { base: 'zangoose', evolutions: [] },
+  { base: 'seviper', evolutions: [] },
+  { base: 'lunatone', evolutions: [] },
+  { base: 'solrock', evolutions: [] },
+  { base: 'feebas', evolutions: [] },
+  { base: 'milotic', evolutions: [] },
+  { base: 'castform', evolutions: [] },
+  { base: 'kecleon', evolutions: [] },
+  { base: 'tropius', evolutions: [] },
+  { base: 'chimecho', evolutions: [] },
+  { base: 'absol', evolutions: [] },
+  { base: 'wynaut', evolutions: [] },
+  { base: 'gorebyss', evolutions: [] },
+  { base: 'relicanth', evolutions: [] },
+  { base: 'luvdisc', evolutions: [] },
+  { base: 'regirock', evolutions: [] },
+  { base: 'regice', evolutions: [] },
+  { base: 'registeel', evolutions: [] },
+  { base: 'latias', evolutions: [] },
+  { base: 'latios', evolutions: [] },
+  { base: 'kyogre', evolutions: [] },
+  { base: 'groudon', evolutions: [] },
+  { base: 'rayquaza', evolutions: [] },
+  { base: 'jirachi', evolutions: [] },
+  { base: 'deoxys', evolutions: [] },
+  { base: 'deoxys_speed', evolutions: [] },
+  { base: 'deoxys_attack', evolutions: [] },
+  { base: 'deoxys_defense', evolutions: [] },
+]
+
+export const MULTI_STAGE_EVOLUTION_LINES: EvolutionLine[] = [
   ...THREE_STAGE_EVOLUTIONS,
   ...TWO_STAGE_EVOLUTIONS,
 ]
 
-export function getRandomBasePokemon(): PokemonType {
-  const allBases = ALL_EVOLUTION_LINES.map(line => line.base)
-  const uniqueBases = Array.from(new Set(allBases))
+export const ALL_EVOLUTION_LINES: EvolutionLine[] = [
+  ...MULTI_STAGE_EVOLUTION_LINES,
+  ...SINGLE_STAGE_SPECIES,
+]
+
+// Single stage species are a large share of the Pokedex, so picking uniformly
+// across every line would make most Pokeballs hatch into something that never
+// evolves. Keep evolving lines as the common case.
+const SINGLE_STAGE_SPAWN_CHANCE = 0.2
+
+function pickRandomBase(lines: EvolutionLine[]): PokemonType {
+  const uniqueBases = Array.from(new Set(lines.map(line => line.base)))
   const randomIndex = Math.floor(Math.random() * uniqueBases.length)
   return uniqueBases[randomIndex]
 }
 
+export function getRandomBasePokemon(): PokemonType {
+  const pool =
+    Math.random() < SINGLE_STAGE_SPAWN_CHANCE
+      ? SINGLE_STAGE_SPECIES
+      : MULTI_STAGE_EVOLUTION_LINES
+  return pickRandomBase(pool)
+}
+
+export function hasFurtherEvolution(
+  evolutionLine: EvolutionLine,
+  level: number
+): boolean {
+  return level < evolutionLine.evolutions.length + 1
+}
+
 export function getEvolutionLine(basePokemon: PokemonType): EvolutionLine | undefined {
   return ALL_EVOLUTION_LINES.find(line => line.base === basePokemon)
+}
+
+// Unlike getEvolutionLine, this matches any stage of the line, not just its base.
+export function getEvolutionLineContaining(
+  pokemon: PokemonType
+): EvolutionLine | undefined {
+  return ALL_EVOLUTION_LINES.find(
+    line => line.base === pokemon || line.evolutions.indexOf(pokemon) >= 0
+  )
 }
 
 export function getNextEvolution(

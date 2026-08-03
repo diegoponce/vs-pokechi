@@ -6,17 +6,17 @@ Watch them hatch from Pokéballs, walk around while you code, and evolve as they
 
 ## Features
 
-- **Random Pokémon Assignment**: Get a random Pokémon from evolution lines with 2 or 3 stages
+- **Random Pokémon Assignment**: Get a random Pokémon from the full Gen 1-3 roster, usually from an evolution line with 2 or 3 stages
 - **XP System**: Your Pokémon gains experience as you code:
   - Writing code: 1 XP
   - Saving files: 2 XP
 - **Evolution System**: Your Pokémon evolves through multiple stages as it gains XP
 - **Starts as Pokéball**: Your Pokémon begins as a Pokéball and hatches when you start coding
-- **XP Bar**: Always visible XP progress bar showing your progress to the next evolution
+- **XP Bar**: Always visible XP progress bar showing your progress to the next evolution, or `MAX` once your Pokémon reaches its final stage
 - **Panel and Explorer Modes**: Choose where to display your Pokémon companion
 - **Hover Interaction**: Hover over your Pokémon to make it stop and use idle animation
 - **Pokechidex**: Open a Pokédex-style view of all Pokémon you have discovered
-- **Pokechidex Selection**: Click any unlocked Pokémon to show it in the active view
+- **Pokechidex Selection**: Click any discovered Pokémon to bring it out, keeping the XP of every line you have raised
 
 ## Installation
 
@@ -85,7 +85,11 @@ You can switch between Panel and Explorer modes in two ways:
 
 ## Pokechidex
 
-The Pokechidex shows all discovered Pokémon in a compact grid. Click any unlocked Pokémon to display it in the currently active view, either the panel or the Explorer view.
+The Pokechidex shows every Gen 1-3 species in a compact grid. Species you have not met yet stay hidden behind a Pokéball, and a species is discovered when it hatches from a Pokéball or when one of your Pokémon evolves into it.
+
+Click any discovered Pokémon to bring it out in the active view, either the panel or the Explorer view. Every evolution line keeps its own XP, so switching away and coming back later picks up exactly where you left off. Because evolution only moves forward, clicking an earlier stage of a line you have already raised brings out the stage you reached.
+
+Not every species evolves. Those hatch straight from a Pokéball and show `MAX` on the XP bar instead of a progress bar.
 
 ## Settings
 
