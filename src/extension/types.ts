@@ -1,6 +1,7 @@
 import { PokemonType } from '../common/types'
 
 export interface UserPokemon {
+  id: number
   type: PokemonType
   name: string
   level: number

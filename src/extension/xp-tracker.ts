@@ -8,7 +8,7 @@ const XP_SAVE = 2
 const THROTTLE_MS = 100
 let lastTextEventTime = 0
 
-// Callback para actualizar vistas cuando evoluciona
+// Callback to refresh views when a Pokémon evolves
 let updateViewsCallback: ((pokemon: UserPokemon, isXPUpdate: boolean) => void) | undefined
 let updatePanelTitleCallback: ((title: string) => void) | undefined
 
@@ -66,7 +66,7 @@ export class XPTracker {
     PokemonState.savePokemon(this.context)
 
     if (PokemonState.canEvolve(pokemon)) {
-      const evolved = PokemonState.evolvePokemon(pokemon)
+      const evolved = PokemonState.evolvePokemon(this.context, pokemon)
       if (evolved) {
         PokemonState.savePokemon(this.context)
         const pokemonName = pokemon.name
@@ -80,7 +80,7 @@ export class XPTracker {
           )
         }
         
-        // Actualizar vistas y título del panel
+        // Update views and panel title
         if (updatePanelTitleCallback) {
           updatePanelTitleCallback(pokemon.level === 0 ? 'Your Pokemon' : pokemon.name)
         }
@@ -89,7 +89,7 @@ export class XPTracker {
         }
       }
     } else {
-      // Actualizar vistas para XP normal
+      // Update views for normal XP gain
       if (updateViewsCallback) {
         updateViewsCallback(pokemon, true)
       }

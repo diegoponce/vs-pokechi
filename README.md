@@ -15,6 +15,8 @@ Watch them hatch from Pokéballs, walk around while you code, and evolve as they
 - **XP Bar**: Always visible XP progress bar showing your progress to the next evolution
 - **Panel and Explorer Modes**: Choose where to display your Pokémon companion
 - **Hover Interaction**: Hover over your Pokémon to make it stop and use idle animation
+- **Pokechidex**: Open a Pokédex-style view of all Pokémon you have discovered
+- **Pokechidex Selection**: Click any unlocked Pokémon to show it in the active view
 
 ## Installation
 
@@ -77,8 +79,13 @@ You can switch between Panel and Explorer modes in two ways:
 ## Commands
 
 - `Pokechi: Show Panel` - Show the Pokechi panel
+- `Pokechi: Show Pokechidex` - Open the Pokechidex
 - `Pokechi: New Pokemon` - Spawn a new random Pokémon
 - `Pokechi: Open Explorer View` - Switch to explorer view mode
+
+## Pokechidex
+
+The Pokechidex shows all discovered Pokémon in a compact grid. Click any unlocked Pokémon to display it in the currently active view, either the panel or the Explorer view.
 
 ## Settings
 

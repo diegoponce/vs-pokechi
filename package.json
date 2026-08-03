@@ -46,6 +46,10 @@
         "title": "Pokechi: Show Panel"
       },
       {
+        "command": "pokechi.showPokedex",
+        "title": "Pokechi: Show Pokechidex"
+      },
+      {
         "command": "pokechi.spawnNewPokemon",
         "title": "Pokechi: New Pokemon"
       },
