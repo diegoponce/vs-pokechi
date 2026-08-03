@@ -223,15 +223,20 @@ export class PokedexPanel {
       const label = discovered
         ? `Show ${escapeHtml(entry.name)}${isActive ? ', currently out' : ''}`
         : 'Undiscovered pokemon'
+      const cry = POKEMON_DATA[entry.type] ? POKEMON_DATA[entry.type].cry : ''
+      const tooltip = discovered && cry ? ` title="${escapeHtml(cry)}"` : ''
 
       return `
         <button
           type="button"
           class="pokemon-card ${discovered ? 'discovered' : 'locked'}${isActive ? ' active' : ''}"
           data-index="${index}"
+          data-generation="${entry.generation}"
+          data-name="${discovered ? escapeHtml(entry.name.toLowerCase()) : ''}"
+          data-number="${padPokemonId(entry.id)}"
           ${discovered ? `data-pokemon-type="${entry.type}"` : 'disabled'}
           aria-pressed="${isActive ? 'true' : 'false'}"
-          aria-label="${label}"
+          aria-label="${label}"${tooltip}
         >
           <div class="card-top">
             <span class="pokemon-id">#${padPokemonId(entry.id)}</span>
@@ -332,6 +337,87 @@ export class PokedexPanel {
       text-transform: uppercase;
       letter-spacing: 0.08em;
       opacity: 0.85;
+    }
+
+    .toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .search {
+      flex: 1 1 220px;
+      min-width: 180px;
+      padding: 5px 8px;
+      border-radius: 4px;
+      border: 1px solid var(--vscode-input-border, transparent);
+      background: var(--vscode-input-background);
+      color: var(--vscode-input-foreground);
+      font: inherit;
+    }
+
+    .search:focus {
+      outline: 1px solid var(--accent);
+      outline-offset: -1px;
+    }
+
+    .filters {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .filter-chip {
+      padding: 4px 10px;
+      border-radius: 999px;
+      border: 1px solid var(--vscode-widget-border, transparent);
+      background: var(--vscode-button-secondaryBackground, transparent);
+      color: var(--vscode-button-secondaryForeground, var(--vscode-foreground));
+      font: inherit;
+      font-size: 11px;
+      cursor: pointer;
+    }
+
+    .filter-chip:hover {
+      background: var(--vscode-list-hoverBackground);
+    }
+
+    .filter-chip.is-selected {
+      background: var(--vscode-button-background);
+      color: var(--vscode-button-foreground);
+      border-color: var(--vscode-button-background);
+    }
+
+    .filter-chip:focus-visible,
+    .filter-toggle input:focus-visible {
+      outline: 1px solid var(--accent);
+      outline-offset: 2px;
+    }
+
+    .filter-toggle {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 11px;
+      color: var(--muted);
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .empty-state {
+      margin: 0;
+      padding: 24px;
+      text-align: center;
+      color: var(--muted);
+      border: 1px dashed var(--vscode-widget-border, currentColor);
+      border-radius: 8px;
+    }
+
+    .pokemon-card[hidden] {
+      display: none;
     }
 
     .grid {
@@ -475,6 +561,29 @@ export class PokedexPanel {
       </div>
     </header>
 
+    <div class="toolbar">
+      <input
+        id="search"
+        class="search"
+        type="search"
+        placeholder="Search by name or number"
+        aria-label="Search the Pokechidex"
+        autocomplete="off"
+      />
+      <div class="filters" role="group" aria-label="Filter by generation">
+        <button type="button" class="filter-chip is-selected" data-generation="all">All</button>
+        <button type="button" class="filter-chip" data-generation="1">Gen 1</button>
+        <button type="button" class="filter-chip" data-generation="2">Gen 2</button>
+        <button type="button" class="filter-chip" data-generation="3">Gen 3</button>
+        <label class="filter-toggle">
+          <input type="checkbox" id="only-discovered" />
+          Discovered only
+        </label>
+      </div>
+    </div>
+
+    <p class="empty-state" id="empty-state" hidden>Nothing matches that search.</p>
+
     <section class="grid" aria-label="Pokechidex grid">
       ${cards}
     </section>
@@ -490,6 +599,67 @@ export class PokedexPanel {
 
       var grid = document.querySelector('.grid');
       var counter = document.getElementById('counter-value');
+      var search = document.getElementById('search');
+      var emptyState = document.getElementById('empty-state');
+      var onlyDiscovered = document.getElementById('only-discovered');
+      var generation = 'all';
+
+      function applyFilters() {
+        if (!grid) {
+          return;
+        }
+
+        var term = (search && search.value ? search.value : '').trim().toLowerCase();
+        var cards = grid.querySelectorAll('.pokemon-card');
+        var visible = 0;
+
+        Array.prototype.forEach.call(cards, function (card) {
+          var matchesGeneration =
+            generation === 'all' || card.dataset.generation === generation;
+          var matchesDiscovered =
+            !onlyDiscovered || !onlyDiscovered.checked || card.classList.contains('discovered');
+          // Undiscovered cards have no name to match on, so a search only ever
+          // narrows down to what the user has already met.
+          var matchesTerm =
+            !term ||
+            (card.dataset.name && card.dataset.name.indexOf(term) >= 0) ||
+            (card.dataset.number && card.dataset.number.indexOf(term) >= 0);
+
+          var show = matchesGeneration && matchesDiscovered && matchesTerm;
+          card.hidden = !show;
+          if (show) {
+            visible++;
+          }
+        });
+
+        if (emptyState) {
+          emptyState.hidden = visible > 0;
+        }
+      }
+
+      if (search) {
+        search.addEventListener('input', applyFilters);
+      }
+
+      if (onlyDiscovered) {
+        onlyDiscovered.addEventListener('change', applyFilters);
+      }
+
+      Array.prototype.forEach.call(
+        document.querySelectorAll('.filter-chip'),
+        function (chip) {
+          chip.addEventListener('click', function () {
+            generation = chip.dataset.generation;
+            Array.prototype.forEach.call(
+              document.querySelectorAll('.filter-chip'),
+              function (other) {
+                other.classList.toggle('is-selected', other === chip);
+              }
+            );
+            applyFilters();
+          });
+        }
+      );
 
       if (grid) {
         grid.addEventListener('click', function (event) {
@@ -516,6 +686,8 @@ export class PokedexPanel {
         if (sprite && entry.spriteUri && sprite.src !== entry.spriteUri) {
           sprite.src = entry.spriteUri;
         }
+
+        card.dataset.name = entry.name.toLowerCase();
 
         var name = card.querySelector('.pokemon-name');
         if (name) {
@@ -551,6 +723,9 @@ export class PokedexPanel {
         if (counter && typeof data.discoveredCount === 'number') {
           counter.textContent = data.discoveredCount + '/${totalCount}';
         }
+
+        // A newly discovered species may now match the active filters.
+        applyFilters();
       });
     })();
   </script>
