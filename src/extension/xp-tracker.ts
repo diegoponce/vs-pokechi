@@ -1,12 +1,24 @@
 import * as vscode from 'vscode'
 import { PokemonState } from './pokemon-state'
 import { UserPokemon } from './types'
+import { POKEMON_DATA } from '../common/pokemon-data'
 
 const XP_TEXT = 1
 const XP_SAVE = 2
 
 const THROTTLE_MS = 100
 let lastTextEventTime = 0
+
+// Output channels, logs, diff views and settings editors all raise document
+// change events, and none of them are the user writing code.
+function isRealFile(document: vscode.TextDocument): boolean {
+  return document.uri.scheme === 'file' || document.uri.scheme === 'vscode-remote'
+}
+
+function getPokemonCry(pokemon: UserPokemon): string {
+  const pokemonData = POKEMON_DATA[pokemon.type]
+  return pokemonData && pokemonData.cry ? pokemonData.cry : ''
+}
 
 // Callback to refresh views when a Pokémon evolves
 let updateViewsCallback: ((pokemon: UserPokemon, isXPUpdate: boolean) => void) | undefined
@@ -37,6 +49,9 @@ export class XPTracker {
         if (event.reason !== undefined) {
           return
         }
+        if (!isRealFile(event.document)) {
+          return
+        }
 
         const now = Date.now()
         if (now - lastTextEventTime < THROTTLE_MS) {
@@ -49,7 +64,10 @@ export class XPTracker {
     )
 
     this.disposables.push(
-      vscode.workspace.onDidSaveTextDocument(() => {
+      vscode.workspace.onDidSaveTextDocument((document) => {
+        if (!isRealFile(document)) {
+          return
+        }
         this.addXP(XP_SAVE)
       })
     )
@@ -68,15 +86,18 @@ export class XPTracker {
     if (PokemonState.canEvolve(pokemon)) {
       const evolved = PokemonState.evolvePokemon(this.context, pokemon)
       if (evolved) {
-        PokemonState.savePokemon(this.context)
+        // Evolving is rare and worth persisting straight away rather than
+        // waiting for the batched write.
+        PokemonState.flush(this.context)
         const pokemonName = pokemon.name
+        const cry = getPokemonCry(pokemon)
         if (previousLevel === 0) {
           vscode.window.showInformationMessage(
-            `${pokemonName} hatched from the Pokéball!`
+            `${pokemonName} hatched from the Pokéball! ${cry}`
           )
         } else {
           vscode.window.showInformationMessage(
-            `${pokemonName} evolved!`
+            `${pokemonName} evolved! ${cry}`
           )
         }
         
