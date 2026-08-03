@@ -10,3 +10,8 @@ vsc-extension-quickstart.md
 node_modules/**
 *.vsix
 
+webpack.config.js
+package-lock.json
+tsconfig.extension.json
+tsconfig.panel.json
+test/**
