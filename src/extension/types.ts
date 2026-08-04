@@ -19,6 +19,13 @@ export interface UserPokemon {
   // of a line than the one actually being raised), so typing/saving does not
   // grow it or clobber the line's real progress.
   canGainXP: boolean
+  // Set on a Pokeball whose committed line (the whole line for a
+  // non-branching base, or the specific branch picked for one that
+  // branches, e.g. Eevee) already has its final stage discovered. It still
+  // has to earn the same XP as any other Pokeball; evolvePokemon reads this
+  // the moment it hatches to freeze it read-only at that point instead of
+  // letting it grow into something the player already owns.
+  pendingAlreadyOwned?: boolean
 }
 
 // Progress kept for an evolution line the user has already raised. Keyed by the

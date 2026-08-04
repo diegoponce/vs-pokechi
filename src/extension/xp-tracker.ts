@@ -4,7 +4,7 @@ import { UserPokemon } from './types'
 import { PokemonColor } from '../common/types'
 import { POKEMON_DATA } from '../common/pokemon-data'
 
-const XP_TEXT = 1
+const XP_TEXT = 100
 const XP_SAVE = 2
 
 const THROTTLE_MS = 100

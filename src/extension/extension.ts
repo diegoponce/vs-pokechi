@@ -861,7 +861,7 @@ export function activate(context: vscode.ExtensionContext) {
         refreshPokedex()
 
         if (position === 'panel' && PokechiState.panel?.panel) {
-          PokechiState.panel.panel.title = pokemon.level === 0 ? 'Your Pokemon' : pokemon.name
+          PokechiState.panel.panel.title = 'Your Pokemon'
           PokechiState.panel.panel.webview.postMessage({
             command: 'spawn-pokemon',
             data: { userPokemon: pokemon },

@@ -110,6 +110,17 @@ test('a new pokemon starts as a pokeball at level 0', () => {
   assert.strictEqual(pokemon.state, 'pokeball')
 })
 
+// getPokemon's migration refresh recomputes level from the evolution line,
+// and getPokemonLevel always reports at least 1 for the base species - it has
+// no notion of "not hatched yet". Refreshing a still-unhatched Pokeball would
+// silently pop it open at level 1 before any XP was ever earned, and every
+// webview refresh (including the one right after a catch) calls getPokemon.
+test('re-reading a fresh Pokeball does not pop it open before any XP is earned', () => {
+  const reread = PokemonState.getPokemon(context)
+  assert.strictEqual(reread.level, 0)
+  assert.strictEqual(reread.state, 'pokeball')
+})
+
 // Thresholds are read rather than hardcoded, so tuning the XP curve does not
 // break these tests over a rule that still holds.
 test('it does not hatch before reaching the required XP', () => {
@@ -411,6 +422,83 @@ test('resuming a not-yet-branched eevee from the roster keeps its committed bran
   PokemonState.addXP(resumed, PokemonState.getRequiredXP(resumed) - resumed.xp)
   assert.strictEqual(PokemonState.evolvePokemon(context, resumed), true)
   assert.strictEqual(resumed.type, 'umbreon')
+})
+
+const pendingDuplicateEevee = PokemonState.createNewPokemon(context)
+Object.assign(pendingDuplicateEevee, {
+  type: 'eevee',
+  name: 'Eevee',
+  id: 133,
+  evolutionLine: ['eevee', 'jolteon'],
+  pendingAlreadyOwned: true,
+})
+PokemonState.savePokemon(context)
+
+test('an already-owned branch still opens as a real Pokeball, not skipped straight out', () => {
+  assert.strictEqual(pendingDuplicateEevee.level, 0)
+  assert.strictEqual(pendingDuplicateEevee.state, 'pokeball')
+  assert.strictEqual(pendingDuplicateEevee.canGainXP, true)
+})
+
+test('it needs the same 500 XP as any other Pokeball before it can hatch', () => {
+  PokemonState.addXP(
+    pendingDuplicateEevee,
+    PokemonState.getRequiredXP(pendingDuplicateEevee) - 1
+  )
+  assert.strictEqual(PokemonState.canEvolve(pendingDuplicateEevee), false)
+})
+
+test('hatching an already-owned branch discovers it but freezes it read-only at max', () => {
+  PokemonState.addXP(pendingDuplicateEevee, 1)
+  assert.strictEqual(PokemonState.evolvePokemon(context, pendingDuplicateEevee), true)
+  assert.strictEqual(pendingDuplicateEevee.type, 'eevee')
+  assert.strictEqual(pendingDuplicateEevee.level, 1)
+  assert.strictEqual(pendingDuplicateEevee.canGainXP, false)
+  assert.strictEqual(
+    pendingDuplicateEevee.xp,
+    PokemonState.getRequiredXP(pendingDuplicateEevee)
+  )
+  assert.strictEqual(PokemonState.isPokemonDiscovered(context, 'eevee'), true)
+})
+
+test('a fresh (not-yet-owned) branch hatches and keeps growing normally', () => {
+  const fresh = PokemonState.createNewPokemon(context)
+  Object.assign(fresh, {
+    type: 'eevee',
+    name: 'Eevee',
+    id: 133,
+    evolutionLine: ['eevee', 'espeon'],
+    pendingAlreadyOwned: false,
+  })
+  PokemonState.addXP(fresh, PokemonState.getRequiredXP(fresh))
+  assert.strictEqual(PokemonState.evolvePokemon(context, fresh), true)
+  assert.strictEqual(fresh.level, 1)
+  assert.strictEqual(fresh.canGainXP, true)
+  assert.strictEqual(fresh.xp, 0)
+})
+
+// The rule is not branch-specific: a plain linear line (Vulpix -> Ninetales,
+// no branching at all) whose final stage is already owned should freeze the
+// same way. Ninetales was already discovered by the earlier shiny test.
+test('a non-branching line that is already fully owned also freezes at max on hatch', () => {
+  assert.strictEqual(PokemonState.isPokemonDiscovered(context, 'ninetales'), true)
+
+  const pendingVulpix = PokemonState.createNewPokemon(context)
+  Object.assign(pendingVulpix, {
+    type: 'vulpix',
+    name: 'Vulpix',
+    id: 37,
+    evolutionLine: ['vulpix', 'ninetales'],
+    color: 'default',
+    pendingAlreadyOwned: true,
+  })
+
+  PokemonState.addXP(pendingVulpix, PokemonState.getRequiredXP(pendingVulpix))
+  assert.strictEqual(PokemonState.evolvePokemon(context, pendingVulpix), true)
+  assert.strictEqual(pendingVulpix.type, 'vulpix')
+  assert.strictEqual(pendingVulpix.level, 1)
+  assert.strictEqual(pendingVulpix.canGainXP, false)
+  assert.strictEqual(pendingVulpix.xp, PokemonState.getRequiredXP(pendingVulpix))
 })
 
 // --- total XP -----------------------------------------------------------

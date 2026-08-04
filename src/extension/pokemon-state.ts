@@ -7,7 +7,6 @@ import {
   getRandomPokemonColor,
   getEvolutionLine,
   getEvolutionLineContaining,
-  getEvolutionLinesForBase,
   pickEvolutionLineForBase,
   resolveEvolutionLine,
   getPokemonByLevel,
@@ -146,7 +145,13 @@ export class PokemonState {
     // would be ambiguous and could silently switch which branch a pokemon
     // that has not evolved past the branch point is committed to. Only fall
     // back to a fresh lookup when the stored path is genuinely stale.
-    if (pokemon) {
+    //
+    // Skipped for a still-unhatched Pokeball (level 0): getPokemonLevel has
+    // no notion of "not hatched yet" and would always report at least level
+    // 1 for the base species, silently popping the ball open the moment this
+    // runs - which happens on every webview refresh, including the one right
+    // after a catch, before the player has earned a single point of XP.
+    if (pokemon && pokemon.level > 0) {
       const evolutionLine =
         resolveEvolutionLine(pokemon.evolutionLine as PokemonType[]) ??
         getEvolutionLineContaining(pokemon.type)
@@ -365,6 +370,11 @@ export class PokemonState {
     return pokemon
   }
 
+  // Every catch opens as a real Pokeball, needing the same XP as any other -
+  // including a line (branching or not) that turns out to already be fully
+  // owned. What differs for that case is only what happens once the Pokeball
+  // actually hatches, which pendingAlreadyOwned flags for evolvePokemon to
+  // act on.
   static createNewPokemon(context: vscode.ExtensionContext): UserPokemon {
     const scaleFactor = vscode.workspace
       .getConfiguration()
@@ -385,56 +395,42 @@ export class PokemonState {
 
     const evolutionLineArray = [basePokemon, ...evolutionLine.evolutions]
 
-    // Only matters for a branching base: if the branch this catch just
-    // committed to already has its final stage discovered, raising this one
-    // would only ever reach something already owned. Same treatment as a
-    // Pokedex snapshot of an earlier stage - already hatched, shown at max,
-    // and read-only - rather than making the player grind a Pokeball open
-    // for a species they already have.
-    const isBranchingBase = getEvolutionLinesForBase(basePokemon).length > 1
+    // If the line this catch committed to (the whole line for a
+    // non-branching base, or just the specific branch picked above for one
+    // that branches) already has its final stage discovered - in this same
+    // color - raising this one would only ever reach something already
+    // owned. A shiny catch still has real ground to cover even if the
+    // default final stage is already caught, since the shiny sprite is a
+    // separate unlock (discoverPokemon: a shiny catch unlocks both, a
+    // default catch unlocks neither). It still has to earn the same 500 XP
+    // as any other Pokeball either way; evolvePokemon reads this flag at the
+    // moment it hatches to freeze it there instead of letting it grow, same
+    // treatment as a Pokedex snapshot of an earlier stage.
     const finalStage =
       evolutionLine.evolutions.length > 0
         ? evolutionLine.evolutions[evolutionLine.evolutions.length - 1]
         : evolutionLine.base
-    const isDuplicateBranch =
-      isBranchingBase && PokemonState.isPokemonDiscovered(context, finalStage)
+    const isAlreadyOwned =
+      color === PokemonColor.shiny
+        ? PokemonState.isPokemonShinyDiscovered(context, finalStage)
+        : PokemonState.isPokemonDiscovered(context, finalStage)
 
-    const pokemon: UserPokemon = isDuplicateBranch
-      ? {
-          id: getPokemonId(basePokemon),
-          type: basePokemon,
-          name: getPokemonName(basePokemon),
-          level: 1,
-          xp: getRequiredXPForLevel(1),
-          types: getPokemonTypes(basePokemon),
-          evolutionLine: evolutionLineArray,
-          state: 'idle',
-          scale: scaleFactor,
-          isTransitionIn: true,
-          leftPosition: 0,
-          direction: 'right',
-          color,
-          canGainXP: false,
-        }
-      : {
-          id: getPokemonId(basePokemon),
-          type: basePokemon,
-          name: getPokemonName(basePokemon),
-          level: 0,
-          xp: 0,
-          types: getPokemonTypes(basePokemon),
-          evolutionLine: evolutionLineArray,
-          state: 'pokeball',
-          scale: scaleFactor,
-          isTransitionIn: true,
-          leftPosition: 0,
-          direction: 'right',
-          color,
-          canGainXP: true,
-        }
-
-    if (isDuplicateBranch) {
-      PokemonState.discoverPokemon(context, basePokemon, color)
+    const pokemon: UserPokemon = {
+      id: getPokemonId(basePokemon),
+      type: basePokemon,
+      name: getPokemonName(basePokemon),
+      level: 0,
+      xp: 0,
+      types: getPokemonTypes(basePokemon),
+      evolutionLine: evolutionLineArray,
+      state: 'pokeball',
+      scale: scaleFactor,
+      isTransitionIn: true,
+      leftPosition: 0,
+      direction: 'right',
+      color,
+      canGainXP: true,
+      pendingAlreadyOwned: isAlreadyOwned,
     }
 
     store(context).getState().pokemon = pokemon
@@ -489,6 +485,16 @@ export class PokemonState {
     pokemon.xp = 0
     pokemon.state = nextLevel === 1 ? 'idle' : 'walking'
     pokemon.isTransitionIn = true
+
+    // Consumed on the very hatch it was set for: a Pokeball that turned out
+    // to commit to an already fully-owned line earned its XP like any other,
+    // but freezes here read-only instead of being free to keep growing into
+    // something the player already has.
+    if (nextLevel === 1 && pokemon.pendingAlreadyOwned) {
+      pokemon.canGainXP = false
+      pokemon.xp = getRequiredXPForLevel(nextLevel)
+    }
+    pokemon.pendingAlreadyOwned = false
 
     PokemonState.discoverPokemon(context, nextPokemon, pokemon.color)
     PokemonState.rememberActivePokemon(context)
