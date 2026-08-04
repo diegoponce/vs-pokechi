@@ -321,6 +321,25 @@ test('a branching base has one line per possible path', () => {
   )
 })
 
+test('nincada branches into ninjask or shedinja', () => {
+  const lines = getEvolutionLinesForBase('nincada')
+  assert.deepStrictEqual(
+    lines.map(line => line.evolutions[0]).sort(),
+    ['ninjask', 'shedinja']
+  )
+})
+
+test('omanyte and kabuto are two-stage lines, not standalone species', () => {
+  assert.deepStrictEqual(resolveEvolutionLine(['omanyte', 'omastar']), {
+    base: 'omanyte',
+    evolutions: ['omastar'],
+  })
+  assert.deepStrictEqual(resolveEvolutionLine(['kabuto', 'kabutops']), {
+    base: 'kabuto',
+    evolutions: ['kabutops'],
+  })
+})
+
 test('a non-branching base still has exactly one line', () => {
   assert.strictEqual(getEvolutionLinesForBase('charmander').length, 1)
 })

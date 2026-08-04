@@ -136,6 +136,7 @@ const TWO_STAGE_EVOLUTIONS: EvolutionLine[] = [
   { base: 'houndour', evolutions: ['houndoom'] },
   { base: 'phanpy', evolutions: ['donphan'] },
   { base: 'nincada', evolutions: ['ninjask'] },
+  { base: 'nincada', evolutions: ['shedinja'] },
   { base: 'wailmer', evolutions: ['wailord'] },
   { base: 'feebas', evolutions: ['milotic'] },
   { base: 'slowpoke', evolutions: ['slowking'] },
@@ -148,6 +149,8 @@ const TWO_STAGE_EVOLUTIONS: EvolutionLine[] = [
   { base: 'tyrogue', evolutions: ['hitmonlee'] },
   { base: 'tyrogue', evolutions: ['hitmonchan'] },
   { base: 'tyrogue', evolutions: ['hitmontop'] },
+  { base: 'omanyte', evolutions: ['omastar'] },
+  { base: 'kabuto', evolutions: ['kabutops'] },
 ]
 
 // Species that do not evolve. They can still hatch from a Pokeball so every
@@ -162,10 +165,6 @@ const SINGLE_STAGE_SPECIES: EvolutionLine[] = [
   { base: 'tauros', evolutions: [] },
   { base: 'lapras', evolutions: [] },
   { base: 'ditto', evolutions: [] },
-  { base: 'omanyte', evolutions: [] },
-  { base: 'omastar', evolutions: [] },
-  { base: 'kabuto', evolutions: [] },
-  { base: 'kabutops', evolutions: [] },
   { base: 'aerodactyl', evolutions: [] },
   { base: 'snorlax', evolutions: [] },
   { base: 'articuno', evolutions: [] },
@@ -226,7 +225,6 @@ const SINGLE_STAGE_SPECIES: EvolutionLine[] = [
   { base: 'lugia', evolutions: [] },
   { base: 'hooh', evolutions: [] },
   { base: 'celebi', evolutions: [] },
-  { base: 'shedinja', evolutions: [] },
   { base: 'nosepass', evolutions: [] },
   { base: 'sableye', evolutions: [] },
   { base: 'mawile', evolutions: [] },
