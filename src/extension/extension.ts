@@ -1,5 +1,5 @@
 import * as vscode from 'vscode'
-import { PokemonState } from './pokemon-state'
+import { PokemonState, getRequiredXPForLevel } from './pokemon-state'
 import { PokedexPanel } from './pokedex-panel'
 import { generateNonce } from './nonce'
 import { UserPokemon, Position } from './types'
@@ -125,7 +125,12 @@ class PokechiContentProvider {
     `
 
     const pokemonData = pokemon ? JSON.stringify(pokemon) : 'null'
-    const requiredXP = pokemon ? PokemonState.getRequiredXP(pokemon) : 35
+    const requiredXP = pokemon
+      ? PokemonState.getRequiredXP(pokemon)
+      : getRequiredXPForLevel(0)
+    // Levels 0 to 3 cover every line in the game; anything beyond is
+    // extrapolated in the webview with the same formula as the host.
+    const xpThresholds = JSON.stringify([0, 1, 2, 3].map(getRequiredXPForLevel))
 
     return `<!DOCTYPE html>
     <html lang="en">
@@ -225,18 +230,16 @@ class PokechiContentProvider {
           }
         }
         
+        // Thresholds come from the extension host so this stays in step with
+        // getRequiredXPForLevel in pokemon-state.ts.
+        const XP_THRESHOLDS = ${xpThresholds};
+
         function getRequiredXPForLevel(level) {
-          if (level === 0) {
-            return 500; // DEFAULT_XP_FOR_POKEBALL
+          if (XP_THRESHOLDS[level] !== undefined) {
+            return XP_THRESHOLDS[level];
           }
-          if (level === 1) {
-            return 1000; // DEFAULT_XP_FOR_FIRST_EVOLUTION
-          }
-          if (level === 2) {
-            return 2000; // DEFAULT_XP_FOR_SECOND_EVOLUTION
-          }
-          // For higher levels, increase progressively
-          return 2000 + (level - 2) * 50;
+          const highest = Object.keys(XP_THRESHOLDS).length - 1;
+          return XP_THRESHOLDS[highest] + (level - highest) * 50;
         }
         
         function updateXP(userPokemon) {
@@ -356,24 +359,6 @@ class PokechiContentProvider {
 class PokemonPanel extends PokechiContentProvider {
   panel: vscode.WebviewPanel | undefined
 
-  updateScale(scale: number): Thenable<void> {
-    if (!this.panel) {
-      return Promise.resolve()
-    }
-
-    const pokemon = PokemonState.getPokemon(this._context)
-    if (!pokemon) {
-      return Promise.resolve()
-    }
-
-    pokemon.scale = scale
-    pokemon.isTransitionIn = false
-
-    this.updateViews(pokemon)
-
-    return PokemonState.savePokemon(this._context)
-  }
-
   createPanel(panel?: vscode.WebviewPanel): vscode.WebviewPanel {
     const baseMediaUri = vscode.Uri.joinPath(
       this._context.extensionUri,
@@ -392,6 +377,11 @@ class PokemonPanel extends PokechiContentProvider {
           localResourceRoots: [baseMediaUri],
         }
       )
+
+    // Closing the panel clears this, and everything that pushes updates goes
+    // through PokechiState, so reopening has to claim the slot back or the new
+    // panel never hears about XP again.
+    PokechiState.panel = this
 
     const pokemon = PokemonState.getPokemon(this._context)
     if (pokemon) {
@@ -559,9 +549,56 @@ function refreshPokedex() {
   PokechiState.pokedex?.refresh()
 }
 
+// The scale lives on the pokemon rather than being read from settings on every
+// render, so it has to be pushed to whichever view is showing.
+function applyScaleFactor(context: vscode.ExtensionContext, scale: number) {
+  const pokemon = PokemonState.getPokemon(context)
+  if (!pokemon) {
+    return
+  }
+
+  pokemon.scale = scale
+  pokemon.isTransitionIn = false
+  PokemonState.savePokemon(context)
+
+  if (getConfigurationPosition() === 'panel') {
+    PokechiState.panel?.updateViews(pokemon)
+  } else {
+    PokechiState.explorerView?.updateViews(pokemon)
+  }
+}
+
+// Another window changed the shared state, so the views have to catch up.
+function adoptSharedState(context: vscode.ExtensionContext) {
+  const pokemon = PokemonState.getPokemon(context)
+
+  if (getConfigurationPosition() === 'panel') {
+    PokechiState.panel?.updateContent()
+  } else {
+    PokechiState.explorerView?.updateContent()
+  }
+
+  if (pokemon && PokechiState.panel?.panel) {
+    PokechiState.panel.panel.title =
+      pokemon.level === 0 ? 'Your Pokemon' : pokemon.name
+  }
+
+  refreshPokedex()
+}
+
 export function activate(context: vscode.ExtensionContext) {
-  const currentPokemon = PokemonState.getPokemon(context)
-  if (currentPokemon && currentPokemon.level > 0) {
+  PokemonState.initialize(context, () => adoptSharedState(context))
+
+  let currentPokemon = PokemonState.getPokemon(context)
+
+  if (!currentPokemon) {
+    // Without this a fresh install has no state at all: the view falls back to
+    // a placeholder and the XP tracker drops every event, so the extension
+    // looks broken until the user finds the New Pokemon command.
+    currentPokemon = PokemonState.createNewPokemon(context)
+  }
+
+  if (currentPokemon.level > 0) {
     // Anyone upgrading from an earlier version already has a pokemon out, and
     // it would otherwise be missing from an empty Pokedex.
     PokemonState.discoverPokemon(context, currentPokemon.type)
@@ -589,33 +626,27 @@ export function activate(context: vscode.ExtensionContext) {
   )
 
   context.subscriptions.push(
-    vscode.commands.registerCommand('pokechi.showPanel', () => {
-      return new Promise<void>((resolve) => {
-        const position = getConfigurationPosition()
+    vscode.commands.registerCommand('pokechi.showPanel', async () => {
+      // Asking for the panel is a clear enough request to switch to it.
+      // Sending the user to the settings page instead just looked broken.
+      if (getConfigurationPosition() !== 'panel') {
+        _isViewSwitching = true
+        await vscode.workspace
+          .getConfiguration()
+          .update('pokechi.position', 'panel', vscode.ConfigurationTarget.Global)
+        _isViewSwitching = false
+      }
 
-        if (position !== 'panel') {
-          vscode.window.showInformationMessage(
-            'Pokechi is currently set to display in the explorer view. You can change this in the settings.'
-          )
-          vscode.commands.executeCommand(
-            'workbench.action.openSettings',
-            'pokechi.position'
-          )
-          resolve()
-          return
-        }
+      if (PokechiState.panel?.panel) {
+        PokechiState.panel.panel.reveal(vscode.ViewColumn.Two)
+        return
+      }
 
-        if (PokechiState.panel?.panel) {
-          resolve()
-          return
-        }
+      pokemonPanel.createPanel()
 
-        const panel = pokemonPanel.createPanel()
-
-        setTimeout(() => {
-          resolve()
-        }, 100)
-      })
+      // Callers post to the webview as soon as this resolves, and a webview
+      // that has not finished loading drops what it is sent.
+      await new Promise<void>((resolve) => setTimeout(resolve, 100))
     })
   )
 
@@ -792,9 +823,7 @@ export function activate(context: vscode.ExtensionContext) {
             .getConfiguration()
             .get('pokechi.scaleFactor', 1.0)
 
-          if (PokechiState.panel) {
-            PokechiState.panel.updateScale(scaleFactor)
-          }
+          applyScaleFactor(context, scaleFactor)
         }
 
         if (e.affectsConfiguration('pokechi.position')) {
@@ -823,6 +852,16 @@ export function activate(context: vscode.ExtensionContext) {
 
   context.subscriptions.push(
     vscode.window.onDidChangeActiveTextEditor(updateExtensionPositionContext)
+  )
+
+  context.subscriptions.push(
+    vscode.window.onDidChangeWindowState((windowState) => {
+      // Hand the pending XP over as soon as the user leaves, so the window they
+      // switch to picks it up instead of starting from stale progress.
+      if (!windowState.focused) {
+        PokemonState.flush(context)
+      }
+    })
   )
 
   xpTracker = new XPTracker(context)

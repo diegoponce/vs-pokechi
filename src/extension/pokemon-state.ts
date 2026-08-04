@@ -1,6 +1,7 @@
 import * as vscode from 'vscode'
 import { Roster, RosterEntry, UserPokemon } from './types'
 import { PokemonType } from '../common/types'
+import { StateStore } from './state-store'
 import {
   EvolutionLine,
   getRandomBasePokemon,
@@ -16,7 +17,7 @@ const DEFAULT_XP_FOR_POKEBALL = 500
 const DEFAULT_XP_FOR_FIRST_EVOLUTION = 1000
 const DEFAULT_XP_FOR_SECOND_EVOLUTION = 2000
 
-function getRequiredXPForLevel(level: number): number {
+export function getRequiredXPForLevel(level: number): number {
   if (level === 0) {
     return DEFAULT_XP_FOR_POKEBALL
   }
@@ -40,62 +41,47 @@ function getPokemonName(pokemonType: PokemonType): string {
   return pokemonData ? pokemonData.name : pokemonType
 }
 
-function loadFromStorage(context: vscode.ExtensionContext): UserPokemon | undefined {
-  const storedPokemon = context.globalState.get<UserPokemon>('pokemon')
-  if (!storedPokemon) {
-    return undefined
+let _store: StateStore | undefined
+
+function store(context: vscode.ExtensionContext): StateStore {
+  if (!_store) {
+    _store = new StateStore(context)
   }
-
-  return {
-    ...storedPokemon,
-    id: storedPokemon.id ?? getPokemonId(storedPokemon.type),
-  }
+  return _store
 }
-
-function loadPokedexFromStorage(context: vscode.ExtensionContext): PokemonType[] {
-  const storedPokedex = context.globalState.get<PokemonType[]>('pokedex')
-  return Array.isArray(storedPokedex) ? storedPokedex : []
-}
-
-function loadRosterFromStorage(context: vscode.ExtensionContext): Roster {
-  const storedRoster = context.globalState.get<Roster>('roster')
-  if (!storedRoster || typeof storedRoster !== 'object') {
-    return {}
-  }
-  return storedRoster
-}
-
-let _pokemon: UserPokemon | undefined
-let _pokedex: PokemonType[] | undefined
-let _roster: Roster | undefined
 
 export class PokemonState {
-  static getPokemon(context: vscode.ExtensionContext): UserPokemon | undefined {
-    if (!_pokemon) {
-      _pokemon = loadFromStorage(context)
-    }
-    return _pokemon
+  // Loads the shared state and starts watching it, so a second window picks up
+  // the progress made in the first one.
+  static initialize(
+    context: vscode.ExtensionContext,
+    onExternalChange: () => void
+  ): void {
+    store(context).initialize(onExternalChange)
   }
 
-  static savePokemon(context: vscode.ExtensionContext): Thenable<void> {
-    if (_pokemon) {
-      return context.globalState.update('pokemon', _pokemon)
+  static flush(context: vscode.ExtensionContext): void {
+    store(context).flush()
+  }
+
+  static getPokemon(context: vscode.ExtensionContext): UserPokemon | undefined {
+    const pokemon = store(context).getState().pokemon
+    if (pokemon && pokemon.id === undefined) {
+      pokemon.id = getPokemonId(pokemon.type)
     }
-    return Promise.resolve()
+    return pokemon
+  }
+
+  static savePokemon(context: vscode.ExtensionContext): void {
+    store(context).save()
   }
 
   static getPokedex(context: vscode.ExtensionContext): PokemonType[] {
-    if (!_pokedex) {
-      _pokedex = loadPokedexFromStorage(context)
-    }
-    return _pokedex
+    return store(context).getState().pokedex
   }
 
-  static savePokedex(context: vscode.ExtensionContext): Thenable<void> {
-    if (!_pokedex) {
-      _pokedex = []
-    }
-    return context.globalState.update('pokedex', _pokedex)
+  static savePokedex(context: vscode.ExtensionContext): void {
+    store(context).save()
   }
 
   static discoverPokemon(
@@ -108,7 +94,6 @@ export class PokemonState {
     }
 
     pokedex.push(pokemonType)
-    _pokedex = pokedex
     PokemonState.savePokedex(context)
     return true
   }
@@ -121,17 +106,11 @@ export class PokemonState {
   }
 
   static getRoster(context: vscode.ExtensionContext): Roster {
-    if (!_roster) {
-      _roster = loadRosterFromStorage(context)
-    }
-    return _roster
+    return store(context).getState().roster
   }
 
-  static saveRoster(context: vscode.ExtensionContext): Thenable<void> {
-    if (!_roster) {
-      _roster = {}
-    }
-    return context.globalState.update('roster', _roster)
+  static saveRoster(context: vscode.ExtensionContext): void {
+    store(context).save()
   }
 
   // Stores the progress of the pokemon currently out, so switching to another
@@ -153,7 +132,6 @@ export class PokemonState {
       level: pokemon.level,
       xp: pokemon.xp,
     }
-    _roster = roster
     PokemonState.saveRoster(context)
   }
 
@@ -204,12 +182,9 @@ export class PokemonState {
 
     const pokemon = PokemonState.buildPokemon(evolutionLine, entry, scaleFactor)
 
-    _pokemon = pokemon
-    PokemonState.savePokemon(context)
-
+    store(context).getState().pokemon = pokemon
     roster[evolutionLine.base] = entry
-    _roster = roster
-    PokemonState.saveRoster(context)
+    PokemonState.savePokemon(context)
 
     return pokemon
   }
@@ -244,7 +219,7 @@ export class PokemonState {
       direction: 'right',
     }
 
-    _pokemon = pokemon
+    store(context).getState().pokemon = pokemon
     PokemonState.savePokemon(context)
     return pokemon
   }

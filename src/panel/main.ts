@@ -15,6 +15,7 @@ interface State {
   basePokemonUri: string
   intervalId: number | undefined
   isHovered: boolean
+  idleUntil: number
 }
 
 const state: State = {
@@ -22,9 +23,32 @@ const state: State = {
   basePokemonUri: '',
   intervalId: undefined,
   isHovered: false,
+  idleUntil: 0,
 }
 
 const TICK_INTERVAL_MS = 100
+
+// How long a pokemon stands still after hatching or evolving. Without it the
+// first tick would send it walking before the idle animation is ever seen.
+const IDLE_AFTER_CHANGE_MS = 1500
+
+// Everything that decides how the sprite looks. XP updates arrive several times
+// a second and change none of it, so the DOM work can be skipped.
+function visualSignature(pokemon: UserPokemon | null): string {
+  if (!pokemon) {
+    return 'none'
+  }
+  return [
+    pokemon.type,
+    pokemon.level,
+    pokemon.state,
+    pokemon.scale,
+    pokemon.isHovered ? 1 : 0,
+    pokemon.isTransitionIn ? 1 : 0,
+  ].join('|')
+}
+
+let lastRenderedSignature = ''
 const POKEBALL_SIZE = 32
 const POKEMON_BASE_SIZE = 50 // Increased by 20% (32 * 1.2 = 38.4)
 
@@ -59,6 +83,12 @@ function updatePokemonDisplay(pokemon: UserPokemon | null): void {
   if (!pokemonImg || !pokemonContainer) {
     return
   }
+
+  const signature = visualSignature(pokemon)
+  if (signature === lastRenderedSignature) {
+    return
+  }
+  lastRenderedSignature = signature
 
   if (!pokemon || pokemon.level === 0) {
     pokemonImg.src = `${state.basePokemonUri}/pokeball.gif`
@@ -111,6 +141,11 @@ function updatePokemonDisplay(pokemon: UserPokemon | null): void {
 function tick(): void {
   const pokemon = state.userPokemon
   if (!pokemon || pokemon.level === 0) {
+    return
+  }
+
+  // Let the idle animation play after a hatch or an evolution.
+  if (Date.now() < state.idleUntil) {
     return
   }
 
@@ -168,6 +203,23 @@ function startAnimation(): void {
   }, TICK_INTERVAL_MS)
 }
 
+function stopAnimation(): void {
+  if (state.intervalId) {
+    clearInterval(state.intervalId)
+    state.intervalId = undefined
+  }
+}
+
+// The explorer view keeps its context when hidden, so without this the walking
+// loop would keep running against a panel nobody is looking at.
+function handleVisibilityChange(): void {
+  if (document.hidden) {
+    stopAnimation()
+  } else if (!state.intervalId) {
+    startAnimation()
+  }
+}
+
 export const app = ({
   userPokemon,
   basePokemonUri,
@@ -180,6 +232,8 @@ export const app = ({
 
   updatePokemonDisplay(userPokemon)
   startAnimation()
+
+  document.addEventListener('visibilitychange', handleVisibilityChange)
 
   // Add hover event listeners
   const container = document.getElementById('container')
@@ -207,12 +261,14 @@ export const app = ({
       case 'spawn-pokemon':
         if (data.userPokemon) {
           state.userPokemon = data.userPokemon
+          state.idleUntil = 0
           updatePokemonDisplay(data.userPokemon)
         }
         break
 
       case 'update-pokemon': {
         if (data.userPokemon) {
+          const previousLevel = state.userPokemon?.level ?? 0
           const updatedPokemon = {
             ...data.userPokemon,
             leftPosition: state.userPokemon?.leftPosition || 0,
@@ -220,6 +276,11 @@ export const app = ({
             isHovered: state.isHovered,
           }
           state.userPokemon = updatedPokemon
+
+          if (updatedPokemon.level > previousLevel) {
+            state.idleUntil = Date.now() + IDLE_AFTER_CHANGE_MS
+          }
+
           updatePokemonDisplay(updatedPokemon)
         }
         break

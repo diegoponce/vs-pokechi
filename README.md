@@ -15,8 +15,9 @@ Watch them hatch from Pokéballs, walk around while you code, and evolve as they
 - **XP Bar**: Always visible XP progress bar showing your progress to the next evolution, or `MAX` once your Pokémon reaches its final stage
 - **Panel and Explorer Modes**: Choose where to display your Pokémon companion
 - **Hover Interaction**: Hover over your Pokémon to make it stop and use idle animation
-- **Pokechidex**: Open a Pokédex-style view of all Pokémon you have discovered
+- **Pokechidex**: Open a Pokédex-style view of all Pokémon you have discovered, with search and a generation filter
 - **Pokechidex Selection**: Click any discovered Pokémon to bring it out, keeping the XP of every line you have raised
+- **Shared Across Windows**: Your progress follows you between VS Code windows
 
 ## Installation
 
@@ -53,15 +54,17 @@ Your Pokémon will now appear in the Explorer panel. This keeps your Pokémon vi
 
 ### Spawning a New Pokémon
 
-To spawn a new Pokémon, hit `Ctrl` + `Shift` + `P` (or `Cmd` + `Shift` + `P` on macOS), paste the following command, and press Enter:
+Your first Pokémon is created for you the first time the extension starts, inside a Pokéball. Just start typing to hatch it — no setup command needed.
+
+To trade it in for a different random Pokémon, hit `Ctrl` + `Shift` + `P` (or `Cmd` + `Shift` + `P` on macOS), paste the following command, and press Enter:
 
 ```
 Pokechi: New Pokemon
 ```
 
-Your Pokémon will appear (inside a Pokéball). Start typing to hatch your Pokémon.
+Your Pokémon gains XP as you code in either mode. Only edits to real files count, so scrolling through an output channel or a log will not feed it.
 
-Your Pokémon will gain XP as you code in either mode.
+Progress is shared across VS Code windows. Raising a Pokémon in one window and switching to another picks up where you left off.
 
 ### Switching Between Modes
 
@@ -86,6 +89,8 @@ You can switch between Panel and Explorer modes in two ways:
 ## Pokechidex
 
 The Pokechidex shows every Gen 1-3 species in a compact grid. Species you have not met yet stay hidden behind a Pokéball, and a species is discovered when it hatches from a Pokéball or when one of your Pokémon evolves into it.
+
+Search by name or number, filter by generation, or narrow the grid down to what you have already discovered.
 
 Click any discovered Pokémon to bring it out in the active view, either the panel or the Explorer view. Every evolution line keeps its own XP, so switching away and coming back later picks up exactly where you left off. Because evolution only moves forward, clicking an earlier stage of a line you have already raised brings out the stage you reached.
 
@@ -131,5 +136,5 @@ Your Pokémon will automatically evolve when it reaches the required XP for the 
 - This repository is a fan project and is not affiliated with Nintendo, The Pokémon Company, or Game Freak
 
 This repository is inspired by and based on:
-- [codachi](https://github.com/blairjordan/codachi) by [blairjordan](https://github.com/blairjordan)
+- [codachi](https://github.com/blairjordan/codachi) by [blairjordan](https://github.com/blairjordan), MIT licensed. Pokechi is a derivative work of Codachi and retains its copyright notice, as the MIT License requires. See [LICENSE](LICENSE).
 - [vscode-pokemon](https://github.com/jakobhoeg/vscode-pokemon) by [jakobhoeg](https://github.com/jakobhoeg)
