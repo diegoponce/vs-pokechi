@@ -71,6 +71,8 @@ function getSpritePath(
     generation = 'gen2'
   } else if (pokemonData.generation === PokemonGeneration.Gen3) {
     generation = 'gen3'
+  } else if (pokemonData.generation === PokemonGeneration.Gen4) {
+    generation = 'gen4'
   }
 
   const colorPrefix = color === PokemonColor.shiny ? 'shiny' : 'default'
@@ -879,6 +881,7 @@ export class PokedexPanel {
         <button type="button" class="filter-chip" data-generation="1">Gen 1</button>
         <button type="button" class="filter-chip" data-generation="2">Gen 2</button>
         <button type="button" class="filter-chip" data-generation="3">Gen 3</button>
+        <button type="button" class="filter-chip" data-generation="4">Gen 4</button>
         <label class="filter-toggle">
           <input type="checkbox" id="only-discovered" />
           Discovered only

@@ -69,6 +69,8 @@ function getPokemonSpritePath(pokemon: UserPokemon, isIdle = false): string {
     generation = 'gen2'
   } else if (pokemonData.generation === PokemonGeneration.Gen3) {
     generation = 'gen3'
+  } else if (pokemonData.generation === PokemonGeneration.Gen4) {
+    generation = 'gen4'
   }
 
   const colorPrefix = pokemon.color === PokemonColor.shiny ? 'shiny' : 'default'

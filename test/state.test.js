@@ -317,7 +317,7 @@ test('a branching base has one line per possible path', () => {
   const lines = getEvolutionLinesForBase('eevee')
   assert.deepStrictEqual(
     lines.map(line => line.evolutions[0]).sort(),
-    ['espeon', 'flareon', 'jolteon', 'umbreon', 'vaporeon']
+    ['espeon', 'flareon', 'glaceon', 'jolteon', 'leafeon', 'umbreon', 'vaporeon']
   )
 })
 
@@ -349,7 +349,9 @@ test('picking a line for a branching base always returns a valid path', () => {
     const line = pickEvolutionLineForBase('eevee')
     assert.strictEqual(line.base, 'eevee')
     assert.ok(
-      ['vaporeon', 'jolteon', 'flareon', 'espeon', 'umbreon'].includes(line.evolutions[0])
+      ['vaporeon', 'jolteon', 'flareon', 'espeon', 'umbreon', 'leafeon', 'glaceon'].includes(
+        line.evolutions[0]
+      )
     )
   }
 })
