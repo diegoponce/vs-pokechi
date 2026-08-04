@@ -30,17 +30,9 @@
 
 Install it and a Pokéball shows up in your editor. Keep coding and it hatches, walks around while you work, and evolves as it earns XP. Everything you meet is recorded in the **Pokechidex** — 416 species across Gen 1 to 3, shinies included.
 
-<!-- SCREENSHOT SLOT - panel mode.
-     Record a short GIF of a Pokémon walking in the panel while the XP bar fills,
-     save it as media/docs/panel.gif, push it, and delete these two comment
-     markers. Kept commented so the image never renders broken on the
-     marketplace before the file exists.
-
 <div align="center">
   <img src="https://raw.githubusercontent.com/diegoponce/vs-pokechi/master/media/docs/panel.gif" width="800" alt="Pokechi in panel mode" />
 </div>
-
--->
 
 ## Features
 
@@ -57,17 +49,9 @@ Install it and a Pokéball shows up in your editor. Keep coding and it hatches, 
 
 Every species you have met, in one grid. Search by name or number, filter by generation, or narrow it to what you have already caught. Locked species stay hidden behind a Pokéball — the grid never gives away what you have not met yet.
 
-<!-- SCREENSHOT SLOT - the Pokechidex.
-     A still PNG is enough. Show the grid with a few species discovered,
-     ideally one shiny and one legendary so the sparkle toggle and the rarity
-     border are both visible. Save as media/docs/pokechidex.png, push it, and
-     delete these two comment markers.
-
 <div align="center">
   <img src="https://raw.githubusercontent.com/diegoponce/vs-pokechi/master/media/docs/pokechidex.png" width="800" alt="The Pokechidex" />
 </div>
-
--->
 
 Click any species you have discovered to bring it out. Caught it shiny? Its card gets a sparkle toggle, and it comes out in whichever colour is showing.
 
@@ -86,16 +70,9 @@ Install, and that is it — your first Pokémon is created for you. Start typing
 
 Pokechi lives in a panel by default, or docked in the Explorer sidebar if you would rather keep it out of the way. `Pokechi: Open Explorer View` switches, or set `pokechi.position` yourself.
 
-<!-- SCREENSHOT SLOT - explorer mode.
-     Show the Pokémon docked in the Explorer sidebar next to the file tree, so
-     the difference from panel mode is obvious. Save as media/docs/explorer.png,
-     push it, and delete these two comment markers.
-
 <div align="center">
   <img src="https://raw.githubusercontent.com/diegoponce/vs-pokechi/master/media/docs/explorer.png" width="420" alt="Pokechi in the Explorer sidebar" />
 </div>
-
--->
 
 ## Settings
 
