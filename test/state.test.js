@@ -52,6 +52,11 @@ Module._load = function (request) {
 
 const { PokemonState } = require(path.join(OUT, 'extension/pokemon-state.js'))
 const { mergeStates, normalizeState } = require(path.join(OUT, 'extension/state-store.js'))
+const {
+  getEvolutionLinesForBase,
+  pickEvolutionLineForBase,
+  resolveEvolutionLine,
+} = require(path.join(OUT, 'common/pokemon-evolutions.js'))
 
 function makeContext(dir) {
   const memory = new Map()
@@ -281,6 +286,7 @@ test('roster progress moves over when a pre-evolution becomes the line new base'
     level: 3,
     xp: 500,
     color: 'default',
+    evolutionLine: ['pichu', 'pikachu', 'raichu'],
   })
 })
 
@@ -300,7 +306,90 @@ test('progress from two species that used to be independent lines keeps whicheve
     level: 2,
     xp: 50,
     color: 'default',
+    evolutionLine: ['houndour', 'houndoom'],
   })
+})
+
+// --- branching evolutions ----------------------------------------------
+console.log('\nbranching evolutions')
+
+test('a branching base has one line per possible path', () => {
+  const lines = getEvolutionLinesForBase('eevee')
+  assert.deepStrictEqual(
+    lines.map(line => line.evolutions[0]).sort(),
+    ['espeon', 'flareon', 'jolteon', 'umbreon', 'vaporeon']
+  )
+})
+
+test('a non-branching base still has exactly one line', () => {
+  assert.strictEqual(getEvolutionLinesForBase('charmander').length, 1)
+})
+
+test('picking a line for a branching base always returns a valid path', () => {
+  for (let i = 0; i < 50; i++) {
+    const line = pickEvolutionLineForBase('eevee')
+    assert.strictEqual(line.base, 'eevee')
+    assert.ok(
+      ['vaporeon', 'jolteon', 'flareon', 'espeon', 'umbreon'].includes(line.evolutions[0])
+    )
+  }
+})
+
+test('resolving a committed path finds the exact branch, not just any line sharing the base', () => {
+  const jolteonLine = resolveEvolutionLine(['eevee', 'jolteon'])
+  assert.deepStrictEqual(jolteonLine, { base: 'eevee', evolutions: ['jolteon'] })
+
+  const vaporeonLine = resolveEvolutionLine(['eevee', 'vaporeon'])
+  assert.deepStrictEqual(vaporeonLine, { base: 'eevee', evolutions: ['vaporeon'] })
+})
+
+test('an unrecognized path does not resolve to some other branch by accident', () => {
+  assert.strictEqual(resolveEvolutionLine(['eevee', 'sylveon']), undefined)
+})
+
+test('evolving commits to the specific branch on the pokemon, not the first one found', () => {
+  const jolteonEevee = PokemonState.createNewPokemon(context)
+  Object.assign(jolteonEevee, {
+    type: 'eevee',
+    name: 'Eevee',
+    id: 133,
+    level: 1,
+    xp: 0,
+    canGainXP: true,
+    evolutionLine: ['eevee', 'jolteon'],
+  })
+  PokemonState.addXP(jolteonEevee, PokemonState.getRequiredXP(jolteonEevee))
+  assert.strictEqual(PokemonState.evolvePokemon(context, jolteonEevee), true)
+  assert.strictEqual(jolteonEevee.type, 'jolteon')
+})
+
+test('resuming a not-yet-branched eevee from the roster keeps its committed branch', () => {
+  const umbreonEevee = PokemonState.createNewPokemon(context)
+  Object.assign(umbreonEevee, {
+    type: 'eevee',
+    name: 'Eevee',
+    id: 133,
+    level: 1,
+    xp: 50,
+    canGainXP: true,
+    evolutionLine: ['eevee', 'umbreon'],
+  })
+  PokemonState.savePokemon(context)
+  PokemonState.rememberActivePokemon(context)
+
+  // Bring out something unrelated, then come back to eevee through the
+  // Pokedex - the exact resume path a player takes when switching lines.
+  PokemonState.discoverPokemon(context, 'rattata')
+  PokemonState.selectPokemonFromPokedex(context, 'rattata')
+
+  const resumed = PokemonState.selectPokemonFromPokedex(context, 'eevee')
+  assert.strictEqual(resumed.type, 'eevee')
+  assert.strictEqual(resumed.xp, 50)
+  assert.deepStrictEqual(resumed.evolutionLine, ['eevee', 'umbreon'])
+
+  PokemonState.addXP(resumed, PokemonState.getRequiredXP(resumed) - resumed.xp)
+  assert.strictEqual(PokemonState.evolvePokemon(context, resumed), true)
+  assert.strictEqual(resumed.type, 'umbreon')
 })
 
 // --- total XP -----------------------------------------------------------
@@ -326,6 +415,7 @@ test('state reaches disk on flush', () => {
     level: 2,
     xp: 777,
     color: 'default',
+    evolutionLine: ['charmander', 'charmeleon', 'charizard'],
   })
   assert.ok(stored.pokedex.indexOf('pikachu') >= 0)
   assert.strictEqual(stored.totalXP, PokemonState.getTotalXP(context))

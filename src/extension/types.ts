@@ -28,6 +28,10 @@ export interface RosterEntry {
   level: number
   xp: number
   color: PokemonColor
+  // A branching base (Eevee, Oddish, ...) has more than one possible line;
+  // this is the specific one this entry committed to, so resuming it later
+  // does not risk landing on a different branch than the one raised.
+  evolutionLine: PokemonType[]
 }
 
 export type Roster = { [basePokemon: string]: RosterEntry }

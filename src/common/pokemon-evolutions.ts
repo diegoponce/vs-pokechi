@@ -49,6 +49,9 @@ const THREE_STAGE_EVOLUTIONS: EvolutionLine[] = [
   { base: 'igglybuff', evolutions: ['jigglypuff', 'wigglytuff'] },
   { base: 'horsea', evolutions: ['seadra', 'kingdra'] },
   { base: 'azurill', evolutions: ['marill', 'azumarill'] },
+  { base: 'oddish', evolutions: ['gloom', 'bellossom'] },
+  { base: 'poliwag', evolutions: ['poliwhirl', 'politoed'] },
+  { base: 'wurmple', evolutions: ['cascoon', 'dustox'] },
 ]
 
 const TWO_STAGE_EVOLUTIONS: EvolutionLine[] = [
@@ -133,17 +136,24 @@ const TWO_STAGE_EVOLUTIONS: EvolutionLine[] = [
   { base: 'houndour', evolutions: ['houndoom'] },
   { base: 'phanpy', evolutions: ['donphan'] },
   { base: 'nincada', evolutions: ['ninjask'] },
-  { base: 'cascoon', evolutions: ['dustox'] },
   { base: 'wailmer', evolutions: ['wailord'] },
   { base: 'feebas', evolutions: ['milotic'] },
+  { base: 'slowpoke', evolutions: ['slowking'] },
+  { base: 'clamperl', evolutions: ['gorebyss'] },
+  { base: 'eevee', evolutions: ['vaporeon'] },
+  { base: 'eevee', evolutions: ['jolteon'] },
+  { base: 'eevee', evolutions: ['flareon'] },
+  { base: 'eevee', evolutions: ['espeon'] },
+  { base: 'eevee', evolutions: ['umbreon'] },
+  { base: 'tyrogue', evolutions: ['hitmonlee'] },
+  { base: 'tyrogue', evolutions: ['hitmonchan'] },
+  { base: 'tyrogue', evolutions: ['hitmontop'] },
 ]
 
 // Species that do not evolve. They can still hatch from a Pokeball so every
 // entry in the Pokedex is reachable, but they never gain an evolution stage.
 const SINGLE_STAGE_SPECIES: EvolutionLine[] = [
   { base: 'farfetchd', evolutions: [] },
-  { base: 'hitmonlee', evolutions: [] },
-  { base: 'hitmonchan', evolutions: [] },
   { base: 'lickitung', evolutions: [] },
   { base: 'tangela', evolutions: [] },
   { base: 'kangaskhan', evolutions: [] },
@@ -152,10 +162,6 @@ const SINGLE_STAGE_SPECIES: EvolutionLine[] = [
   { base: 'tauros', evolutions: [] },
   { base: 'lapras', evolutions: [] },
   { base: 'ditto', evolutions: [] },
-  { base: 'eevee', evolutions: [] },
-  { base: 'vaporeon', evolutions: [] },
-  { base: 'jolteon', evolutions: [] },
-  { base: 'flareon', evolutions: [] },
   { base: 'omanyte', evolutions: [] },
   { base: 'omastar', evolutions: [] },
   { base: 'kabuto', evolutions: [] },
@@ -167,15 +173,10 @@ const SINGLE_STAGE_SPECIES: EvolutionLine[] = [
   { base: 'moltres', evolutions: [] },
   { base: 'mewtwo', evolutions: [] },
   { base: 'mew', evolutions: [] },
-  { base: 'bellossom', evolutions: [] },
   { base: 'sudowoodo', evolutions: [] },
-  { base: 'politoed', evolutions: [] },
   { base: 'aipom', evolutions: [] },
   { base: 'yanma', evolutions: [] },
-  { base: 'espeon', evolutions: [] },
-  { base: 'umbreon', evolutions: [] },
   { base: 'murkrow', evolutions: [] },
-  { base: 'slowking', evolutions: [] },
   { base: 'misdreavus', evolutions: [] },
   { base: 'unown_a', evolutions: [] },
   { base: 'unown_b', evolutions: [] },
@@ -218,8 +219,6 @@ const SINGLE_STAGE_SPECIES: EvolutionLine[] = [
   { base: 'skarmory', evolutions: [] },
   { base: 'stantler', evolutions: [] },
   { base: 'smeargle', evolutions: [] },
-  { base: 'tyrogue', evolutions: [] },
-  { base: 'hitmontop', evolutions: [] },
   { base: 'miltank', evolutions: [] },
   { base: 'raikou', evolutions: [] },
   { base: 'entei', evolutions: [] },
@@ -247,7 +246,6 @@ const SINGLE_STAGE_SPECIES: EvolutionLine[] = [
   { base: 'tropius', evolutions: [] },
   { base: 'chimecho', evolutions: [] },
   { base: 'absol', evolutions: [] },
-  { base: 'gorebyss', evolutions: [] },
   { base: 'relicanth', evolutions: [] },
   { base: 'luvdisc', evolutions: [] },
   { base: 'regirock', evolutions: [] },
@@ -358,6 +356,52 @@ export function getEvolutionLineContaining(
 ): EvolutionLine | undefined {
   return ALL_EVOLUTION_LINES.find(
     line => line.base === pokemon || line.evolutions.indexOf(pokemon) >= 0
+  )
+}
+
+// A branching base (Eevee, Oddish, ...) has more than one EvolutionLine
+// entry sharing that base, one per possible path. Every non-base stage still
+// belongs to exactly one entry, so getEvolutionLineContaining stays
+// unambiguous for those; this is only needed to see every path from the base
+// itself, or to pick one.
+export function getEvolutionLinesForBase(base: PokemonType): EvolutionLine[] {
+  return ALL_EVOLUTION_LINES.filter(line => line.base === base)
+}
+
+// Rolls which path a newly created pokemon on a branching base commits to.
+// For a base with a single line this just returns it - no branch to pick.
+export function pickEvolutionLineForBase(base: PokemonType): EvolutionLine | undefined {
+  const lines = getEvolutionLinesForBase(base)
+  if (lines.length === 0) {
+    return undefined
+  }
+  return lines[Math.floor(Math.random() * lines.length)]
+}
+
+function flattenLine(line: EvolutionLine): PokemonType[] {
+  return [line.base, ...line.evolutions]
+}
+
+function pathsEqual(a: PokemonType[], b: PokemonType[]): boolean {
+  return a.length === b.length && a.every((stage, index) => stage === b[index])
+}
+
+// Finds the current line matching a previously stored, flattened path (base
+// plus every stage). A branching base has several lines, indistinguishable
+// by base name alone, so a pokemon's committed path has to be resolved
+// against all of them rather than trusting whichever one a plain base-name
+// lookup happens to find first - that could silently switch which branch a
+// pokemon that has not evolved past the branch point yet is committed to.
+// Returns undefined if the stored path does not match any current line,
+// which is the signal that it is stale and needs re-deriving some other way.
+export function resolveEvolutionLine(
+  storedPath: PokemonType[]
+): EvolutionLine | undefined {
+  if (storedPath.length === 0) {
+    return undefined
+  }
+  return getEvolutionLinesForBase(storedPath[0]).find(line =>
+    pathsEqual(flattenLine(line), storedPath)
   )
 }
 

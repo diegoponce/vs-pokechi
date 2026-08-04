@@ -3,11 +3,13 @@ import { Roster, RosterEntry, UserPokemon } from './types'
 import { PokemonColor, PokemonElementType, PokemonType } from '../common/types'
 import { StateStore } from './state-store'
 import {
-  EvolutionLine,
   getRandomBasePokemon,
   getRandomPokemonColor,
   getEvolutionLine,
   getEvolutionLineContaining,
+  getEvolutionLinesForBase,
+  pickEvolutionLineForBase,
+  resolveEvolutionLine,
   getPokemonByLevel,
   getPokemonLevel,
   hasFurtherEvolution,
@@ -84,6 +86,7 @@ function reconcileRoster(roster: Roster): boolean {
       level: getPokemonLevel(entry.type, correctLine),
       xp: entry.xp,
       color: entry.color,
+      evolutionLine: [correctLine.base, ...correctLine.evolutions] as PokemonType[],
     }
 
     const existing = roster[correctLine.base]
@@ -137,12 +140,16 @@ export class PokemonState {
     }
     // The evolution data can be restructured over time (a pre-evolution gets
     // added ahead of an existing base, or a species that used to be its own
-    // single-stage line becomes a later stage of a different one). Re-deriving
-    // from pokemon.type - the one thing that never changes - keeps an
-    // already-saved pokemon's line and level in step with the current data,
-    // instead of trusting the stale array/level captured when it was built.
+    // single-stage line becomes a later stage of a different one). Trust the
+    // stored path if it still matches a current line - a branching base
+    // (Eevee, Oddish, ...) has more than one, and re-deriving from scratch
+    // would be ambiguous and could silently switch which branch a pokemon
+    // that has not evolved past the branch point is committed to. Only fall
+    // back to a fresh lookup when the stored path is genuinely stale.
     if (pokemon) {
-      const evolutionLine = getEvolutionLineContaining(pokemon.type)
+      const evolutionLine =
+        resolveEvolutionLine(pokemon.evolutionLine as PokemonType[]) ??
+        getEvolutionLineContaining(pokemon.type)
       if (evolutionLine) {
         pokemon.evolutionLine = [evolutionLine.base, ...evolutionLine.evolutions]
         pokemon.level = getPokemonLevel(pokemon.type, evolutionLine)
@@ -240,12 +247,12 @@ export class PokemonState {
       level: pokemon.level,
       xp: pokemon.xp,
       color: pokemon.color,
+      evolutionLine: pokemon.evolutionLine as PokemonType[],
     }
     PokemonState.saveRoster(context)
   }
 
   private static buildPokemon(
-    evolutionLine: EvolutionLine,
     entry: RosterEntry,
     scaleFactor: number,
     canGainXP: boolean
@@ -257,7 +264,7 @@ export class PokemonState {
       level: entry.level,
       xp: entry.xp,
       types: getPokemonTypes(entry.type),
-      evolutionLine: [evolutionLine.base, ...evolutionLine.evolutions],
+      evolutionLine: entry.evolutionLine,
       state: 'walking',
       scale: scaleFactor,
       isTransitionIn: false,
@@ -278,8 +285,11 @@ export class PokemonState {
     pokemonType: PokemonType,
     requestedColor?: PokemonColor
   ): UserPokemon | undefined {
-    const evolutionLine = getEvolutionLineContaining(pokemonType)
-    if (!evolutionLine) {
+    // Unambiguous even on a branching base: every stage past the base itself
+    // belongs to exactly one line, and the base's own card is handled below
+    // by trusting whichever branch the roster already committed to.
+    const clickedLine = getEvolutionLineContaining(pokemonType)
+    if (!clickedLine) {
       return undefined
     }
 
@@ -290,9 +300,12 @@ export class PokemonState {
       .get('pokechi.scaleFactor', 1.0)
 
     const roster = PokemonState.getRoster(context)
-    const storedEntry = roster[evolutionLine.base]
+    const storedEntry = roster[clickedLine.base]
     if (storedEntry && storedEntry.color === undefined) {
       storedEntry.color = PokemonColor.default
+    }
+    if (storedEntry && !storedEntry.evolutionLine) {
+      storedEntry.evolutionLine = [clickedLine.base, ...clickedLine.evolutions] as PokemonType[]
     }
 
     let entry: RosterEntry
@@ -301,21 +314,26 @@ export class PokemonState {
     if (!storedEntry) {
       entry = {
         type: pokemonType,
-        level: getPokemonLevel(pokemonType, evolutionLine),
+        level: getPokemonLevel(pokemonType, clickedLine),
         xp: 0,
         color: PokemonColor.default,
+        evolutionLine: [clickedLine.base, ...clickedLine.evolutions] as PokemonType[],
       }
       canGainXP = true
     } else if (storedEntry.type === pokemonType) {
+      // Resuming exactly the stage the line is at: trust its own committed
+      // branch rather than whichever one the clicked card happens to belong
+      // to, since a branching base has more than one.
       entry = storedEntry
       canGainXP = true
     } else {
-      const level = getPokemonLevel(pokemonType, evolutionLine)
+      const level = getPokemonLevel(pokemonType, clickedLine)
       entry = {
         type: pokemonType,
         level,
         xp: getRequiredXPForLevel(level),
         color: storedEntry.color,
+        evolutionLine: [clickedLine.base, ...clickedLine.evolutions] as PokemonType[],
       }
       canGainXP = false
     }
@@ -333,11 +351,11 @@ export class PokemonState {
       entry.color = requestedColor
     }
 
-    const pokemon = PokemonState.buildPokemon(evolutionLine, entry, scaleFactor, canGainXP)
+    const pokemon = PokemonState.buildPokemon(entry, scaleFactor, canGainXP)
 
     store(context).getState().pokemon = pokemon
     if (canGainXP) {
-      roster[evolutionLine.base] = entry
+      roster[clickedLine.base] = entry
     }
     PokemonState.savePokemon(context)
 
@@ -353,7 +371,10 @@ export class PokemonState {
 
     const basePokemon = getRandomBasePokemon()
     const color = getRandomPokemonColor()
-    const evolutionLine = getEvolutionLine(basePokemon)
+    // A branching base (Eevee, Oddish, ...) has more than one possible line;
+    // this rolls which one this specific catch commits to. Non-branching
+    // bases only ever have one, so this is a no-op for them.
+    const evolutionLine = pickEvolutionLineForBase(basePokemon)
 
     if (!evolutionLine) {
       throw new Error(`No evolution line found for ${basePokemon}`)
@@ -361,21 +382,56 @@ export class PokemonState {
 
     const evolutionLineArray = [basePokemon, ...evolutionLine.evolutions]
 
-    const pokemon: UserPokemon = {
-      id: getPokemonId(basePokemon),
-      type: basePokemon,
-      name: getPokemonName(basePokemon),
-      level: 0,
-      xp: 0,
-      types: getPokemonTypes(basePokemon),
-      evolutionLine: evolutionLineArray,
-      state: 'pokeball',
-      scale: scaleFactor,
-      isTransitionIn: true,
-      leftPosition: 0,
-      direction: 'right',
-      color,
-      canGainXP: true,
+    // Only matters for a branching base: if the branch this catch just
+    // committed to already has its final stage discovered, raising this one
+    // would only ever reach something already owned. Same treatment as a
+    // Pokedex snapshot of an earlier stage - already hatched, shown at max,
+    // and read-only - rather than making the player grind a Pokeball open
+    // for a species they already have.
+    const isBranchingBase = getEvolutionLinesForBase(basePokemon).length > 1
+    const finalStage =
+      evolutionLine.evolutions.length > 0
+        ? evolutionLine.evolutions[evolutionLine.evolutions.length - 1]
+        : evolutionLine.base
+    const isDuplicateBranch =
+      isBranchingBase && PokemonState.isPokemonDiscovered(context, finalStage)
+
+    const pokemon: UserPokemon = isDuplicateBranch
+      ? {
+          id: getPokemonId(basePokemon),
+          type: basePokemon,
+          name: getPokemonName(basePokemon),
+          level: 1,
+          xp: getRequiredXPForLevel(1),
+          types: getPokemonTypes(basePokemon),
+          evolutionLine: evolutionLineArray,
+          state: 'idle',
+          scale: scaleFactor,
+          isTransitionIn: true,
+          leftPosition: 0,
+          direction: 'right',
+          color,
+          canGainXP: false,
+        }
+      : {
+          id: getPokemonId(basePokemon),
+          type: basePokemon,
+          name: getPokemonName(basePokemon),
+          level: 0,
+          xp: 0,
+          types: getPokemonTypes(basePokemon),
+          evolutionLine: evolutionLineArray,
+          state: 'pokeball',
+          scale: scaleFactor,
+          isTransitionIn: true,
+          leftPosition: 0,
+          direction: 'right',
+          color,
+          canGainXP: true,
+        }
+
+    if (isDuplicateBranch) {
+      PokemonState.discoverPokemon(context, basePokemon, color)
     }
 
     store(context).getState().pokemon = pokemon
@@ -390,7 +446,7 @@ export class PokemonState {
   // False once a pokemon has reached the last stage of its line, including
   // species that never evolve at all.
   static hasFurtherEvolution(pokemon: UserPokemon): boolean {
-    const evolutionLine = getEvolutionLine(pokemon.evolutionLine[0] as PokemonType)
+    const evolutionLine = resolveEvolutionLine(pokemon.evolutionLine as PokemonType[])
     if (!evolutionLine) {
       return false
     }
@@ -414,7 +470,7 @@ export class PokemonState {
       return false
     }
 
-    const evolutionLine = getEvolutionLine(pokemon.evolutionLine[0] as PokemonType)
+    const evolutionLine = resolveEvolutionLine(pokemon.evolutionLine as PokemonType[])
     if (!evolutionLine) {
       return false
     }
