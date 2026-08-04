@@ -20,6 +20,29 @@ export enum PokemonGeneration {
     Gen3 = 3,
 }
 
+// Typing as it stood by the end of Generation III - no Fairy type, since it
+// was not introduced until Generation VI (e.g. Clefairy/Mr. Mime/Snubbull
+// stay Normal here, not Fairy).
+export const enum PokemonElementType {
+    normal = 'normal',
+    fire = 'fire',
+    water = 'water',
+    electric = 'electric',
+    grass = 'grass',
+    ice = 'ice',
+    fighting = 'fighting',
+    poison = 'poison',
+    ground = 'ground',
+    flying = 'flying',
+    psychic = 'psychic',
+    bug = 'bug',
+    rock = 'rock',
+    ghost = 'ghost',
+    dragon = 'dragon',
+    dark = 'dark',
+    steel = 'steel',
+}
+
 export type PokemonTypeString = string & keyof typeof POKEMON_DATA;
 
 export type PokemonType = PokemonTypeString;
@@ -32,4 +55,5 @@ export interface PokemonConfig {
     possibleColors: PokemonColor[];
     originalSpriteSize?: number,
     rarity?: PokemonRarity,
+    types: PokemonElementType[],
 }

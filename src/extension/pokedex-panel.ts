@@ -1,9 +1,25 @@
 import * as vscode from 'vscode'
 import { PokemonState } from './pokemon-state'
 import { generateNonce } from './nonce'
-import { PokemonColor, PokemonGeneration, PokemonType } from '../common/types'
+import { PokemonColor, PokemonElementType, PokemonGeneration, PokemonType } from '../common/types'
 import { POKEMON_DATA } from '../common/pokemon-data'
 import { SPARKLE_ICON } from '../common/icons'
+import { TYPE_BADGES, getTypeBadgeCssRules } from '../common/type-badges'
+
+function renderTypeBadges(types: PokemonElementType[] | undefined): string {
+  if (!types || types.length === 0) {
+    return ''
+  }
+  return types
+    .map((type) => {
+      const badge = TYPE_BADGES[type]
+      if (!badge) {
+        return ''
+      }
+      return `<span class="type-badge type-${type}">${badge.abbr}</span>`
+    })
+    .join('')
+}
 
 interface PokedexEntry {
   type: PokemonType
@@ -257,6 +273,7 @@ export class PokedexPanel {
                 ? this.getSpriteUri(webview, getSpritePath(type, PokemonColor.shiny))
                 : undefined,
               rarity: POKEMON_DATA[type]?.rarity,
+              types: POKEMON_DATA[type]?.types,
             }
           }),
       },
@@ -302,6 +319,12 @@ export class PokedexPanel {
       // undiscovered species is.
       const rarity = discovered ? POKEMON_DATA[entry.type]?.rarity : undefined
       const rarityClass = rarity ? ` rarity-${rarity}` : ''
+      // Same "never for a locked card" rule as rarity: the container is
+      // always rendered, empty, so a locked card keeps the same card height
+      // without leaking what types the species is.
+      const typeBadgesHtml = discovered
+        ? renderTypeBadges(POKEMON_DATA[entry.type]?.types)
+        : ''
 
       // The shiny toggle lives outside the card button: interactive elements
       // cannot nest, and it must not trigger selecting the pokemon.
@@ -351,6 +374,7 @@ export class PokedexPanel {
               />
             </div>
             <div class="pokemon-name">${name}</div>
+            <div class="type-badges">${typeBadgesHtml}</div>
           </button>
           ${shinyToggle}
         </div>
@@ -560,7 +584,7 @@ export class PokedexPanel {
       display: flex;
       flex-direction: column;
       gap: 8px;
-      min-height: 160px;
+      min-height: 184px;
       padding: 10px;
       border-radius: 8px;
       border: 1px solid var(--card-border);
@@ -727,6 +751,32 @@ export class PokedexPanel {
       letter-spacing: 0.14em;
     }
 
+    /* Always reserves the row, even empty on a locked card, so every card in
+       a row stays the same height instead of locked ones looking squashed
+       next to discovered ones with badges. */
+    .type-badges {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 4px;
+      min-height: 16px;
+    }
+
+    .type-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      line-height: 1.3;
+    }
+
+    ${getTypeBadgeCssRules()}
+
     /* The badge takes the generation chip's slot rather than stacking under it:
        one chip per card, no overlap, and no reflow when a card becomes active.
        The generation is still available through the filter above. */
@@ -832,6 +882,8 @@ export class PokedexPanel {
       } catch (e) {
         return;
       }
+
+      var TYPE_BADGES = ${JSON.stringify(TYPE_BADGES)};
 
       var grid = document.querySelector('.grid');
       var counter = document.getElementById('counter-value');
@@ -1034,6 +1086,17 @@ export class PokedexPanel {
 
         if (entry.rarity) {
           card.classList.add('rarity-' + entry.rarity);
+        }
+
+        var typeBadgesEl = card.querySelector('.type-badges');
+        if (typeBadgesEl && entry.types) {
+          typeBadgesEl.innerHTML = entry.types.map(function (t) {
+            var badge = TYPE_BADGES[t];
+            if (!badge) {
+              return '';
+            }
+            return '<span class="type-badge type-' + t + '">' + badge.abbr + '</span>';
+          }).join('');
         }
 
         ensureShinyToggle(card, entry);

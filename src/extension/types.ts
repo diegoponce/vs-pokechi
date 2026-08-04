@@ -1,4 +1,4 @@
-import { PokemonColor, PokemonType } from '../common/types'
+import { PokemonColor, PokemonElementType, PokemonType } from '../common/types'
 
 export interface UserPokemon {
   id: number
@@ -6,6 +6,7 @@ export interface UserPokemon {
   name: string
   level: number
   xp: number
+  types: PokemonElementType[]
   evolutionLine: string[]
   state: 'pokeball' | 'idle' | 'walking'
   scale: number

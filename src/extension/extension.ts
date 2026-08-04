@@ -3,8 +3,9 @@ import { PokemonState, getRequiredXPForLevel } from './pokemon-state'
 import { PokedexPanel } from './pokedex-panel'
 import { generateNonce } from './nonce'
 import { UserPokemon, Position } from './types'
-import { PokemonColor, PokemonType } from '../common/types'
+import { PokemonColor, PokemonElementType, PokemonType } from '../common/types'
 import { SPARKLE_ICON } from '../common/icons'
+import { TYPE_BADGES, getTypeBadgeCssRules } from '../common/type-badges'
 import { XPTracker, setUpdateCallbacks } from './xp-tracker'
 
 interface PokemonSelectionFromPokedex {
@@ -13,6 +14,18 @@ interface PokemonSelectionFromPokedex {
 }
 
 let _isViewSwitching = false
+
+function renderTypeBadgesMarkup(types: PokemonElementType[] | undefined): string {
+  if (!types || types.length === 0) {
+    return ''
+  }
+  return types
+    .map((type) => {
+      const badge = TYPE_BADGES[type]
+      return badge ? `<span class="type-badge type-${type}">${badge.abbr}</span>` : ''
+    })
+    .join('')
+}
 
 function getConfigurationPosition(): Position {
   return vscode.workspace
@@ -187,11 +200,68 @@ class PokechiContentProvider {
           margin-left: 6px;
           letter-spacing: 0.08em;
         }
+        .type-badges {
+          display: flex;
+          align-items: center;
+          gap: 4px;
+          flex-shrink: 0;
+        }
+        .type-badge {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          padding: 1px 5px;
+          border-radius: 3px;
+          font-size: 8px;
+          font-weight: 700;
+          letter-spacing: 0.03em;
+          line-height: 1.3;
+        }
+        /* This webview's CSP has no 'unsafe-inline' for style-src, and a nonce
+           only covers <style>/<script> elements - a style="" attribute is
+           dropped in its entirety, silently. Everything static lives here as
+           real rules instead; only the show/hide toggles stay script-driven
+           (element.style.x from JS is not affected by style-src at all). */
+        .pokemon-name {
+          display: none;
+          align-items: center;
+          justify-content: space-between;
+          gap: 4px;
+          color: white;
+          font-size: 14px;
+          margin-bottom: 4px;
+          font-weight: bold;
+        }
+        .pokemon-name-group {
+          display: flex;
+          align-items: center;
+          gap: 4px;
+          min-width: 0;
+          overflow: hidden;
+        }
+        #pokemon-name-text {
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+        #pokemon-shiny-star {
+          display: none;
+          color: #FFD700;
+          margin-left: 4px;
+          flex-shrink: 0;
+        }
+        ${getTypeBadgeCssRules()}
       </style>
     </head>
     <body>
       <div class="xp-container">
-        <div class="pokemon-name" id="pokemon-name" style="color: white; font-size: 14px; margin-bottom: 4px; font-weight: bold; align-items: center; gap: 4px; display: ${pokemon && pokemon.level > 0 ? 'flex' : 'none'};"><span id="pokemon-name-text">${pokemon && pokemon.level > 0 ? pokemon.name : ''}</span><span id="pokemon-shiny-star" style="color: #FFD700; display: ${pokemon && pokemon.level > 0 && pokemon.color === 'shiny' ? 'inline-flex' : 'none'};">${SPARKLE_ICON}</span></div>
+        <div class="pokemon-name" id="pokemon-name">
+          <span class="pokemon-name-group">
+            <span id="pokemon-name-text">${pokemon && pokemon.level > 0 ? pokemon.name : ''}</span>
+            <span id="pokemon-shiny-star">${SPARKLE_ICON}</span>
+          </span>
+          <span class="type-badges" id="pokemon-type-badges">${pokemon && pokemon.level > 0 ? renderTypeBadgesMarkup(pokemon.types) : ''}</span>
+        </div>
         <div class="xp-text">XP: <span id="current-xp">0</span><span id="xp-required-wrap"> / <span id="required-xp">${requiredXP}</span></span><span class="xp-max" id="xp-max">MAX</span></div>
         <div class="xp-progress-bg">
           <div class="xp-progress-fill" id="xp-progress"></div>
@@ -235,6 +305,8 @@ class PokechiContentProvider {
         // Thresholds come from the extension host so this stays in step with
         // getRequiredXPForLevel in pokemon-state.ts.
         const XP_THRESHOLDS = ${xpThresholds};
+
+        const TYPE_BADGES = ${JSON.stringify(TYPE_BADGES)};
 
         function getRequiredXPForLevel(level) {
           if (XP_THRESHOLDS[level] !== undefined) {
@@ -283,6 +355,7 @@ class PokechiContentProvider {
           const nameEl = document.getElementById('pokemon-name');
           const nameTextEl = document.getElementById('pokemon-name-text');
           const starEl = document.getElementById('pokemon-shiny-star');
+          const typeBadgesEl = document.getElementById('pokemon-type-badges');
           if (nameEl && userPokemon) {
             if (userPokemon.level > 0) {
               if (nameTextEl) {
@@ -290,6 +363,13 @@ class PokechiContentProvider {
               }
               if (starEl) {
                 starEl.style.display = userPokemon.color === 'shiny' ? 'inline-flex' : 'none';
+              }
+              if (typeBadgesEl) {
+                const types = userPokemon.types || [];
+                typeBadgesEl.innerHTML = types.map(function (t) {
+                  const badge = TYPE_BADGES[t];
+                  return badge ? '<span class="type-badge type-' + t + '">' + badge.abbr + '</span>' : '';
+                }).join('');
               }
               nameEl.style.display = 'flex';
             } else {

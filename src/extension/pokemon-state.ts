@@ -1,6 +1,6 @@
 import * as vscode from 'vscode'
 import { Roster, RosterEntry, UserPokemon } from './types'
-import { PokemonColor, PokemonType } from '../common/types'
+import { PokemonColor, PokemonElementType, PokemonType } from '../common/types'
 import { StateStore } from './state-store'
 import {
   EvolutionLine,
@@ -42,6 +42,11 @@ function getPokemonName(pokemonType: PokemonType): string {
   return pokemonData ? pokemonData.name : pokemonType
 }
 
+function getPokemonTypes(pokemonType: PokemonType): PokemonElementType[] {
+  const pokemonData = POKEMON_DATA[pokemonType]
+  return pokemonData ? pokemonData.types : []
+}
+
 let _store: StateStore | undefined
 
 function store(context: vscode.ExtensionContext): StateStore {
@@ -77,6 +82,9 @@ export class PokemonState {
     }
     if (pokemon && pokemon.canGainXP === undefined) {
       pokemon.canGainXP = true
+    }
+    if (pokemon && pokemon.types === undefined) {
+      pokemon.types = getPokemonTypes(pokemon.type)
     }
     return pokemon
   }
@@ -182,6 +190,7 @@ export class PokemonState {
       name: getPokemonName(entry.type),
       level: entry.level,
       xp: entry.xp,
+      types: getPokemonTypes(entry.type),
       evolutionLine: [evolutionLine.base, ...evolutionLine.evolutions],
       state: 'walking',
       scale: scaleFactor,
@@ -292,6 +301,7 @@ export class PokemonState {
       name: getPokemonName(basePokemon),
       level: 0,
       xp: 0,
+      types: getPokemonTypes(basePokemon),
       evolutionLine: evolutionLineArray,
       state: 'pokeball',
       scale: scaleFactor,
@@ -349,6 +359,7 @@ export class PokemonState {
     pokemon.id = getPokemonId(nextPokemon)
     pokemon.type = nextPokemon
     pokemon.name = getPokemonName(nextPokemon)
+    pokemon.types = getPokemonTypes(nextPokemon)
     pokemon.level = nextLevel
     pokemon.xp = 0
     pokemon.state = nextLevel === 1 ? 'idle' : 'walking'
