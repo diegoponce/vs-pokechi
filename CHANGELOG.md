@@ -2,6 +2,25 @@
 
 All notable changes to the Pokechi extension are documented here.
 
+## [1.2.0]
+
+### Added
+
+- **Shiny Pokémon**: every species can hatch shiny, at a 5% chance. The colour sticks through evolution, and the Pokechidex counts your shinies separately. Cards for a species you have caught shiny get a sparkle toggle to switch the preview, and bring it out in whichever colour is showing.
+- **Unown**: all 28 forms (A-Z, `!` and `?`), which were missing from the dex entirely. The Pokechidex now covers 416 species.
+- **Rarity tiers**: 24 legendary-class species are pulled out of the ordinary pool and given their own much longer odds — mythical ~0.5%, legendary ~1%, sub-legendary ~2%. Their Pokechidex cards get a rarity-coloured border, never shown while locked so it cannot give away how rare something you have not met is.
+- **Elemental types**: every species is tagged with its real typing as of Generation III, so no Fairy — Clefairy, Marill and Togepi keep their original types. Coloured type badges show on discovered cards and next to your Pokémon's name.
+- **Lifetime XP counter** in the Pokechidex header, alongside the discovered and shiny counts.
+
+### Changed
+
+- Picking a Pokémon in the Pokechidex now brings out **exactly the stage you clicked**. If it is not the stage that line has reached, it comes out as a read-only snapshot: it will not gain XP and it does not touch the progress you have already made on that line, so you can keep a Charmander on screen without losing your Charizard.
+
+### Fixed
+
+- Inline `style` attributes were being dropped by the webview content security policy, which a nonce does not cover, so your Pokémon's name rendered unstyled. All of them are real CSS rules now.
+- The build output is cleared before compiling. `tsc` never cleaned it, so files left over from older versions of the source were being shipped inside the package.
+
 ## [1.1.0]
 
 ### Added
