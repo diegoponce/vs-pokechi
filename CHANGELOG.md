@@ -2,6 +2,13 @@
 
 All notable changes to the Pokechi extension are documented here.
 
+## [1.2.1]
+
+### Fixed
+
+- The panel and the Explorer view no longer reset themselves every couple of seconds when more than one VS Code window is open. An update from another window rebuilt the whole webview, which restarted the walk from the left edge and replayed the XP bar from empty; it is pushed as a message now.
+- Two windows running different versions of the extension no longer overwrite each other in a loop. Reading the shared state kept only the fields the running version knew about, so an older build stripped anything newer and the newer one restored it, forever. Unknown fields are now preserved as they are found.
+
 ## [1.2.0]
 
 ### Added

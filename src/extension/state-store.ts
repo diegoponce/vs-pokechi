@@ -23,6 +23,32 @@ function emptyState(): PokechiState {
   return { pokemon: undefined, pokedex: [], shinyPokedex: [], roster: {}, totalXP: 0 }
 }
 
+// Keeps every key the file already had, including any a newer version of the
+// extension wrote and this one knows nothing about. Dropping them would make
+// two versions sharing a machine overwrite each other's data on every save.
+export function normalizeState(parsed: Partial<PokechiState>): PokechiState {
+  return {
+    ...parsed,
+    pokemon: parsed.pokemon,
+    pokedex: Array.isArray(parsed.pokedex) ? parsed.pokedex : [],
+    shinyPokedex: Array.isArray(parsed.shinyPokedex) ? parsed.shinyPokedex : [],
+    roster:
+      parsed.roster && typeof parsed.roster === 'object' ? parsed.roster : {},
+    totalXP: typeof parsed.totalXP === 'number' ? parsed.totalXP : 0,
+  }
+}
+
+// The parts worth persisting an extra write for. Deliberately excludes the
+// active pokemon, whose presentational fields churn constantly.
+function durableSignature(state: PokechiState): string {
+  return JSON.stringify({
+    pokedex: state.pokedex.slice().sort(),
+    shinyPokedex: state.shinyPokedex.slice().sort(),
+    roster: state.roster,
+    totalXP: state.totalXP,
+  })
+}
+
 // Progress within a level only ever grows, so the further along entry wins.
 function isAhead(
   left: { level: number; xp: number },
@@ -80,7 +106,9 @@ export function mergeStates(local: PokechiState, remote: PokechiState): PokechiS
   // one that has seen the most of the combined history.
   const totalXP = Math.max(local.totalXP || 0, remote.totalXP || 0)
 
-  return { pokemon, pokedex, shinyPokedex, roster, totalXP }
+  // Spreading both sides first keeps any key neither this version nor the
+  // merge rules know about.
+  return { ...local, ...remote, pokemon, pokedex, shinyPokedex, roster, totalXP }
 }
 
 export class StateStore {
@@ -88,6 +116,7 @@ export class StateStore {
   private filePath: string
   private writeTimer: NodeJS.Timeout | undefined
   private lastWritten = ''
+  private answeredSignature: string | undefined
   private watcher: vscode.FileSystemWatcher | undefined
   private onExternalChange: (() => void) | undefined
 
@@ -117,6 +146,13 @@ export class StateStore {
 
   // Marks the in-memory state as changed. The actual write is batched.
   save(): void {
+    // A real local change, so it is worth answering the other window again
+    // even if it keeps sending the same thing.
+    this.answeredSignature = undefined
+    this.scheduleWrite()
+  }
+
+  private scheduleWrite(): void {
     if (this.writeTimer) {
       return
     }
@@ -159,14 +195,7 @@ export class StateStore {
       }
       const raw = fs.readFileSync(this.filePath, 'utf8')
       this.lastWritten = raw
-      const parsed = JSON.parse(raw) as PokechiState
-      return {
-        pokemon: parsed.pokemon,
-        pokedex: Array.isArray(parsed.pokedex) ? parsed.pokedex : [],
-        shinyPokedex: Array.isArray(parsed.shinyPokedex) ? parsed.shinyPokedex : [],
-        roster: parsed.roster && typeof parsed.roster === 'object' ? parsed.roster : {},
-        totalXP: typeof parsed.totalXP === 'number' ? parsed.totalXP : 0,
-      }
+      return normalizeState(JSON.parse(raw))
     } catch (error) {
       console.error('Pokechi: could not read state, starting fresh', error)
       return undefined
@@ -217,18 +246,22 @@ export class StateStore {
       return
     }
 
-    this.state = mergeStates(this.state, {
-      pokemon: remote.pokemon,
-      pokedex: Array.isArray(remote.pokedex) ? remote.pokedex : [],
-      shinyPokedex: Array.isArray(remote.shinyPokedex) ? remote.shinyPokedex : [],
-      roster: remote.roster && typeof remote.roster === 'object' ? remote.roster : {},
-      totalXP: typeof remote.totalXP === 'number' ? remote.totalXP : 0,
-    })
+    const incoming = normalizeState(remote)
+    this.state = mergeStates(this.state, incoming)
 
-    // The merge can hold things the other window never had, a species only we
-    // had discovered for instance, so hand the union back.
-    if (JSON.stringify(this.state) !== raw) {
-      this.save()
+    // Write back only when the merge recovered something durable the other
+    // window did not have, and only once per distinct thing it sends. An older
+    // build that drops fields it does not know about would otherwise strip
+    // them on every save, this one would restore them every time, and the two
+    // would write to each other forever. Answering once leaves the data intact
+    // here and lets it settle.
+    const incomingSignature = durableSignature(incoming)
+    if (
+      durableSignature(this.state) !== incomingSignature &&
+      this.answeredSignature !== incomingSignature
+    ) {
+      this.answeredSignature = incomingSignature
+      this.scheduleWrite()
     }
 
     this.onExternalChange?.()

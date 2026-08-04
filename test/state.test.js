@@ -51,7 +51,7 @@ Module._load = function (request) {
 }
 
 const { PokemonState } = require(path.join(OUT, 'extension/pokemon-state.js'))
-const { mergeStates } = require(path.join(OUT, 'extension/state-store.js'))
+const { mergeStates, normalizeState } = require(path.join(OUT, 'extension/state-store.js'))
 
 function makeContext(dir) {
   const memory = new Map()
@@ -347,6 +347,41 @@ test('roster entries keep whichever side is further along', () => {
   )
   assert.strictEqual(merged.roster.charmander.level, 3)
   assert.strictEqual(merged.roster.pikachu.xp, 5)
+})
+
+// --- sharing a machine with another version ---------------------------------
+console.log('\nsharing a machine with another version')
+
+test('reading keeps fields this version does not know about', () => {
+  const kept = normalizeState({ pokedex: ['pikachu'], somethingNewer: [1, 2] })
+  assert.deepStrictEqual(kept.somethingNewer, [1, 2])
+})
+
+test('merging keeps fields this version does not know about', () => {
+  const merged = mergeStates(
+    normalizeState({ pokedex: [], futureField: 'mine' }),
+    normalizeState({ pokedex: [] })
+  )
+  assert.strictEqual(merged.futureField, 'mine')
+})
+
+test('defaults are still applied to the fields it does know', () => {
+  const fixed = normalizeState({ pokedex: 'not an array', totalXP: 'nope' })
+  assert.deepStrictEqual(fixed.pokedex, [])
+  assert.strictEqual(fixed.totalXP, 0)
+})
+
+test('an older build stripping a field does not cost the data', () => {
+  const mine = normalizeState({
+    pokedex: ['vulpix'],
+    shinyPokedex: ['vulpix'],
+    totalXP: 5000,
+  })
+  // What an older version writes back once it has dropped what it cannot read.
+  const stripped = normalizeState({ pokedex: ['vulpix'] })
+  const merged = mergeStates(mine, stripped)
+  assert.deepStrictEqual(merged.shinyPokedex, ['vulpix'])
+  assert.strictEqual(merged.totalXP, 5000)
 })
 
 fs.rmSync(storageDir, { recursive: true, force: true })
