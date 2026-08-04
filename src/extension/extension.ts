@@ -663,10 +663,16 @@ function applyScaleFactor(context: vscode.ExtensionContext, scale: number) {
 function adoptSharedState(context: vscode.ExtensionContext) {
   const pokemon = PokemonState.getPokemon(context)
 
-  if (getConfigurationPosition() === 'panel') {
-    PokechiState.panel?.updateContent()
-  } else {
-    PokechiState.explorerView?.updateContent()
+  // Pushed as a message rather than rebuilt. Reassigning the webview HTML
+  // reloads the whole thing, which restarts the walk from the left edge and
+  // replays the XP bar from empty - visible as the view resetting itself
+  // every time the other window saves.
+  if (pokemon) {
+    if (getConfigurationPosition() === 'panel') {
+      PokechiState.panel?.updateViews(pokemon, true)
+    } else {
+      PokechiState.explorerView?.updateViews(pokemon, true)
+    }
   }
 
   if (pokemon && PokechiState.panel?.panel) {
