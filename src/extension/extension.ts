@@ -4,7 +4,7 @@ import { PokedexPanel } from './pokedex-panel'
 import { generateNonce } from './nonce'
 import { UserPokemon, Position } from './types'
 import { PokemonColor, PokemonElementType, PokemonType } from '../common/types'
-import { SPARKLE_ICON } from '../common/icons'
+import { SPARKLE_ICON, getSparkleBurstMarkup, getSparkleBurstCssRules } from '../common/icons'
 import { TYPE_BADGES, getTypeBadgeCssRules } from '../common/type-badges'
 import { XPTracker, setUpdateCallbacks } from './xp-tracker'
 
@@ -251,6 +251,7 @@ class PokechiContentProvider {
           flex-shrink: 0;
         }
         ${getTypeBadgeCssRules()}
+        ${getSparkleBurstCssRules()}
       </style>
     </head>
     <body>
@@ -283,6 +284,7 @@ class PokechiContentProvider {
           </div>
           <div id="pokemon-container">
             <img id="pokemon" nonce="${nonce}" />
+            <div class="sparkle-burst" id="shiny-burst">${getSparkleBurstMarkup()}</div>
           </div>
         </div>
       </div>
@@ -577,7 +579,7 @@ class PokechiViewProvider
       ],
     }
 
-    this.updateContent()
+    this.updateContent(true)
 
     webviewView.webview.onDidReceiveMessage((data) => {
       switch (data.command) {
@@ -589,12 +591,17 @@ class PokechiViewProvider
 
     webviewView.onDidChangeVisibility(() => {
       if (webviewView.visible) {
-        this.updateContent()
+        this.updateContent(true)
       }
     })
   }
 
-  updateContent() {
+  // isRoutineRedraw covers rebuilds that are not a genuine reveal - the
+  // webview being resolved for the first time or regaining visibility -
+  // where any already-hatched pokemon (level > 0, which after a Pokedex
+  // selection now includes a fresh shiny sparkle) must not replay its
+  // transition just because the sidebar was hidden and shown again.
+  updateContent(isRoutineRedraw = false) {
     if (!this._view) {
       return
     }
@@ -611,7 +618,7 @@ class PokechiViewProvider
 
       const pokemon = PokemonState.getPokemon(this._context)
       if (pokemon) {
-        if (_isViewSwitching || pokemon.level > 0) {
+        if (_isViewSwitching || isRoutineRedraw) {
           pokemon.isTransitionIn = false
         }
 

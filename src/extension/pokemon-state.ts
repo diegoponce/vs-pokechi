@@ -267,7 +267,10 @@ export class PokemonState {
       evolutionLine: entry.evolutionLine,
       state: 'walking',
       scale: scaleFactor,
-      isTransitionIn: false,
+      // Resuming a line does not replay a hatch/evolve-style reveal, except
+      // for a shiny: bringing one out of the Pokedex is still worth the
+      // sparkle, unlike a plain recolor-free resume.
+      isTransitionIn: entry.color === PokemonColor.shiny,
       leftPosition: 0,
       direction: 'right',
       color: entry.color,

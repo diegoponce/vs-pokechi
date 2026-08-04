@@ -3,7 +3,7 @@ import { PokemonState } from './pokemon-state'
 import { generateNonce } from './nonce'
 import { PokemonColor, PokemonElementType, PokemonGeneration, PokemonType } from '../common/types'
 import { POKEMON_DATA } from '../common/pokemon-data'
-import { SPARKLE_ICON } from '../common/icons'
+import { SPARKLE_ICON, getSparkleBurstMarkup, getSparkleBurstCssRules } from '../common/icons'
 import { TYPE_BADGES, getTypeBadgeCssRules } from '../common/type-badges'
 
 function renderTypeBadges(types: PokemonElementType[] | undefined): string {
@@ -378,6 +378,7 @@ export class PokedexPanel {
                 alt=""
                 loading="lazy"
               />
+              <div class="sparkle-burst">${getSparkleBurstMarkup()}</div>
             </div>
             <div class="pokemon-name">${name}</div>
             <div class="type-badges">${typeBadgesHtml}</div>
@@ -742,6 +743,7 @@ export class PokedexPanel {
     }
 
     .sprite-frame {
+      position: relative;
       display: grid;
       place-items: center;
       flex: 1;
@@ -795,6 +797,7 @@ export class PokedexPanel {
     }
 
     ${getTypeBadgeCssRules()}
+    ${getSparkleBurstCssRules()}
 
     /* The badge takes the generation chip's slot rather than stacking under it:
        one chip per card, no overlap, and no reflow when a card becomes active.
@@ -1026,6 +1029,31 @@ export class PokedexPanel {
         sprite.dataset.showingShiny = showingShiny ? '0' : '1';
         toggle.classList.toggle('is-shiny-active', !showingShiny);
         toggle.setAttribute('aria-pressed', showingShiny ? 'false' : 'true');
+
+        // Only switching into shiny is worth the sparkle - toggling back to
+        // default is not a reveal.
+        if (!showingShiny) {
+          playShinyBurst(wrapper);
+        }
+      }
+
+      function playShinyBurst(wrapper) {
+        var burst = wrapper && wrapper.querySelector('.sparkle-burst');
+        if (!burst) {
+          return;
+        }
+
+        // Removing and immediately re-adding the class in the same tick
+        // would be a no-op, so the reflow in between forces the browser to
+        // notice it was ever gone and actually restart the animation.
+        burst.classList.remove('is-active');
+        void burst.offsetWidth;
+        burst.classList.add('is-active');
+
+        clearTimeout(burst._hideTimer);
+        burst._hideTimer = setTimeout(function () {
+          burst.classList.remove('is-active');
+        }, 1000);
       }
 
       // Keeps a card's sprite/toggle in step with whatever is actually shown
