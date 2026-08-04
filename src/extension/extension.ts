@@ -3,11 +3,13 @@ import { PokemonState, getRequiredXPForLevel } from './pokemon-state'
 import { PokedexPanel } from './pokedex-panel'
 import { generateNonce } from './nonce'
 import { UserPokemon, Position } from './types'
-import { PokemonType } from '../common/types'
+import { PokemonColor, PokemonType } from '../common/types'
+import { SPARKLE_ICON } from '../common/icons'
 import { XPTracker, setUpdateCallbacks } from './xp-tracker'
 
 interface PokemonSelectionFromPokedex {
   pokemonType: PokemonType
+  color?: PokemonColor
 }
 
 let _isViewSwitching = false
@@ -189,7 +191,7 @@ class PokechiContentProvider {
     </head>
     <body>
       <div class="xp-container">
-        <div class="pokemon-name" id="pokemon-name" style="color: white; font-size: 14px; margin-bottom: 4px; font-weight: bold; display: ${pokemon && pokemon.level > 0 ? 'block' : 'none'};">${pokemon && pokemon.level > 0 ? pokemon.name : ''}</div>
+        <div class="pokemon-name" id="pokemon-name" style="color: white; font-size: 14px; margin-bottom: 4px; font-weight: bold; align-items: center; gap: 4px; display: ${pokemon && pokemon.level > 0 ? 'flex' : 'none'};"><span id="pokemon-name-text">${pokemon && pokemon.level > 0 ? pokemon.name : ''}</span><span id="pokemon-shiny-star" style="color: #FFD700; display: ${pokemon && pokemon.level > 0 && pokemon.color === 'shiny' ? 'inline-flex' : 'none'};">${SPARKLE_ICON}</span></div>
         <div class="xp-text">XP: <span id="current-xp">0</span><span id="xp-required-wrap"> / <span id="required-xp">${requiredXP}</span></span><span class="xp-max" id="xp-max">MAX</span></div>
         <div class="xp-progress-bg">
           <div class="xp-progress-fill" id="xp-progress"></div>
@@ -262,8 +264,10 @@ class PokechiContentProvider {
 
             // evolutionLine holds every stage, so the last level equals its
             // length. Species that never evolve reach it as soon as they hatch.
+            // A Pokedex snapshot of an earlier stage always reads as MAX too,
+            // since it is read-only and cannot gain any more XP.
             const line = userPokemon.evolutionLine;
-            const isFinalStage = Array.isArray(line) && (userPokemon.level || 0) >= line.length;
+            const isFinalStage = userPokemon.canGainXP === false || (Array.isArray(line) && (userPokemon.level || 0) >= line.length);
 
             if (requiredWrapEl && maxEl) {
               requiredWrapEl.style.display = isFinalStage ? 'none' : 'inline';
@@ -277,10 +281,17 @@ class PokechiContentProvider {
         
         function updatePokemonName(userPokemon) {
           const nameEl = document.getElementById('pokemon-name');
+          const nameTextEl = document.getElementById('pokemon-name-text');
+          const starEl = document.getElementById('pokemon-shiny-star');
           if (nameEl && userPokemon) {
             if (userPokemon.level > 0) {
-              nameEl.textContent = userPokemon.name;
-              nameEl.style.display = 'block';
+              if (nameTextEl) {
+                nameTextEl.textContent = userPokemon.name;
+              }
+              if (starEl) {
+                starEl.style.display = userPokemon.color === 'shiny' ? 'inline-flex' : 'none';
+              }
+              nameEl.style.display = 'flex';
             } else {
               nameEl.style.display = 'none';
             }
@@ -669,7 +680,8 @@ export function activate(context: vscode.ExtensionContext) {
       async (selection: PokemonSelectionFromPokedex) => {
         const pokemon = PokemonState.selectPokemonFromPokedex(
           context,
-          selection.pokemonType
+          selection.pokemonType,
+          selection.color
         )
 
         if (!pokemon) {
@@ -679,12 +691,26 @@ export function activate(context: vscode.ExtensionContext) {
           return
         }
 
-        if (pokemon.type !== selection.pokemonType) {
-          // The line was already raised further, and evolution only moves
-          // forward, so the saved stage is what comes out.
-          vscode.window.showInformationMessage(
-            `${pokemon.name} is the stage you had reached on that line.`
+        if (!pokemon.canGainXP) {
+          // Not the stage the line has actually reached: a read-only
+          // snapshot, so typing/saving will not grow it further. What to
+          // suggest next depends on what is left to discover on this line.
+          const stages = pokemon.evolutionLine as PokemonType[]
+          const lineFullyDiscovered = stages.every((stage) =>
+            PokemonState.isPokemonDiscovered(context, stage)
           )
+          const lineFullyShiny = stages.every((stage) =>
+            PokemonState.isPokemonShinyDiscovered(context, stage)
+          )
+
+          let message = `${pokemon.name} is shown at max here.`
+          if (!lineFullyDiscovered) {
+            message += ' Catch it again to keep raising that line.'
+          } else if (!lineFullyShiny) {
+            message += ' Catch it shiny to keep raising that line.'
+          }
+
+          vscode.window.showInformationMessage(message)
         }
 
         const position = getConfigurationPosition()

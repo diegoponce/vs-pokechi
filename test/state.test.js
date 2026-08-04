@@ -95,6 +95,9 @@ Object.assign(pokemon, {
   name: 'Charmander',
   id: 4,
   evolutionLine: ['charmander', 'charmeleon', 'charizard'],
+  // Fixed rather than left to the 5% shiny roll, so the roster snapshot
+  // asserted later in this file is deterministic.
+  color: 'default',
 })
 
 test('a new pokemon starts as a pokeball at level 0', () => {
@@ -141,15 +144,27 @@ test('picking another species starts it at zero XP', () => {
   assert.strictEqual(pikachu.xp, 0)
 })
 
-test('coming back to a line restores its XP', () => {
-  const back = PokemonState.selectPokemonFromPokedex(context, 'charmander')
+test('picking the stage a line had reached resumes its real XP', () => {
+  const back = PokemonState.selectPokemonFromPokedex(context, 'charmeleon')
+  assert.strictEqual(back.type, 'charmeleon')
   assert.strictEqual(back.xp, 777)
   assert.strictEqual(back.level, 2)
+  assert.strictEqual(back.canGainXP, true)
 })
 
-test('it comes back at the stage it had reached, not the one clicked', () => {
+test('picking an earlier stage of that line shows exactly that stage, at max, read-only', () => {
   const back = PokemonState.selectPokemonFromPokedex(context, 'charmander')
-  assert.strictEqual(back.type, 'charmeleon')
+  assert.strictEqual(back.type, 'charmander')
+  assert.strictEqual(back.level, 1)
+  assert.strictEqual(back.canGainXP, false)
+  assert.strictEqual(back.xp, PokemonState.getRequiredXP(back))
+})
+
+test('viewing an earlier stage does not overwrite the line real progress', () => {
+  PokemonState.rememberActivePokemon(context)
+  const roster = PokemonState.getRoster(context)
+  assert.strictEqual(roster.charmander.type, 'charmeleon')
+  assert.strictEqual(roster.charmander.xp, 777)
 })
 
 // --- species that never evolve ----------------------------------------------
@@ -172,6 +187,71 @@ test('a mid stage pokemon still has an evolution left', () => {
   assert.strictEqual(PokemonState.hasFurtherEvolution(back), true)
 })
 
+// --- shiny pokemon -----------------------------------------------------------
+console.log('\nshiny pokemon')
+
+test('a new pokemon carries a color and can gain XP', () => {
+  const fresh = PokemonState.createNewPokemon(context)
+  assert.ok(fresh.color === 'default' || fresh.color === 'shiny')
+  assert.strictEqual(fresh.canGainXP, true)
+})
+
+test('picking a card asks for a color, honored only if that color is unlocked', () => {
+  PokemonState.discoverPokemon(context, 'meowth', 'shiny')
+
+  const shiny = PokemonState.selectPokemonFromPokedex(context, 'meowth', 'shiny')
+  assert.strictEqual(shiny.color, 'shiny')
+
+  const backToDefault = PokemonState.selectPokemonFromPokedex(context, 'meowth', 'default')
+  assert.strictEqual(backToDefault.color, 'default')
+})
+
+test('requesting shiny for a species never caught shiny falls back to default', () => {
+  PokemonState.discoverPokemon(context, 'rattata', 'default')
+  const rattata = PokemonState.selectPokemonFromPokedex(context, 'rattata', 'shiny')
+  assert.strictEqual(rattata.color, 'default')
+})
+
+test('discovering a pokemon as shiny unlocks both its default and shiny sprite', () => {
+  PokemonState.discoverPokemon(context, 'eevee', 'shiny')
+  assert.strictEqual(PokemonState.isPokemonDiscovered(context, 'eevee'), true)
+  assert.strictEqual(PokemonState.isPokemonShinyDiscovered(context, 'eevee'), true)
+})
+
+test('discovering a pokemon as default does not unlock its shiny sprite', () => {
+  PokemonState.discoverPokemon(context, 'growlithe', 'default')
+  assert.strictEqual(PokemonState.isPokemonDiscovered(context, 'growlithe'), true)
+  assert.strictEqual(PokemonState.isPokemonShinyDiscovered(context, 'growlithe'), false)
+})
+
+test('evolving a shiny pokemon discovers its next stage as shiny too', () => {
+  const shinyVulpix = PokemonState.createNewPokemon(context)
+  Object.assign(shinyVulpix, {
+    type: 'vulpix',
+    name: 'Vulpix',
+    id: 37,
+    evolutionLine: ['vulpix', 'ninetales'],
+    color: 'shiny',
+  })
+  PokemonState.addXP(shinyVulpix, PokemonState.getRequiredXP(shinyVulpix))
+  PokemonState.evolvePokemon(context, shinyVulpix)
+  PokemonState.addXP(shinyVulpix, PokemonState.getRequiredXP(shinyVulpix))
+  PokemonState.evolvePokemon(context, shinyVulpix)
+
+  assert.strictEqual(shinyVulpix.type, 'ninetales')
+  assert.strictEqual(PokemonState.isPokemonShinyDiscovered(context, 'ninetales'), true)
+})
+
+// --- total XP -----------------------------------------------------------
+console.log('\ntotal XP')
+
+test('total XP is a running lifetime counter', () => {
+  const before = PokemonState.getTotalXP(context)
+  PokemonState.addTotalXP(context, 42)
+  PokemonState.addTotalXP(context, 8)
+  assert.strictEqual(PokemonState.getTotalXP(context), before + 50)
+})
+
 // --- persistence ------------------------------------------------------------
 console.log('\npersistence')
 
@@ -184,8 +264,10 @@ test('state reaches disk on flush', () => {
     type: 'charmeleon',
     level: 2,
     xp: 777,
+    color: 'default',
   })
   assert.ok(stored.pokedex.indexOf('pikachu') >= 0)
+  assert.strictEqual(stored.totalXP, PokemonState.getTotalXP(context))
 })
 
 // --- merging between windows ------------------------------------------------
@@ -197,6 +279,22 @@ test('the pokedex is a union of both windows', () => {
     { pokemon: undefined, pokedex: ['squirtle'], roster: {} }
   )
   assert.deepStrictEqual(merged.pokedex.sort(), ['bulbasaur', 'squirtle'])
+})
+
+test('the shiny pokedex is a union of both windows', () => {
+  const merged = mergeStates(
+    { pokemon: undefined, pokedex: [], shinyPokedex: ['bulbasaur'], roster: {} },
+    { pokemon: undefined, pokedex: [], shinyPokedex: ['squirtle'], roster: {} }
+  )
+  assert.deepStrictEqual(merged.shinyPokedex.sort(), ['bulbasaur', 'squirtle'])
+})
+
+test('total XP takes the higher of the two windows rather than summing', () => {
+  const merged = mergeStates(
+    { pokemon: undefined, pokedex: [], roster: {}, totalXP: 100 },
+    { pokemon: undefined, pokedex: [], roster: {}, totalXP: 30 }
+  )
+  assert.strictEqual(merged.totalXP, 100)
 })
 
 test('the higher XP wins for the same species', () => {

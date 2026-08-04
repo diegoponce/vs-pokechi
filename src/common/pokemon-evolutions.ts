@@ -1,4 +1,4 @@
-import { PokemonType } from './types'
+import { PokemonColor, PokemonType } from './types'
 
 export interface EvolutionLine {
   base: PokemonType
@@ -283,6 +283,14 @@ export function getRandomBasePokemon(): PokemonType {
       ? SINGLE_STAGE_SPECIES
       : MULTI_STAGE_EVOLUTION_LINES
   return pickRandomBase(pool)
+}
+
+const SHINY_SPAWN_CHANCE = 0.05
+
+export function getRandomPokemonColor(): PokemonColor {
+  return Math.random() < SHINY_SPAWN_CHANCE
+    ? PokemonColor.shiny
+    : PokemonColor.default
 }
 
 export function hasFurtherEvolution(

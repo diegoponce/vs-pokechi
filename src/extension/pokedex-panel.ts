@@ -1,8 +1,9 @@
 import * as vscode from 'vscode'
 import { PokemonState } from './pokemon-state'
 import { generateNonce } from './nonce'
-import { PokemonGeneration, PokemonType } from '../common/types'
+import { PokemonColor, PokemonGeneration, PokemonType } from '../common/types'
 import { POKEMON_DATA } from '../common/pokemon-data'
+import { SPARKLE_ICON } from '../common/icons'
 
 interface PokedexEntry {
   type: PokemonType
@@ -40,7 +41,10 @@ function getGenerationLabel(generation: PokemonGeneration): string {
   return `Gen ${generation}`
 }
 
-function getSpritePath(type: PokemonType): string {
+function getSpritePath(
+  type: PokemonType,
+  color: PokemonColor = PokemonColor.default
+): string {
   const pokemonData = POKEMON_DATA[type]
   if (!pokemonData) {
     return 'pokeball.gif'
@@ -53,7 +57,28 @@ function getSpritePath(type: PokemonType): string {
     generation = 'gen3'
   }
 
-  return `${generation}/${type}/default_idle_8fps.gif`
+  const colorPrefix = color === PokemonColor.shiny ? 'shiny' : 'default'
+  return `${generation}/${type}/${colorPrefix}_idle_8fps.gif`
+}
+
+const ABBREVIATION_UNITS = ['', 'K', 'M', 'G', 'T', 'P']
+
+// Scientific-style abbreviation (1,200 -> 1.2K, 4,500,000 -> 4.5M, ...), used
+// for the lifetime XP counter so it stays readable at any size.
+function formatAbbreviatedNumber(value: number): string {
+  let scaled = value
+  let unitIndex = 0
+  while (Math.abs(scaled) >= 1000 && unitIndex < ABBREVIATION_UNITS.length - 1) {
+    scaled /= 1000
+    unitIndex++
+  }
+
+  if (unitIndex === 0) {
+    return String(Math.round(scaled))
+  }
+
+  const decimals = Math.abs(scaled) < 10 ? 2 : Math.abs(scaled) < 100 ? 1 : 0
+  return scaled.toFixed(decimals) + ABBREVIATION_UNITS[unitIndex]
 }
 
 // Names come from POKEMON_DATA, which contains apostrophes (Farfetch'd), so
@@ -69,13 +94,19 @@ function escapeHtml(value: string): string {
 
 interface PokedexSnapshot {
   discovered: PokemonType[]
+  shinyDiscovered: PokemonType[]
   activeType: PokemonType | undefined
+  activeColor: PokemonColor | undefined
 }
 
 export class PokedexPanel {
   panel: vscode.WebviewPanel | undefined
   private disposables: vscode.Disposable[] = []
   private lastSnapshot: string | undefined
+  // Tracked apart from lastSnapshot: XP changes on almost every keystroke,
+  // and diffing it together with the rest would force a full grid message
+  // that often, defeating the point of the cheap refresh path.
+  private lastTotalXP: number | undefined
 
   constructor(private readonly context: vscode.ExtensionContext) {}
 
@@ -109,7 +140,10 @@ export class PokedexPanel {
             if (message.pokemonType) {
               void vscode.commands.executeCommand(
                 'pokechi.selectPokemonFromPokedex',
-                { pokemonType: message.pokemonType }
+                {
+                  pokemonType: message.pokemonType,
+                  color: message.isShiny ? PokemonColor.shiny : PokemonColor.default,
+                }
               )
             }
             break
@@ -124,6 +158,7 @@ export class PokedexPanel {
   dispose(): void {
     this.panel = undefined
     this.lastSnapshot = undefined
+    this.lastTotalXP = undefined
     this.disposables.forEach((disposable) => disposable.dispose())
     this.disposables = []
   }
@@ -133,10 +168,13 @@ export class PokedexPanel {
 
     return {
       discovered: PokemonState.getPokedex(this.context),
+      shinyDiscovered: PokemonState.getShinyPokedex(this.context),
       // A pokemon still inside its Pokeball has not been revealed yet, so it
       // must not light up its card in the grid.
       activeType:
         activePokemon && activePokemon.level > 0 ? activePokemon.type : undefined,
+      activeColor:
+        activePokemon && activePokemon.level > 0 ? activePokemon.color : undefined,
     }
   }
 
@@ -163,6 +201,7 @@ export class PokedexPanel {
 
     const snapshot = this.getSnapshot()
     this.lastSnapshot = JSON.stringify(snapshot)
+    this.lastTotalXP = PokemonState.getTotalXP(this.context)
     this.setTitle(snapshot.discovered.length)
     this.panel.webview.html = this.getWebviewContent(this.panel.webview, snapshot)
   }
@@ -174,6 +213,15 @@ export class PokedexPanel {
       return
     }
 
+    const totalXP = PokemonState.getTotalXP(this.context)
+    if (totalXP !== this.lastTotalXP) {
+      this.lastTotalXP = totalXP
+      this.panel.webview.postMessage({
+        command: 'pokedex-xp-update',
+        data: { totalXPText: formatAbbreviatedNumber(totalXP) },
+      })
+    }
+
     const snapshot = this.getSnapshot()
     const serialized = JSON.stringify(snapshot)
     if (serialized === this.lastSnapshot) {
@@ -183,20 +231,33 @@ export class PokedexPanel {
 
     const webview = this.panel.webview
     this.setTitle(snapshot.discovered.length)
+    const shinySet = new Set(snapshot.shinyDiscovered)
 
     this.panel.webview.postMessage({
       command: 'pokedex-update',
       data: {
         activeType: snapshot.activeType,
+        activeColor: snapshot.activeColor,
         discoveredCount: snapshot.discovered.length,
+        shinyDiscoveredCount: snapshot.shinyDiscovered.length,
         discovered: snapshot.discovered
           .filter((type) => POKEDEX_INDEX_BY_TYPE[type] !== undefined)
-          .map((type) => ({
-            index: POKEDEX_INDEX_BY_TYPE[type],
-            type,
-            name: POKEMON_DATA[type] ? POKEMON_DATA[type].name : type,
-            spriteUri: this.getSpriteUri(webview, getSpritePath(type)),
-          })),
+          .map((type) => {
+            const isShiny = shinySet.has(type)
+            return {
+              index: POKEDEX_INDEX_BY_TYPE[type],
+              type,
+              name: POKEMON_DATA[type] ? POKEMON_DATA[type].name : type,
+              spriteUri: this.getSpriteUri(
+                webview,
+                getSpritePath(type, PokemonColor.default)
+              ),
+              isShiny,
+              shinySpriteUri: isShiny
+                ? this.getSpriteUri(webview, getSpritePath(type, PokemonColor.shiny))
+                : undefined,
+            }
+          }),
       },
     })
   }
@@ -207,18 +268,29 @@ export class PokedexPanel {
   ): string {
     const nonce = generateNonce()
     const pokedex = new Set(snapshot.discovered)
+    const shinyPokedex = new Set(snapshot.shinyDiscovered)
     const lockedSpriteUri = this.getSpriteUri(webview, 'pokeball.gif')
     const discoveredCount = pokedex.size
+    const shinyDiscoveredCount = shinyPokedex.size
     const totalCount = POKEDEX_ENTRIES.length
+    const totalXPText = formatAbbreviatedNumber(PokemonState.getTotalXP(this.context))
 
     const cards = POKEDEX_ENTRIES.map((entry, index) => {
       const discovered = pokedex.has(entry.type)
+      const isShiny = discovered && shinyPokedex.has(entry.type)
       const isActive = snapshot.activeType === entry.type
+      // The card for whatever is currently out opens already showing the
+      // sprite it is actually displayed as, shiny or not.
+      const showsShinyByDefault = isActive && isShiny && snapshot.activeColor === PokemonColor.shiny
       // Locked cards carry no name, sprite or species id, so the grid never
       // spoils something the user has not met yet, not even in the DOM.
-      const spriteUri = discovered
-        ? this.getSpriteUri(webview, getSpritePath(entry.type))
+      const defaultSpriteUri = discovered
+        ? this.getSpriteUri(webview, getSpritePath(entry.type, PokemonColor.default))
         : lockedSpriteUri
+      const shinySpriteUri = isShiny
+        ? this.getSpriteUri(webview, getSpritePath(entry.type, PokemonColor.shiny))
+        : ''
+      const initialSpriteUri = showsShinyByDefault ? shinySpriteUri : defaultSpriteUri
       const name = discovered ? escapeHtml(entry.name) : '???'
       const label = discovered
         ? `Show ${escapeHtml(entry.name)}${isActive ? ', currently active' : ''}`
@@ -226,28 +298,57 @@ export class PokedexPanel {
       const cry = POKEMON_DATA[entry.type] ? POKEMON_DATA[entry.type].cry : ''
       const tooltip = discovered && cry ? ` title="${escapeHtml(cry)}"` : ''
 
+      // The shiny toggle lives outside the card button: interactive elements
+      // cannot nest, and it must not trigger selecting the pokemon.
+      const shinyToggle = isShiny
+        ? `
+          <button
+            type="button"
+            class="shiny-toggle${showsShinyByDefault ? ' is-shiny-active' : ''}"
+            data-shiny-toggle
+            data-default-sprite="${defaultSpriteUri}"
+            data-shiny-sprite="${shinySpriteUri}"
+            aria-label="Toggle shiny sprite for ${escapeHtml(entry.name)}"
+            aria-pressed="${showsShinyByDefault ? 'true' : 'false'}"
+            title="Toggle shiny sprite"
+          >${SPARKLE_ICON}</button>
+        `
+        : ''
+
       return `
-        <button
-          type="button"
-          class="pokemon-card ${discovered ? 'discovered' : 'locked'}${isActive ? ' active' : ''}"
-          data-index="${index}"
-          data-generation="${entry.generation}"
-          data-name="${discovered ? escapeHtml(entry.name.toLowerCase()) : ''}"
-          data-number="${padPokemonId(entry.id)}"
-          ${discovered ? `data-pokemon-type="${entry.type}"` : 'disabled'}
-          aria-pressed="${isActive ? 'true' : 'false'}"
-          aria-label="${label}"${tooltip}
-        >
-          <div class="card-top">
-            <span class="pokemon-id">#${padPokemonId(entry.id)}</span>
-            <span class="generation-chip">${getGenerationLabel(entry.generation)}</span>
-            <span class="active-badge">Active</span>
-          </div>
-          <div class="sprite-frame">
-            <img class="sprite" src="${spriteUri}" alt="" loading="lazy" />
-          </div>
-          <div class="pokemon-name">${name}</div>
-        </button>
+        <div class="pokemon-card-wrapper">
+          <button
+            type="button"
+            class="pokemon-card ${discovered ? 'discovered' : 'locked'}${isActive ? ' active' : ''}"
+            data-index="${index}"
+            data-generation="${entry.generation}"
+            data-name="${discovered ? escapeHtml(entry.name.toLowerCase()) : ''}"
+            data-number="${padPokemonId(entry.id)}"
+            data-has-shiny="${isShiny ? '1' : '0'}"
+            ${discovered ? `data-pokemon-type="${entry.type}"` : 'disabled'}
+            aria-pressed="${isActive ? 'true' : 'false'}"
+            aria-label="${label}"${tooltip}
+          >
+            <div class="card-top">
+              <span class="pokemon-id">#${padPokemonId(entry.id)}</span>
+              <span class="generation-chip">${getGenerationLabel(entry.generation)}</span>
+              <span class="active-badge">Active</span>
+            </div>
+            <div class="sprite-frame">
+              <img
+                class="sprite"
+                src="${initialSpriteUri}"
+                data-default-sprite="${defaultSpriteUri}"
+                data-shiny-sprite="${shinySpriteUri}"
+                data-showing-shiny="${showsShinyByDefault ? '1' : '0'}"
+                alt=""
+                loading="lazy"
+              />
+            </div>
+            <div class="pokemon-name">${name}</div>
+          </button>
+          ${shinyToggle}
+        </div>
       `
     }).join('')
 
@@ -318,6 +419,20 @@ export class PokedexPanel {
       font-size: 12px;
       margin: 0;
       max-width: 62ch;
+      /* Clamped rather than left to wrap freely, so a narrow panel cannot
+         grow the header past a couple of lines. */
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    .counters {
+      flex: 0 0 auto;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
     }
 
     .counter {
@@ -421,7 +536,7 @@ export class PokedexPanel {
       border-radius: 8px;
     }
 
-    .pokemon-card[hidden] {
+    .pokemon-card-wrapper[hidden] {
       display: none;
     }
 
@@ -429,6 +544,10 @@ export class PokedexPanel {
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(132px, 1fr));
       gap: 10px;
+    }
+
+    .pokemon-card-wrapper {
+      position: relative;
     }
 
     .pokemon-card {
@@ -448,6 +567,40 @@ export class PokedexPanel {
       appearance: none;
       cursor: pointer;
       transition: background-color 120ms ease, border-color 120ms ease;
+    }
+
+    .shiny-toggle {
+      position: absolute;
+      top: 6px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 1;
+      display: grid;
+      place-items: center;
+      width: 20px;
+      height: 20px;
+      padding: 0;
+      border-radius: 999px;
+      border: 1px solid var(--vscode-widget-border, transparent);
+      background: var(--vscode-badge-background);
+      color: var(--vscode-badge-foreground);
+      cursor: pointer;
+      appearance: none;
+    }
+
+    .shiny-toggle:hover {
+      background: var(--vscode-button-background);
+      color: var(--vscode-button-foreground);
+    }
+
+    .shiny-toggle:focus-visible {
+      outline: 1px solid var(--accent);
+      outline-offset: 2px;
+    }
+
+    .shiny-toggle.is-shiny-active {
+      background: var(--vscode-button-background);
+      color: var(--vscode-button-foreground);
     }
 
     .pokemon-card.discovered:hover {
@@ -553,6 +706,15 @@ export class PokedexPanel {
       .header {
         flex-direction: column;
         align-items: flex-start;
+        gap: 8px;
+        padding-bottom: 8px;
+      }
+
+      /* flex-basis in a row layout reads as a minimum width, but once the
+         header switches to a column layout that same 260px is read as a
+         minimum HEIGHT instead, which is what was ballooning the header. */
+      .title-block {
+        flex: 1 1 auto;
       }
     }
   </style>
@@ -564,9 +726,19 @@ export class PokedexPanel {
         <h1>Pokechidex</h1>
         <p class="subtitle">Species you have met from a Pok&eacute;ball or an evolution. Pick one to bring it out &mdash; each line keeps its own XP, so nothing is lost when you switch.</p>
       </div>
-      <div class="counter">
-        <span class="counter-value" id="counter-value">${discoveredCount}/${totalCount}</span>
-        <span class="counter-label">Discovered</span>
+      <div class="counters">
+        <div class="counter">
+          <span class="counter-value" id="counter-value">${discoveredCount}/${totalCount}</span>
+          <span class="counter-label">Discovered</span>
+        </div>
+        <div class="counter">
+          <span class="counter-value" id="shiny-counter-value">${shinyDiscoveredCount}/${totalCount}</span>
+          <span class="counter-label">Shiny</span>
+        </div>
+        <div class="counter">
+          <span class="counter-value" id="total-xp-value">${totalXPText}</span>
+          <span class="counter-label">Total XP</span>
+        </div>
       </div>
     </header>
 
@@ -588,6 +760,10 @@ export class PokedexPanel {
           <input type="checkbox" id="only-discovered" />
           Discovered only
         </label>
+        <label class="filter-toggle">
+          <input type="checkbox" id="only-shiny" />
+          Shiny unlocked
+        </label>
       </div>
     </div>
 
@@ -608,9 +784,12 @@ export class PokedexPanel {
 
       var grid = document.querySelector('.grid');
       var counter = document.getElementById('counter-value');
+      var shinyCounter = document.getElementById('shiny-counter-value');
+      var totalXPEl = document.getElementById('total-xp-value');
       var search = document.getElementById('search');
       var emptyState = document.getElementById('empty-state');
       var onlyDiscovered = document.getElementById('only-discovered');
+      var onlyShiny = document.getElementById('only-shiny');
       var generation = 'all';
 
       function applyFilters() {
@@ -619,14 +798,21 @@ export class PokedexPanel {
         }
 
         var term = (search && search.value ? search.value : '').trim().toLowerCase();
-        var cards = grid.querySelectorAll('.pokemon-card');
+        var wrappers = grid.querySelectorAll('.pokemon-card-wrapper');
         var visible = 0;
 
-        Array.prototype.forEach.call(cards, function (card) {
+        Array.prototype.forEach.call(wrappers, function (wrapper) {
+          var card = wrapper.querySelector('.pokemon-card');
+          if (!card) {
+            return;
+          }
+
           var matchesGeneration =
             generation === 'all' || card.dataset.generation === generation;
           var matchesDiscovered =
             !onlyDiscovered || !onlyDiscovered.checked || card.classList.contains('discovered');
+          var matchesShiny =
+            !onlyShiny || !onlyShiny.checked || card.dataset.hasShiny === '1';
           // Undiscovered cards have no name to match on, so a search only ever
           // narrows down to what the user has already met.
           var matchesTerm =
@@ -634,8 +820,8 @@ export class PokedexPanel {
             (card.dataset.name && card.dataset.name.indexOf(term) >= 0) ||
             (card.dataset.number && card.dataset.number.indexOf(term) >= 0);
 
-          var show = matchesGeneration && matchesDiscovered && matchesTerm;
-          card.hidden = !show;
+          var show = matchesGeneration && matchesDiscovered && matchesShiny && matchesTerm;
+          wrapper.hidden = !show;
           if (show) {
             visible++;
           }
@@ -652,6 +838,10 @@ export class PokedexPanel {
 
       if (onlyDiscovered) {
         onlyDiscovered.addEventListener('change', applyFilters);
+      }
+
+      if (onlyShiny) {
+        onlyShiny.addEventListener('change', applyFilters);
       }
 
       Array.prototype.forEach.call(
@@ -672,16 +862,101 @@ export class PokedexPanel {
 
       if (grid) {
         grid.addEventListener('click', function (event) {
+          var toggle = event.target.closest('[data-shiny-toggle]');
+          if (toggle) {
+            // The toggle sits next to the card button, not inside it, but
+            // stop here anyway so a future markup change cannot make a
+            // shiny toggle click also select the pokemon.
+            event.stopPropagation();
+            toggleShinySprite(toggle);
+            return;
+          }
+
           var card = event.target.closest('.pokemon-card');
           if (!card || card.disabled) {
             return;
           }
 
+          var sprite = card.querySelector('.sprite');
+
           vscode.postMessage({
             command: 'show-pokemon',
-            pokemonType: card.dataset.pokemonType
+            pokemonType: card.dataset.pokemonType,
+            isShiny: !!sprite && sprite.dataset.showingShiny === '1'
           });
         });
+      }
+
+      function toggleShinySprite(toggle) {
+        var wrapper = toggle.closest('.pokemon-card-wrapper');
+        var sprite = wrapper && wrapper.querySelector('.sprite');
+        if (!sprite) {
+          return;
+        }
+
+        var showingShiny = sprite.dataset.showingShiny === '1';
+        var nextSrc = showingShiny ? sprite.dataset.defaultSprite : sprite.dataset.shinySprite;
+        if (!nextSrc) {
+          return;
+        }
+
+        sprite.src = nextSrc;
+        sprite.dataset.showingShiny = showingShiny ? '0' : '1';
+        toggle.classList.toggle('is-shiny-active', !showingShiny);
+        toggle.setAttribute('aria-pressed', showingShiny ? 'false' : 'true');
+      }
+
+      // Keeps a card's sprite/toggle in step with whatever is actually shown
+      // on screen. Only used for the active card: browsing other cards'
+      // sprites is a free cosmetic choice and must not be overridden.
+      function syncShinyState(card, isShiny) {
+        var wrapper = card.closest('.pokemon-card-wrapper');
+        var sprite = card.querySelector('.sprite');
+        var toggle = wrapper && wrapper.querySelector('[data-shiny-toggle]');
+        if (!sprite) {
+          return;
+        }
+
+        var targetSrc = isShiny ? sprite.dataset.shinySprite : sprite.dataset.defaultSprite;
+        if (targetSrc && sprite.src !== targetSrc) {
+          sprite.src = targetSrc;
+        }
+        sprite.dataset.showingShiny = isShiny ? '1' : '0';
+
+        if (toggle) {
+          toggle.classList.toggle('is-shiny-active', isShiny);
+          toggle.setAttribute('aria-pressed', isShiny ? 'true' : 'false');
+        }
+      }
+
+      // Adds the toggle next to a card that just became shiny-discovered.
+      // Already-shiny cards (and non-shiny ones) are left untouched.
+      function ensureShinyToggle(card, entry) {
+        if (!entry.isShiny || !entry.shinySpriteUri) {
+          return;
+        }
+
+        card.dataset.hasShiny = '1';
+
+        var sprite = card.querySelector('.sprite');
+        if (sprite) {
+          sprite.dataset.shinySprite = entry.shinySpriteUri;
+        }
+
+        var wrapper = card.closest('.pokemon-card-wrapper');
+        if (!wrapper || wrapper.querySelector('[data-shiny-toggle]')) {
+          return;
+        }
+
+        var toggle = document.createElement('button');
+        toggle.type = 'button';
+        toggle.className = 'shiny-toggle';
+        toggle.setAttribute('data-shiny-toggle', '');
+        toggle.setAttribute('aria-label', 'Toggle shiny sprite for ' + entry.name);
+        toggle.setAttribute('aria-pressed', 'false');
+        toggle.title = 'Toggle shiny sprite';
+        toggle.innerHTML = '${SPARKLE_ICON}';
+        wrapper.appendChild(toggle);
       }
 
       function unlock(card, entry) {
@@ -692,8 +967,11 @@ export class PokedexPanel {
         card.setAttribute('aria-label', 'Show ' + entry.name);
 
         var sprite = card.querySelector('.sprite');
-        if (sprite && entry.spriteUri && sprite.src !== entry.spriteUri) {
-          sprite.src = entry.spriteUri;
+        if (sprite && entry.spriteUri) {
+          sprite.dataset.defaultSprite = entry.spriteUri;
+          if (sprite.dataset.showingShiny !== '1' && sprite.src !== entry.spriteUri) {
+            sprite.src = entry.spriteUri;
+          }
         }
 
         card.dataset.name = entry.name.toLowerCase();
@@ -702,11 +980,24 @@ export class PokedexPanel {
         if (name) {
           name.textContent = entry.name;
         }
+
+        ensureShinyToggle(card, entry);
       }
 
       window.addEventListener('message', function (event) {
         var message = event.data;
-        if (!message || message.command !== 'pokedex-update') {
+        if (!message) {
+          return;
+        }
+
+        if (message.command === 'pokedex-xp-update') {
+          if (totalXPEl && message.data && typeof message.data.totalXPText === 'string') {
+            totalXPEl.textContent = message.data.totalXPText;
+          }
+          return;
+        }
+
+        if (message.command !== 'pokedex-update') {
           return;
         }
 
@@ -714,8 +1005,13 @@ export class PokedexPanel {
 
         (data.discovered || []).forEach(function (entry) {
           var card = grid && grid.querySelector('[data-index="' + entry.index + '"]');
-          if (card && card.classList.contains('locked')) {
+          if (!card) {
+            return;
+          }
+          if (card.classList.contains('locked')) {
             unlock(card, entry);
+          } else {
+            ensureShinyToggle(card, entry);
           }
         });
 
@@ -727,10 +1023,18 @@ export class PokedexPanel {
             !!data.activeType && card.dataset.pokemonType === data.activeType;
           card.classList.toggle('active', isActive);
           card.setAttribute('aria-pressed', isActive ? 'true' : 'false');
+
+          if (isActive) {
+            syncShinyState(card, data.activeColor === 'shiny');
+          }
         });
 
         if (counter && typeof data.discoveredCount === 'number') {
           counter.textContent = data.discoveredCount + '/${totalCount}';
+        }
+
+        if (shinyCounter && typeof data.shinyDiscoveredCount === 'number') {
+          shinyCounter.textContent = data.shinyDiscoveredCount + '/${totalCount}';
         }
 
         // A newly discovered species may now match the active filters.

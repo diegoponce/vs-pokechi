@@ -6,1057 +6,1057 @@ export const POKEMON_DATA: { [key: string]: PokemonConfig } = {
     name: 'Bulbasaur',
     generation: PokemonGeneration.Gen1,
     cry: 'Bulbasaur!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   ivysaur: {
     id: 2,
     name: 'Ivysaur',
     generation: PokemonGeneration.Gen1,
     cry: 'Ivysaur!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   venusaur: {
     id: 3,
     name: 'Venusaur',
     generation: PokemonGeneration.Gen1,
     cry: 'Venusaur!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   charmander: {
     id: 4,
     name: 'Charmander',
     generation: PokemonGeneration.Gen1,
     cry: 'Charmander!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   charmeleon: {
     id: 5,
     name: 'Charmeleon',
     generation: PokemonGeneration.Gen1,
     cry: 'Charmeleon!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   charizard: {
     id: 6,
     name: 'Charizard',
     generation: PokemonGeneration.Gen1,
     cry: 'Charizard!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   squirtle: {
     id: 7,
     name: 'Squirtle',
     generation: PokemonGeneration.Gen1,
     cry: 'Squritle!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   wartortle: {
     id: 8,
     name: 'Wartortle',
     generation: PokemonGeneration.Gen1,
     cry: 'Wartortle!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   blastoise: {
     id: 9,
     name: 'Blastoise',
     generation: PokemonGeneration.Gen1,
     cry: 'Blastoise!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   caterpie: {
     id: 10,
     name: 'Caterpie',
     generation: PokemonGeneration.Gen1,
     cry: 'Caterpie!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   metapod: {
     id: 11,
     name: 'Metapod',
     generation: PokemonGeneration.Gen1,
     cry: 'Metapod!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   butterfree: {
     id: 12,
     name: 'Butterfree',
     generation: PokemonGeneration.Gen1,
     cry: 'Butterfree!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   weedle: {
     id: 13,
     name: 'Weedle',
     generation: PokemonGeneration.Gen1,
     cry: 'Weedle!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   kakuna: {
     id: 14,
     name: 'Kakuna',
     generation: PokemonGeneration.Gen1,
     cry: 'Kakuna!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   beedrill: {
     id: 15,
     name: 'Beedrill',
     generation: PokemonGeneration.Gen1,
     cry: 'Beedrill!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   pidgey: {
     id: 16,
     name: 'Pidgey',
     generation: PokemonGeneration.Gen1,
     cry: 'Pidgey!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   pidgeotto: {
     id: 17,
     name: 'Pidgeotto',
     generation: PokemonGeneration.Gen1,
     cry: 'Pidgeotto!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   pidgeot: {
     id: 18,
     name: 'Pidgeot',
     generation: PokemonGeneration.Gen1,
     cry: 'Pidgeot!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   rattata: {
     id: 19,
     name: 'Rattata',
     generation: PokemonGeneration.Gen1,
     cry: 'Rattata!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   raticate: {
     id: 20,
     name: 'Raticate',
     generation: PokemonGeneration.Gen1,
     cry: 'Raticate!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   spearow: {
     id: 21,
     name: 'Spearow',
     generation: PokemonGeneration.Gen1,
     cry: 'Spearow!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   fearow: {
     id: 22,
     name: 'Fearow',
     generation: PokemonGeneration.Gen1,
     cry: 'Fearow!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   ekans: {
     id: 23,
     name: 'Ekans',
     generation: PokemonGeneration.Gen1,
     cry: 'Ekans!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   arbok: {
     id: 24,
     name: 'Arbok',
     generation: PokemonGeneration.Gen1,
     cry: 'Arbok!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   pikachu: {
     id: 25,
     name: 'Pikachu',
     generation: PokemonGeneration.Gen1,
     cry: 'Pikachu!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   raichu: {
     id: 26,
     name: 'Raichu',
     generation: PokemonGeneration.Gen1,
     cry: 'Raichu!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   sandshrew: {
     id: 27,
     name: 'Sandshrew',
     generation: PokemonGeneration.Gen1,
     cry: 'Sandshrew!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   sandslash: {
     id: 28,
     name: 'Sandslash',
     generation: PokemonGeneration.Gen1,
     cry: 'Sandslash!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   nidoran_female: {
     id: 29,
     name: 'Nidoran♀',
     generation: PokemonGeneration.Gen1,
     cry: 'Nidoran!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   nidorina: {
     id: 30,
     name: 'Nidorina',
     generation: PokemonGeneration.Gen1,
     cry: 'Nidorina!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   nidoqueen: {
     id: 31,
     name: 'Nidoqueen',
     generation: PokemonGeneration.Gen1,
     cry: 'Nidoqueen!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   nidoran_male: {
     id: 32,
     name: 'Nidoran♂',
     generation: PokemonGeneration.Gen1,
     cry: 'Nidoran!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   nidorino: {
     id: 33,
     name: 'Nidorino',
     generation: PokemonGeneration.Gen1,
     cry: 'Nidorino!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   nidoking: {
     id: 34,
     name: 'Nidoking',
     generation: PokemonGeneration.Gen1,
     cry: 'Nidoking!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   clefairy: {
     id: 35,
     name: 'Clefairy',
     generation: PokemonGeneration.Gen1,
     cry: 'Clefairy!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   clefable: {
     id: 36,
     name: 'Clefable',
     generation: PokemonGeneration.Gen1,
     cry: 'Clefable!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   vulpix: {
     id: 37,
     name: 'Vulpix',
     generation: PokemonGeneration.Gen1,
     cry: 'Vulpix!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   ninetales: {
     id: 38,
     name: 'Ninetales',
     generation: PokemonGeneration.Gen1,
     cry: 'Ninetales!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   jigglypuff: {
     id: 39,
     name: 'Jigglypuff',
     generation: PokemonGeneration.Gen1,
     cry: 'Jigglypuff!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   wigglytuff: {
     id: 40,
     name: 'Wigglytuff',
     generation: PokemonGeneration.Gen1,
     cry: 'Wigglytuff!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   zubat: {
     id: 41,
     name: 'Zubat',
     generation: PokemonGeneration.Gen1,
     cry: 'Zubat!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   golbat: {
     id: 42,
     name: 'Golbat',
     generation: PokemonGeneration.Gen1,
     cry: 'Golbat!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   oddish: {
     id: 43,
     name: 'Oddish',
     generation: PokemonGeneration.Gen1,
     cry: 'Oddish!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   gloom: {
     id: 44,
     name: 'Gloom',
     generation: PokemonGeneration.Gen1,
     cry: 'Gloom!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   vileplume: {
     id: 45,
     name: 'Vileplume',
     generation: PokemonGeneration.Gen1,
     cry: 'Vileplume!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   paras: {
     id: 46,
     name: 'Paras',
     generation: PokemonGeneration.Gen1,
     cry: 'Paras!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   parasect: {
     id: 47,
     name: 'Parasect',
     generation: PokemonGeneration.Gen1,
     cry: 'Parasect!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   venonat: {
     id: 48,
     name: 'Venonat',
     generation: PokemonGeneration.Gen1,
     cry: 'Venonat!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   venomoth: {
     id: 49,
     name: 'Venomoth',
     generation: PokemonGeneration.Gen1,
     cry: 'Venomoth!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   diglett: {
     id: 50,
     name: 'Diglett',
     generation: PokemonGeneration.Gen1,
     cry: 'Diglett!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   dugtrio: {
     id: 51,
     name: 'Dugtrio',
     generation: PokemonGeneration.Gen1,
     cry: 'Dugtrio!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   meowth: {
     id: 52,
     name: 'Meowth',
     generation: PokemonGeneration.Gen1,
     cry: 'Meowth!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   persian: {
     id: 53,
     name: 'Persian',
     generation: PokemonGeneration.Gen1,
     cry: 'Persian!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   psyduck: {
     id: 54,
     name: 'Psyduck',
     generation: PokemonGeneration.Gen1,
     cry: 'Psyduck!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   golduck: {
     id: 55,
     name: 'Golduck',
     generation: PokemonGeneration.Gen1,
     cry: 'Golduck!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   mankey: {
     id: 56,
     name: 'Mankey',
     generation: PokemonGeneration.Gen1,
     cry: 'Mankey!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   primeape: {
     id: 57,
     name: 'Primeape',
     generation: PokemonGeneration.Gen1,
     cry: 'Primeape!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   growlithe: {
     id: 58,
     name: 'Growlithe',
     generation: PokemonGeneration.Gen1,
     cry: 'Growlithe!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   arcanine: {
     id: 59,
     name: 'Arcanine',
     generation: PokemonGeneration.Gen1,
     cry: 'Arcanine!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   poliwag: {
     id: 60,
     name: 'Poliwag',
     generation: PokemonGeneration.Gen1,
     cry: 'Poliwag!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   poliwhirl: {
     id: 61,
     name: 'Poliwhirl',
     generation: PokemonGeneration.Gen1,
     cry: 'Poliwhirl!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   poliwrath: {
     id: 62,
     name: 'Poliwrath',
     generation: PokemonGeneration.Gen1,
     cry: 'Poliwrath!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   abra: {
     id: 63,
     name: 'Abra',
     generation: PokemonGeneration.Gen1,
     cry: 'Abra!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   kadabra: {
     id: 64,
     name: 'Kadabra',
     generation: PokemonGeneration.Gen1,
     cry: 'Kadabra!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   alakazam: {
     id: 65,
     name: 'Alakazam',
     generation: PokemonGeneration.Gen1,
     cry: 'Alakazam!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   machop: {
     id: 66,
     name: 'Machop',
     generation: PokemonGeneration.Gen1,
     cry: 'Machop!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   machoke: {
     id: 67,
     name: 'Machoke',
     generation: PokemonGeneration.Gen1,
     cry: 'Machoke!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   machamp: {
     id: 68,
     name: 'Machamp',
     generation: PokemonGeneration.Gen1,
     cry: 'Alakazam!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   bellsprout: {
     id: 69,
     name: 'Bellsprout',
     generation: PokemonGeneration.Gen1,
     cry: 'Bellsprout!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   weepinbell: {
     id: 70,
     name: 'Weepinbell',
     generation: PokemonGeneration.Gen1,
     cry: 'Weepinbell!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   victreebel: {
     id: 71,
     name: 'Victreebel',
     generation: PokemonGeneration.Gen1,
     cry: 'Victreebel!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   tentacool: {
     id: 72,
     name: 'Tentacool',
     generation: PokemonGeneration.Gen1,
     cry: 'Tentacool!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   tentacruel: {
     id: 73,
     name: 'Tentacruel',
     generation: PokemonGeneration.Gen1,
     cry: 'Tentacruel!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   geodude: {
     id: 74,
     name: 'Geodude',
     generation: PokemonGeneration.Gen1,
     cry: 'Geodude!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   graveler: {
     id: 75,
     name: 'Graveler',
     generation: PokemonGeneration.Gen1,
     cry: 'Graveler!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   golem: {
     id: 76,
     name: 'Golem',
     generation: PokemonGeneration.Gen1,
     cry: 'Golem!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   ponyta: {
     id: 77,
     name: 'Ponyta',
     generation: PokemonGeneration.Gen1,
     cry: 'Ponyta!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   rapidash: {
     id: 78,
     name: 'Rapidash',
     generation: PokemonGeneration.Gen1,
     cry: 'Rapidash!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   slowpoke: {
     id: 79,
     name: 'Slowpoke',
     generation: PokemonGeneration.Gen1,
     cry: 'Slowpoke!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   slowbro: {
     id: 80,
     name: 'Slowbro',
     generation: PokemonGeneration.Gen1,
     cry: 'Slowbro!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   magnemite: {
     id: 81,
     name: 'Magnemite',
     generation: PokemonGeneration.Gen1,
     cry: 'Magnemite!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   magneton: {
     id: 82,
     name: 'Magneton',
     generation: PokemonGeneration.Gen1,
     cry: 'Magneton!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   farfetchd: {
     id: 83,
     name: 'Farfetch\'d',
     generation: PokemonGeneration.Gen1,
     cry: 'Farfetch\'d!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   doduo: {
     id: 84,
     name: 'Doduo',
     generation: PokemonGeneration.Gen1,
     cry: 'Doduo!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   dodrio: {
     id: 85,
     name: 'Dodrio',
     generation: PokemonGeneration.Gen1,
     cry: 'Dodrio!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   seel: {
     id: 86,
     name: 'Seel',
     generation: PokemonGeneration.Gen1,
     cry: 'Seel!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   dewgong: {
     id: 87,
     name: 'Dewgong',
     generation: PokemonGeneration.Gen1,
     cry: 'Dewgong!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   grimer: {
     id: 88,
     name: 'Grimer',
     generation: PokemonGeneration.Gen1,
     cry: 'Grimer!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   muk: {
     id: 89,
     name: 'Muk',
     generation: PokemonGeneration.Gen1,
     cry: 'Muk!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   shellder: {
     id: 90,
     name: 'Shellder',
     generation: PokemonGeneration.Gen1,
     cry: 'Shellder!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   cloyster: {
     id: 91,
     name: 'Cloyster',
     generation: PokemonGeneration.Gen1,
     cry: 'Cloyster!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   gastly: {
     id: 92,
     name: 'Gastly',
     generation: PokemonGeneration.Gen1,
     cry: 'Gastly!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   haunter: {
     id: 93,
     name: 'Haunter',
     generation: PokemonGeneration.Gen1,
     cry: 'Haunter!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   gengar: {
     id: 94,
     name: 'Gengar',
     generation: PokemonGeneration.Gen1,
     cry: 'Gengar!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   onix: {
     id: 95,
     name: 'Onix',
     generation: PokemonGeneration.Gen1,
     cry: 'Onix!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   drowzee: {
     id: 96,
     name: 'Drowzee',
     generation: PokemonGeneration.Gen1,
     cry: 'Drowzee!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   hypno: {
     id: 97,
     name: 'Hypno',
     generation: PokemonGeneration.Gen1,
     cry: 'Hypno!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   krabby: {
     id: 98,
     name: 'Krabby',
     generation: PokemonGeneration.Gen1,
     cry: 'Krabby!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   kingler: {
     id: 99,
     name: 'Kingler',
     generation: PokemonGeneration.Gen1,
     cry: 'Kingler!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   voltorb: {
     id: 100,
     name: 'Voltorb',
     generation: PokemonGeneration.Gen1,
     cry: 'Voltorb!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   electrode: {
     id: 101,
     name: 'Electrode',
     generation: PokemonGeneration.Gen1,
     cry: 'Electrode!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   exeggcute: {
     id: 102,
     name: 'Exeggcute',
     generation: PokemonGeneration.Gen1,
     cry: 'Exeggcute!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   exeggutor: {
     id: 103,
     name: 'Exeggutor',
     generation: PokemonGeneration.Gen1,
     cry: 'Exeggutor!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   cubone: {
     id: 104,
     name: 'Cubone',
     generation: PokemonGeneration.Gen1,
     cry: 'Cubone!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   marowak: {
     id: 105,
     name: 'Marowak',
     generation: PokemonGeneration.Gen1,
     cry: 'Marowak!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   hitmonlee: {
     id: 106,
     name: 'Hitmonlee',
     generation: PokemonGeneration.Gen1,
     cry: 'Hitmonlee!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   hitmonchan: {
     id: 107,
     name: 'Hitmonchan',
     generation: PokemonGeneration.Gen1,
     cry: 'Hitmonchan!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   lickitung: {
     id: 108,
     name: 'Lickitung',
     generation: PokemonGeneration.Gen1,
     cry: 'Lickitung!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   koffing: {
     id: 109,
     name: 'Koffing',
     generation: PokemonGeneration.Gen1,
     cry: 'Koffing!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   weezing: {
     id: 110,
     name: 'Weezing',
     generation: PokemonGeneration.Gen1,
     cry: 'Weezing!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   rhyhorn: {
     id: 111,
     name: 'Rhyhorn',
     generation: PokemonGeneration.Gen1,
     cry: 'Rhyhorn!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   rhydon: {
     id: 112,
     name: 'Rhydon',
     generation: PokemonGeneration.Gen1,
     cry: 'Rhydon!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   chansey: {
     id: 113,
     name: 'Chansey',
     generation: PokemonGeneration.Gen1,
     cry: 'Chansey!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   tangela: {
     id: 114,
     name: 'Tangela',
     generation: PokemonGeneration.Gen1,
     cry: 'Tangela!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   kangaskhan: {
     id: 115,
     name: 'Kangaskhan',
     generation: PokemonGeneration.Gen1,
     cry: 'Kangaskhan!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   horsea: {
     id: 116,
     name: 'Horsea',
     generation: PokemonGeneration.Gen1,
     cry: 'Horsea!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   seadra: {
     id: 117,
     name: 'Seadra',
     generation: PokemonGeneration.Gen1,
     cry: 'Seadra!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   goldeen: {
     id: 118,
     name: 'Goldeen',
     generation: PokemonGeneration.Gen1,
     cry: 'Goldeen!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   seaking: {
     id: 119,
     name: 'Seaking',
     generation: PokemonGeneration.Gen1,
     cry: 'Seaking!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   staryu: {
     id: 120,
     name: 'Staryu',
     generation: PokemonGeneration.Gen1,
     cry: 'Staryu!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   starmie: {
     id: 121,
     name: 'Starmie',
     generation: PokemonGeneration.Gen1,
     cry: 'Starmie!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   mrmime: {
     id: 122,
     name: 'Mr. Mime',
     generation: PokemonGeneration.Gen1,
     cry: 'Mr. Mime!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   scyther: {
     id: 123,
     name: 'Scyther',
     generation: PokemonGeneration.Gen1,
     cry: 'Scyther!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   jynx: {
     id: 124,
     name: 'Jynx',
     generation: PokemonGeneration.Gen1,
     cry: 'Jynx!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   electabuzz: {
     id: 125,
     name: 'Electabuzz',
     generation: PokemonGeneration.Gen1,
     cry: 'Electabuzz!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   magmar: {
     id: 126,
     name: 'Magmar',
     generation: PokemonGeneration.Gen1,
     cry: 'Magmar!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   pinsir: {
     id: 127,
     name: 'Pinsir',
     generation: PokemonGeneration.Gen1,
     cry: 'Pinsir!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   tauros: {
     id: 128,
     name: 'Tauros',
     generation: PokemonGeneration.Gen1,
     cry: 'Tauros!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   magikarp: {
     id: 129,
     name: 'Magikarp',
     generation: PokemonGeneration.Gen1,
     cry: 'Magikarp!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   gyarados: {
     id: 130,
     name: 'Gyarados',
     generation: PokemonGeneration.Gen1,
     cry: 'Gyarados!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   lapras: {
     id: 131,
     name: 'Lapras',
     generation: PokemonGeneration.Gen1,
     cry: 'Lapras!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   ditto: {
     id: 132,
     name: 'Ditto',
     generation: PokemonGeneration.Gen1,
     cry: 'Ditto!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   eevee: {
     id: 133,
     name: 'Eevee',
     generation: PokemonGeneration.Gen1,
     cry: 'Eevee!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   vaporeon: {
     id: 134,
     name: 'Vaporeon',
     generation: PokemonGeneration.Gen1,
     cry: 'Vaporeon!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   jolteon: {
     id: 135,
     name: 'Jolteon',
     generation: PokemonGeneration.Gen1,
     cry: 'Jolteon!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   flareon: {
     id: 136,
     name: 'Flareon',
     generation: PokemonGeneration.Gen1,
     cry: 'Flareon!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   porygon: {
     id: 137,
     name: 'Porygon',
     generation: PokemonGeneration.Gen1,
     cry: 'Porygon!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   omanyte: {
     id: 138,
     name: 'Omanyte',
     generation: PokemonGeneration.Gen1,
     cry: 'Omanyte!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   omastar: {
     id: 139,
     name: 'Omastar',
     generation: PokemonGeneration.Gen1,
     cry: 'Omastar!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   kabuto: {
     id: 140,
     name: 'Kabuto',
     generation: PokemonGeneration.Gen1,
     cry: 'Kabuto!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   kabutops: {
     id: 141,
     name: 'Kabutops',
     generation: PokemonGeneration.Gen1,
     cry: 'Kabutops!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   aerodactyl: {
     id: 142,
     name: 'Aerodactyl',
     generation: PokemonGeneration.Gen1,
     cry: 'Aerodactyl!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   snorlax: {
     id: 143,
     name: 'Snorlax',
     generation: PokemonGeneration.Gen1,
     cry: 'Snorlax!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   articuno: {
     id: 144,
     name: 'Articuno',
     generation: PokemonGeneration.Gen1,
     cry: 'Articuno!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   zapdos: {
     id: 145,
     name: 'Zapdos',
     generation: PokemonGeneration.Gen1,
     cry: 'Zapdos!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   moltres: {
     id: 146,
     name: 'Moltres',
     generation: PokemonGeneration.Gen1,
     cry: 'Moltres!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   dratini: {
     id: 147,
     name: 'Dratini',
     generation: PokemonGeneration.Gen1,
     cry: 'Dratini!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   dragonair: {
     id: 148,
     name: 'Dragonair',
     generation: PokemonGeneration.Gen1,
     cry: 'Dragonair!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   dragonite: {
     id: 149,
     name: 'Dragonite',
     generation: PokemonGeneration.Gen1,
     cry: 'Dragonite!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   mewtwo: {
     id: 150,
     name: 'Mewtwo',
     generation: PokemonGeneration.Gen1,
     cry: 'Mewtwo!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   mew: {
     id: 151,
     name: 'Mew',
     generation: PokemonGeneration.Gen1,
     cry: 'Mew!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   // Generation 2
   chikorita: {
@@ -1064,392 +1064,392 @@ export const POKEMON_DATA: { [key: string]: PokemonConfig } = {
     name: 'Chikorita',
     generation: PokemonGeneration.Gen2,
     cry: 'Chikorita!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   bayleef: {
     id: 153,
     name: 'Bayleef',
     generation: PokemonGeneration.Gen2,
     cry: 'Bayleef!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   meganium: {
     id: 154,
     name: 'Meganium',
     generation: PokemonGeneration.Gen2,
     cry: 'Meganium!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   cyndaquil: {
     id: 155,
     name: 'Cyndaquil',
     generation: PokemonGeneration.Gen2,
     cry: 'Cyndaquil!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   quilava: {
     id: 156,
     name: 'Quilava',
     generation: PokemonGeneration.Gen2,
     cry: 'Quilava!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   typhlosion: {
     id: 157,
     name: 'Typhlosion',
     generation: PokemonGeneration.Gen2,
     cry: 'Typhlosion!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   totodile: {
     id: 158,
     name: 'Totodile',
     generation: PokemonGeneration.Gen2,
     cry: 'Totodile!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   croconaw: {
     id: 159,
     name: 'Croconaw',
     generation: PokemonGeneration.Gen2,
     cry: 'Croconaw!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   feraligatr: {
     id: 160,
     name: 'Feraligatr',
     generation: PokemonGeneration.Gen2,
     cry: 'Feraligatr!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   sentret: {
     id: 161,
     name: 'Sentret',
     generation: PokemonGeneration.Gen2,
     cry: 'Sentret!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   furret: {
     id: 162,
     name: 'Furret',
     generation: PokemonGeneration.Gen2,
     cry: 'Furret!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   hoothoot: {
     id: 163,
     name: 'Hoothoot',
     generation: PokemonGeneration.Gen2,
     cry: 'Hoothoot!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   noctowl: {
     id: 164,
     name: 'Noctowl',
     generation: PokemonGeneration.Gen2,
     cry: 'Noctowl!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   ledyba: {
     id: 165,
     name: 'Ledyba',
     generation: PokemonGeneration.Gen2,
     cry: 'Ledyba!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   ledian: {
     id: 166,
     name: 'Ledian',
     generation: PokemonGeneration.Gen2,
     cry: 'Ledian!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   spinarak: {
     id: 167,
     name: 'Spinarak',
     generation: PokemonGeneration.Gen2,
     cry: 'Spinarak!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   ariados: {
     id: 168,
     name: 'Ariados',
     generation: PokemonGeneration.Gen2,
     cry: 'Ariados!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   crobat: {
     id: 169,
     name: 'Crobat',
     generation: PokemonGeneration.Gen2,
     cry: 'Crobat!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   chinchou: {
     id: 170,
     name: 'Chinchou',
     generation: PokemonGeneration.Gen2,
     cry: 'Chinchou!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   lanturn: {
     id: 171,
     name: 'Lanturn',
     generation: PokemonGeneration.Gen2,
     cry: 'Lanturn!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   pichu: {
     id: 172,
     name: 'Pichu',
     generation: PokemonGeneration.Gen2,
     cry: 'Pichu!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   cleffa: {
     id: 173,
     name: 'Cleffa',
     generation: PokemonGeneration.Gen2,
     cry: 'Cleffa!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   igglybuff: {
     id: 174,
     name: 'Igglybuff',
     generation: PokemonGeneration.Gen2,
     cry: 'Igglybuff!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   togepi: {
     id: 175,
     name: 'Togepi',
     generation: PokemonGeneration.Gen2,
     cry: 'Togepi!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   togetic: {
     id: 176,
     name: 'Togetic',
     generation: PokemonGeneration.Gen2,
     cry: 'Togetic!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   natu: {
     id: 177,
     name: 'Natu',
     generation: PokemonGeneration.Gen2,
     cry: 'Natu!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   xatu: {
     id: 178,
     name: 'Xatu',
     generation: PokemonGeneration.Gen2,
     cry: 'Xatu!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   mareep: {
     id: 179,
     name: 'Mareep',
     generation: PokemonGeneration.Gen2,
     cry: 'Mareep!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   flaaffy: {
     id: 180,
     name: 'Flaaffy',
     generation: PokemonGeneration.Gen2,
     cry: 'Flaaffy!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   ampharos: {
     id: 181,
     name: 'Ampharos',
     generation: PokemonGeneration.Gen2,
     cry: 'Ampharos!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   bellossom: {
     id: 182,
     name: 'Bellossom',
     generation: PokemonGeneration.Gen2,
     cry: 'Bellossom!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   marill: {
     id: 183,
     name: 'Marill',
     generation: PokemonGeneration.Gen2,
     cry: 'Marill!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   azumarill: {
     id: 184,
     name: 'Azumarill',
     generation: PokemonGeneration.Gen2,
     cry: 'Azumarill!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   sudowoodo: {
     id: 185,
     name: 'Sudowoodo',
     generation: PokemonGeneration.Gen2,
     cry: 'Sudowoodo!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   politoed: {
     id: 186,
     name: 'Politoed',
     generation: PokemonGeneration.Gen2,
     cry: 'Politoed!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   hoppip: {
     id: 187,
     name: 'Hoppip',
     generation: PokemonGeneration.Gen2,
     cry: 'Hoppip!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   skiploom: {
     id: 188,
     name: 'Skiploom',
     generation: PokemonGeneration.Gen2,
     cry: 'Skiploom!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   jumpluff: {
     id: 189,
     name: 'Jumpluff',
     generation: PokemonGeneration.Gen2,
     cry: 'Jumpluff!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   aipom: {
     id: 190,
     name: 'Aipom',
     generation: PokemonGeneration.Gen2,
     cry: 'Aipom!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   sunkern: {
     id: 191,
     name: 'Sunkern',
     generation: PokemonGeneration.Gen2,
     cry: 'Sunkern!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   sunflora: {
     id: 192,
     name: 'Sunflora',
     generation: PokemonGeneration.Gen2,
     cry: 'Sunflora!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   yanma: {
     id: 193,
     name: 'Yanma',
     generation: PokemonGeneration.Gen2,
     cry: 'Yanma!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   wooper: {
     id: 194,
     name: 'Wooper',
     generation: PokemonGeneration.Gen2,
     cry: 'Wooper!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   quagsire: {
     id: 195,
     name: 'Quagsire',
     generation: PokemonGeneration.Gen2,
     cry: 'Quagsire!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   espeon: {
     id: 196,
     name: 'Espeon',
     generation: PokemonGeneration.Gen2,
     cry: 'Espeon!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   umbreon: {
     id: 197,
     name: 'Umbreon',
     generation: PokemonGeneration.Gen2,
     cry: 'Umbreon!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   murkrow: {
     id: 198,
     name: 'Murkrow',
     generation: PokemonGeneration.Gen2,
     cry: 'Murkrow!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   slowking: {
     id: 199,
     name: 'Slowking',
     generation: PokemonGeneration.Gen2,
     cry: 'Slowking!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   misdreavus: {
     id: 200,
     name: 'Misdreavus',
     generation: PokemonGeneration.Gen2,
     cry: 'Misdreavus!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   wobbuffet: {
     id: 202,
     name: 'Wobbuffet',
     generation: PokemonGeneration.Gen2,
     cry: 'Wobbuffet!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   girafarig: {
     id: 203,
     name: 'Girafarig',
     generation: PokemonGeneration.Gen2,
     cry: 'Girafarig!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   pineco: {
     id: 204,
     name: 'Pineco',
     generation: PokemonGeneration.Gen2,
     cry: 'Pineco!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   forretress: {
     id: 205,
     name: 'Forretress',
     generation: PokemonGeneration.Gen2,
     cry: 'Forretress!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   dunsparce: {
     id: 206,
     name: 'Dunsparce',
     generation: PokemonGeneration.Gen2,
     cry: 'Dunsparce!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   gligar: {
     id: 207,
     name: 'Gligar',
     generation: PokemonGeneration.Gen2,
     cry: 'Gligar!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   steelix: {
     id: 208,
     name: 'Steelix',
     generation: PokemonGeneration.Gen2,
     cry: 'Steelix!',
-    possibleColors: [PokemonColor.default],
+    possibleColors: [PokemonColor.default, PokemonColor.shiny],
     originalSpriteSize: 64,
   },
   snubbull: {
@@ -1457,287 +1457,287 @@ export const POKEMON_DATA: { [key: string]: PokemonConfig } = {
     name: 'Snubbull',
     generation: PokemonGeneration.Gen2,
     cry: 'Snubbull!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   granbull: {
     id: 210,
     name: 'Granbull',
     generation: PokemonGeneration.Gen2,
     cry: 'Granbull!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   qwilfish: {
     id: 211,
     name: 'Qwilfish',
     generation: PokemonGeneration.Gen2,
     cry: 'Qwilfish!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   scizor: {
     id: 212,
     name: 'Scizor',
     generation: PokemonGeneration.Gen2,
     cry: 'Scizor!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   shuckle: {
     id: 213,
     name: 'Shuckle',
     generation: PokemonGeneration.Gen2,
     cry: 'Shuckle!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   heracross: {
     id: 214,
     name: 'Heracross',
     generation: PokemonGeneration.Gen2,
     cry: 'Heracross!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   sneasel: {
     id: 215,
     name: 'Sneasel',
     generation: PokemonGeneration.Gen2,
     cry: 'Sneasel!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   teddiursa: {
     id: 216,
     name: 'Teddiursa',
     generation: PokemonGeneration.Gen2,
     cry: 'Teddiursa!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   ursaring: {
     id: 217,
     name: 'Ursaring',
     generation: PokemonGeneration.Gen2,
     cry: 'Ursaring!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   slugma: {
     id: 218,
     name: 'Slugma',
     generation: PokemonGeneration.Gen2,
     cry: 'Slugma!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   magcargo: {
     id: 219,
     name: 'Magcargo',
     generation: PokemonGeneration.Gen2,
     cry: 'Magcargo!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   swinub: {
     id: 220,
     name: 'Swinub',
     generation: PokemonGeneration.Gen2,
     cry: 'Swinub!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   piloswine: {
     id: 221,
     name: 'Piloswine',
     generation: PokemonGeneration.Gen2,
     cry: 'Piloswine!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   corsola: {
     id: 222,
     name: 'Corsola',
     generation: PokemonGeneration.Gen2,
     cry: 'Corsola!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   remoraid: {
     id: 223,
     name: 'Remoraid',
     generation: PokemonGeneration.Gen2,
     cry: 'Remoraid!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   octillery: {
     id: 224,
     name: 'Octillery',
     generation: PokemonGeneration.Gen2,
     cry: 'Octillery!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   delibird: {
     id: 225,
     name: 'Delibird',
     generation: PokemonGeneration.Gen2,
     cry: 'Delibird!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   mantine: {
     id: 226,
     name: 'Mantine',
     generation: PokemonGeneration.Gen2,
     cry: 'Mantine!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   skarmory: {
     id: 227,
     name: 'Skarmory',
     generation: PokemonGeneration.Gen2,
     cry: 'Skarmory!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   houndour: {
     id: 228,
     name: 'Houndour',
     generation: PokemonGeneration.Gen2,
     cry: 'Houndour!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   houndoom: {
     id: 229,
     name: 'Houndoom',
     generation: PokemonGeneration.Gen2,
     cry: 'Houndoom!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   kingdra: {
     id: 230,
     name: 'Kingdra',
     generation: PokemonGeneration.Gen2,
     cry: 'Kingdra!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   phanpy: {
     id: 231,
     name: 'Phanpy',
     generation: PokemonGeneration.Gen2,
     cry: 'Phanpy!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   donphan: {
     id: 232,
     name: 'Donphan',
     generation: PokemonGeneration.Gen2,
     cry: 'Donphan!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   porygon2: {
     id: 233,
     name: 'Porygon2',
     generation: PokemonGeneration.Gen2,
     cry: 'Porygon2!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   stantler: {
     id: 234,
     name: 'Stantler',
     generation: PokemonGeneration.Gen2,
     cry: 'Stantler!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   smeargle: {
     id: 235,
     name: 'Smeargle',
     generation: PokemonGeneration.Gen2,
     cry: 'Smeargle!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   tyrogue: {
     id: 236,
     name: 'Tyrogue',
     generation: PokemonGeneration.Gen2,
     cry: 'Tyrogue!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   hitmontop: {
     id: 237,
     name: 'Hitmontop',
     generation: PokemonGeneration.Gen2,
     cry: 'Hitmontop!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   smoochum: {
     id: 238,
     name: 'Smoochum',
     generation: PokemonGeneration.Gen2,
     cry: 'Smoochum!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   elekid: {
     id: 239,
     name: 'Elekid',
     generation: PokemonGeneration.Gen2,
     cry: 'Elekid!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   magby: {
     id: 240,
     name: 'Magby',
     generation: PokemonGeneration.Gen2,
     cry: 'Magby!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   miltank: {
     id: 241,
     name: 'Miltank',
     generation: PokemonGeneration.Gen2,
     cry: 'Miltank!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   blissey: {
     id: 242,
     name: 'Blissey',
     generation: PokemonGeneration.Gen2,
     cry: 'Blissey!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   raikou: {
     id: 243,
     name: 'Raikou',
     generation: PokemonGeneration.Gen2,
     cry: 'Raikou!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   entei: {
     id: 244,
     name: 'Entei',
     generation: PokemonGeneration.Gen2,
     cry: 'Entei!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   suicune: {
     id: 245,
     name: 'Suicune',
     generation: PokemonGeneration.Gen2,
     cry: 'Suicune!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   larvitar: {
     id: 246,
     name: 'Larvitar',
     generation: PokemonGeneration.Gen2,
     cry: 'Larvitar!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   pupitar: {
     id: 247,
     name: 'Pupitar',
     generation: PokemonGeneration.Gen2,
     cry: 'Pupitar!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   tyranitar: {
     id: 248,
     name: 'Tyranitar',
     generation: PokemonGeneration.Gen2,
     cry: 'Tyranitar!',
-    possibleColors: [PokemonColor.default]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny]
   },
   lugia: {
     id: 249,
     name: 'Lugia',
     generation: PokemonGeneration.Gen2,
     cry: 'Lugia!',
-    possibleColors: [PokemonColor.default],
+    possibleColors: [PokemonColor.default, PokemonColor.shiny],
     originalSpriteSize: 64
   },
   hooh: {
@@ -1745,7 +1745,7 @@ export const POKEMON_DATA: { [key: string]: PokemonConfig } = {
     name: 'Ho-Oh',
     generation: PokemonGeneration.Gen2,
     cry: 'Ho-Oh!',
-    possibleColors: [PokemonColor.default],
+    possibleColors: [PokemonColor.default, PokemonColor.shiny],
     originalSpriteSize: 64,
   },
   celebi: {
@@ -1753,7 +1753,7 @@ export const POKEMON_DATA: { [key: string]: PokemonConfig } = {
     name: 'Celebi',
     generation: PokemonGeneration.Gen2,
     cry: 'Celebi!',
-    possibleColors: [PokemonColor.default],
+    possibleColors: [PokemonColor.default, PokemonColor.shiny],
   },
   // Generation 3
   treecko: {
@@ -1761,490 +1761,490 @@ export const POKEMON_DATA: { [key: string]: PokemonConfig } = {
     name: 'Treecko',
     generation: PokemonGeneration.Gen3,
     cry: 'Treecko!',
-    possibleColors: [PokemonColor.default],
+    possibleColors: [PokemonColor.default, PokemonColor.shiny],
   },
   grovyle: {
     id: 253,
     name: 'Grovyle',
     generation: PokemonGeneration.Gen3,
     cry: 'Grovyle!',
-    possibleColors: [PokemonColor.default],
+    possibleColors: [PokemonColor.default, PokemonColor.shiny],
   },
   sceptile: {
     id: 254,
     name: 'Sceptile',
     generation: PokemonGeneration.Gen3,
     cry: 'Sceptile!',
-    possibleColors: [PokemonColor.default],
+    possibleColors: [PokemonColor.default, PokemonColor.shiny],
   },
   torchic: {
     id: 255,
     name: 'Torchic',
     generation: PokemonGeneration.Gen3,
     cry: 'Torchic!',
-    possibleColors: [PokemonColor.default],
+    possibleColors: [PokemonColor.default, PokemonColor.shiny],
   },
   combusken: {
     id: 256,
     name: 'Combusken',
     generation: PokemonGeneration.Gen3,
     cry: 'Combusken!',
-    possibleColors: [PokemonColor.default],
+    possibleColors: [PokemonColor.default, PokemonColor.shiny],
   },
   blaziken: {
     id: 257,
     name: 'Blaziken',
     generation: PokemonGeneration.Gen3,
     cry: 'Blaziken!',
-    possibleColors: [PokemonColor.default],
+    possibleColors: [PokemonColor.default, PokemonColor.shiny],
   },
   mudkip: {
     id: 258,
     name: 'Mudkip',
     generation: PokemonGeneration.Gen3,
     cry: 'Mudkip!',
-    possibleColors: [PokemonColor.default],
+    possibleColors: [PokemonColor.default, PokemonColor.shiny],
   },
   marshtomp: {
     id: 259,
     name: 'Marshtomp',
     generation: PokemonGeneration.Gen3,
     cry: 'Marshtomp!',
-    possibleColors: [PokemonColor.default],
+    possibleColors: [PokemonColor.default, PokemonColor.shiny],
   },
   swampert: {
     id: 260,
     name: 'Swampert',
     generation: PokemonGeneration.Gen3,
     cry: 'Swampert!',
-    possibleColors: [PokemonColor.default],
+    possibleColors: [PokemonColor.default, PokemonColor.shiny],
   },
   poochyena: {
     id: 261,
     name: 'Poochyena',
     generation: PokemonGeneration.Gen3,
     cry: 'Poochyena!',
-    possibleColors: [PokemonColor.default],
+    possibleColors: [PokemonColor.default, PokemonColor.shiny],
   },
   mightyena: {
     id: 262,
     name: 'Mightyena',
     generation: PokemonGeneration.Gen3,
     cry: 'Mightyena!',
-    possibleColors: [PokemonColor.default],
+    possibleColors: [PokemonColor.default, PokemonColor.shiny],
   },
   zigzagoon: {
     id: 263,
     name: 'Zigzagoon',
     generation: PokemonGeneration.Gen3,
     cry: 'Zigzagoon!',
-    possibleColors: [PokemonColor.default],
+    possibleColors: [PokemonColor.default, PokemonColor.shiny],
   },
   linoone: {
     id: 264,
     name: 'Linoone',
     generation: PokemonGeneration.Gen3,
     cry: 'Linoone!',
-    possibleColors: [PokemonColor.default],
+    possibleColors: [PokemonColor.default, PokemonColor.shiny],
   },
   wurmple: {
     id: 265,
     name: 'Wurmple',
     generation: PokemonGeneration.Gen3,
     cry: 'Wurmple!',
-    possibleColors: [PokemonColor.default],
+    possibleColors: [PokemonColor.default, PokemonColor.shiny],
   },
   silcoon: {
     id: 266,
     name: 'Silcoon',
     generation: PokemonGeneration.Gen3,
     cry: 'Silcoon!',
-    possibleColors: [PokemonColor.default],
+    possibleColors: [PokemonColor.default, PokemonColor.shiny],
   },
   beautifly: {
     id: 267,
     name: 'Beautifly',
     generation: PokemonGeneration.Gen3,
     cry: 'Beautifly!',
-    possibleColors: [PokemonColor.default],
+    possibleColors: [PokemonColor.default, PokemonColor.shiny],
   },
   cascoon: {
     id: 268,
     name: 'Cascoon',
     generation: PokemonGeneration.Gen3,
     cry: 'Cascoon!',
-    possibleColors: [PokemonColor.default],
+    possibleColors: [PokemonColor.default, PokemonColor.shiny],
   },
   dustox: {
     id: 269,
     name: 'Dustox',
     generation: PokemonGeneration.Gen3,
     cry: 'Dustox!',
-    possibleColors: [PokemonColor.default],
+    possibleColors: [PokemonColor.default, PokemonColor.shiny],
   },
   lotad: {
     id: 270,
     name: 'Lotad',
     generation: PokemonGeneration.Gen3,
     cry: 'Lotad!',
-    possibleColors: [PokemonColor.default],
+    possibleColors: [PokemonColor.default, PokemonColor.shiny],
   },
   lombre: {
     id: 271,
     name: 'Lombre',
     generation: PokemonGeneration.Gen3,
     cry: 'Lombre!',
-    possibleColors: [PokemonColor.default],
+    possibleColors: [PokemonColor.default, PokemonColor.shiny],
   },
   ludicolo: {
     id: 272,
     name: 'Ludicolo',
     generation: PokemonGeneration.Gen3,
     cry: 'Ludicolo!',
-    possibleColors: [PokemonColor.default],
+    possibleColors: [PokemonColor.default, PokemonColor.shiny],
   },
   seedot: {
     id: 273,
     name: 'Seedot',
     generation: PokemonGeneration.Gen3,
     cry: 'Seedot!',
-    possibleColors: [PokemonColor.default],
+    possibleColors: [PokemonColor.default, PokemonColor.shiny],
   },
   nuzleaf: {
     id: 274,
     name: 'Nuzleaf',
     generation: PokemonGeneration.Gen3,
     cry: 'Nuzleaf!',
-    possibleColors: [PokemonColor.default],
+    possibleColors: [PokemonColor.default, PokemonColor.shiny],
   },
   shiftry: {
     id: 275,
     name: 'Shiftry',
     generation: PokemonGeneration.Gen3,
     cry: 'Shiftry!',
-    possibleColors: [PokemonColor.default],
+    possibleColors: [PokemonColor.default, PokemonColor.shiny],
   },
   taillow: {
     id: 276,
     name: 'Taillow',
     generation: PokemonGeneration.Gen3,
     cry: 'Taillow!',
-    possibleColors: [PokemonColor.default],
+    possibleColors: [PokemonColor.default, PokemonColor.shiny],
   },
   swellow: {
     id: 277,
     name: 'Swellow',
     generation: PokemonGeneration.Gen3,
     cry: 'Swellow!',
-    possibleColors: [PokemonColor.default],
+    possibleColors: [PokemonColor.default, PokemonColor.shiny],
   },
   wingull: {
     id: 278,
     name: 'Wingull',
     generation: PokemonGeneration.Gen3,
     cry: 'Wingull!',
-    possibleColors: [PokemonColor.default],
+    possibleColors: [PokemonColor.default, PokemonColor.shiny],
   },
   pelipper: {
     id: 279,
     name: 'Pelipper',
     generation: PokemonGeneration.Gen3,
     cry: 'Pelipper!',
-    possibleColors: [PokemonColor.default],
+    possibleColors: [PokemonColor.default, PokemonColor.shiny],
   },
   ralts: {
     id: 280,
     name: 'Ralts',
     generation: PokemonGeneration.Gen3,
     cry: 'Ralts!',
-    possibleColors: [PokemonColor.default],
+    possibleColors: [PokemonColor.default, PokemonColor.shiny],
   },
   kirlia: {
     id: 281,
     name: 'Kirlia',
     generation: PokemonGeneration.Gen3,
     cry: 'Kirlia!',
-    possibleColors: [PokemonColor.default],
+    possibleColors: [PokemonColor.default, PokemonColor.shiny],
   },
   gardevoir: {
     id: 282,
     name: 'Gardevoir',
     generation: PokemonGeneration.Gen3,
     cry: 'Gardevoir!',
-    possibleColors: [PokemonColor.default],
+    possibleColors: [PokemonColor.default, PokemonColor.shiny],
   },
   surskit: {
     id: 283,
     name: 'Surskit',
     generation: PokemonGeneration.Gen3,
     cry: 'Surskit!',
-    possibleColors: [PokemonColor.default],
+    possibleColors: [PokemonColor.default, PokemonColor.shiny],
   },
   masquerain: {
     id: 284,
     name: 'Masquerain',
     generation: PokemonGeneration.Gen3,
     cry: 'Masquerain!',
-    possibleColors: [PokemonColor.default],
+    possibleColors: [PokemonColor.default, PokemonColor.shiny],
   },
   shroomish: {
     id: 285,
     name: 'Shroomish',
     generation: PokemonGeneration.Gen3,
     cry: 'Shroomish!',
-    possibleColors: [PokemonColor.default],
+    possibleColors: [PokemonColor.default, PokemonColor.shiny],
   },
   breloom: {
     id: 286,
     name: 'Breloom',
     generation: PokemonGeneration.Gen3,
     cry: 'Breloom!',
-    possibleColors: [PokemonColor.default],
+    possibleColors: [PokemonColor.default, PokemonColor.shiny],
   },
   slakoth: {
     id: 287,
     name: 'Slakoth',
     generation: PokemonGeneration.Gen3,
     cry: 'Slakoth!',
-    possibleColors: [PokemonColor.default],
+    possibleColors: [PokemonColor.default, PokemonColor.shiny],
   },
   vigoroth: {
     id: 288,
     name: 'Vigoroth',
     generation: PokemonGeneration.Gen3,
     cry: 'Vigoroth!',
-    possibleColors: [PokemonColor.default],
+    possibleColors: [PokemonColor.default, PokemonColor.shiny],
   },
   slaking: {
     id: 289,
     name: 'Slaking',
     generation: PokemonGeneration.Gen3,
     cry: 'Slaking!',
-    possibleColors: [PokemonColor.default],
+    possibleColors: [PokemonColor.default, PokemonColor.shiny],
   },
   nincada: {
     id: 290,
     name: 'Nincada',
     generation: PokemonGeneration.Gen3,
     cry: 'Nincada!',
-    possibleColors: [PokemonColor.default],
+    possibleColors: [PokemonColor.default, PokemonColor.shiny],
   },
   ninjask: {
     id: 291,
     name: 'Ninjask',
     generation: PokemonGeneration.Gen3,
     cry: 'Ninjask!',
-    possibleColors: [PokemonColor.default],
+    possibleColors: [PokemonColor.default, PokemonColor.shiny],
   },
   shedinja: {
     id: 292,
     name: 'Shedinja',
     generation: PokemonGeneration.Gen3,
     cry: 'Shedinja!',
-    possibleColors: [PokemonColor.default],
+    possibleColors: [PokemonColor.default, PokemonColor.shiny],
   },
   whismur: {
     id: 293,
     name: 'Whismur',
     generation: PokemonGeneration.Gen3,
     cry: 'Whismur!',
-    possibleColors: [PokemonColor.default],
+    possibleColors: [PokemonColor.default, PokemonColor.shiny],
   },
   loudred: {
     id: 294,
     name: 'Loudred',
     generation: PokemonGeneration.Gen3,
     cry: 'Loudred!',
-    possibleColors: [PokemonColor.default],
+    possibleColors: [PokemonColor.default, PokemonColor.shiny],
   },
   exploud: {
     id: 295,
     name: 'Exploud',
     generation: PokemonGeneration.Gen3,
     cry: 'Exploud!',
-    possibleColors: [PokemonColor.default],
+    possibleColors: [PokemonColor.default, PokemonColor.shiny],
   },
   makuhita: {
     id: 296,
     name: 'Makuhita',
     generation: PokemonGeneration.Gen3,
     cry: 'Makuhita!',
-    possibleColors: [PokemonColor.default],
+    possibleColors: [PokemonColor.default, PokemonColor.shiny],
   },
   hariyama: {
     id: 297,
     name: 'Hariyama',
     generation: PokemonGeneration.Gen3,
     cry: 'Hariyama!',
-    possibleColors: [PokemonColor.default],
+    possibleColors: [PokemonColor.default, PokemonColor.shiny],
   },
   azurill: {
     id: 298,
     name: 'Azurill',
     generation: PokemonGeneration.Gen3,
     cry: 'Azurill!',
-    possibleColors: [PokemonColor.default],
+    possibleColors: [PokemonColor.default, PokemonColor.shiny],
   },
   nosepass: {
     id: 299,
     name: 'Nosepass',
     generation: PokemonGeneration.Gen3,
     cry: 'Nosepass!',
-    possibleColors: [PokemonColor.default],
+    possibleColors: [PokemonColor.default, PokemonColor.shiny],
   },
   skitty: {
     id: 300,
     name: 'Skitty',
     generation: PokemonGeneration.Gen3,
     cry: 'Skitty!',
-    possibleColors: [PokemonColor.default],
+    possibleColors: [PokemonColor.default, PokemonColor.shiny],
   },
   delcatty: {
     id: 301,
     name: 'Delcatty',
     generation: PokemonGeneration.Gen3,
     cry: 'Delcatty!',
-    possibleColors: [PokemonColor.default],
+    possibleColors: [PokemonColor.default, PokemonColor.shiny],
   },
   sableye: {
     id: 302,
     name: 'Sableye',
     generation: PokemonGeneration.Gen3,
     cry: 'Sableye!',
-    possibleColors: [PokemonColor.default],
+    possibleColors: [PokemonColor.default, PokemonColor.shiny],
   },
   mawile: {
     id: 303,
     name: 'Mawile',
     generation: PokemonGeneration.Gen3,
     cry: 'Mawile!',
-    possibleColors: [PokemonColor.default],
+    possibleColors: [PokemonColor.default, PokemonColor.shiny],
   },
   aron: {
     id: 304,
     name: 'Aron',
     generation: PokemonGeneration.Gen3,
     cry: 'Aron!',
-    possibleColors: [PokemonColor.default],
+    possibleColors: [PokemonColor.default, PokemonColor.shiny],
   },
   lairon: {
     id: 305,
     name: 'Lairon',
     generation: PokemonGeneration.Gen3,
     cry: 'Lairon!',
-    possibleColors: [PokemonColor.default],
+    possibleColors: [PokemonColor.default, PokemonColor.shiny],
   },
   aggron: {
     id: 306,
     name: 'Aggron',
     generation: PokemonGeneration.Gen3,
     cry: 'Aggron!',
-    possibleColors: [PokemonColor.default],
+    possibleColors: [PokemonColor.default, PokemonColor.shiny],
   },
   meditite: {
     id: 307,
     name: 'Meditite',
     generation: PokemonGeneration.Gen3,
     cry: 'Meditite!',
-    possibleColors: [PokemonColor.default],
+    possibleColors: [PokemonColor.default, PokemonColor.shiny],
   },
   medicham: {
     id: 308,
     name: 'Medicham',
     generation: PokemonGeneration.Gen3,
     cry: 'Medicham!',
-    possibleColors: [PokemonColor.default],
+    possibleColors: [PokemonColor.default, PokemonColor.shiny],
   },
   electrike: {
     id: 309,
     name: 'Electrike',
     generation: PokemonGeneration.Gen3,
     cry: 'Electrike!',
-    possibleColors: [PokemonColor.default],
+    possibleColors: [PokemonColor.default, PokemonColor.shiny],
   },
   manectric: {
     id: 310,
     name: 'Manectric',
     generation: PokemonGeneration.Gen3,
     cry: 'Manectric!',
-    possibleColors: [PokemonColor.default],
+    possibleColors: [PokemonColor.default, PokemonColor.shiny],
   },
   plusle: {
     id: 311,
     name: 'Plusle',
     generation: PokemonGeneration.Gen3,
     cry: 'Plusle!',
-    possibleColors: [PokemonColor.default],
+    possibleColors: [PokemonColor.default, PokemonColor.shiny],
   },
   minun: {
     id: 312,
     name: 'Minun',
     generation: PokemonGeneration.Gen3,
     cry: 'Minun!',
-    possibleColors: [PokemonColor.default],
+    possibleColors: [PokemonColor.default, PokemonColor.shiny],
   },
   volbeat: {
     id: 313,
     name: 'Volbeat',
     generation: PokemonGeneration.Gen3,
     cry: 'Volbeat!',
-    possibleColors: [PokemonColor.default],
+    possibleColors: [PokemonColor.default, PokemonColor.shiny],
   },
   illumise: {
     id: 314,
     name: 'Illumise',
     generation: PokemonGeneration.Gen3,
     cry: 'Illumise!',
-    possibleColors: [PokemonColor.default],
+    possibleColors: [PokemonColor.default, PokemonColor.shiny],
   },
   roselia: {
     id: 315,
     name: 'Roselia',
     generation: PokemonGeneration.Gen3,
     cry: 'Roselia!',
-    possibleColors: [PokemonColor.default],
+    possibleColors: [PokemonColor.default, PokemonColor.shiny],
   },
   gulpin: {
     id: 316,
     name: 'Gulpin',
     generation: PokemonGeneration.Gen3,
     cry: 'Gulpin!',
-    possibleColors: [PokemonColor.default],
+    possibleColors: [PokemonColor.default, PokemonColor.shiny],
   },
   swalot: {
     id: 317,
     name: 'Swalot',
     generation: PokemonGeneration.Gen3,
     cry: 'Swalot!',
-    possibleColors: [PokemonColor.default],
+    possibleColors: [PokemonColor.default, PokemonColor.shiny],
   },
   carvanha: {
     id: 318,
     name: 'Carvanha',
     generation: PokemonGeneration.Gen3,
     cry: 'Carvanha!',
-    possibleColors: [PokemonColor.default],
+    possibleColors: [PokemonColor.default, PokemonColor.shiny],
   },
   sharpedo: {
     id: 319,
     name: 'Sharpedo',
     generation: PokemonGeneration.Gen3,
     cry: 'Sharpedo!',
-    possibleColors: [PokemonColor.default],
+    possibleColors: [PokemonColor.default, PokemonColor.shiny],
   },
   wailmer: {
     id: 320,
     name: 'Wailmer',
     generation: PokemonGeneration.Gen3,
     cry: 'Wailmer!',
-    possibleColors: [PokemonColor.default],
+    possibleColors: [PokemonColor.default, PokemonColor.shiny],
   },
   wailord: {
     id: 321,
     name: 'Wailord',
     generation: PokemonGeneration.Gen3,
     cry: 'Wailord!',
-    possibleColors: [PokemonColor.default],
+    possibleColors: [PokemonColor.default, PokemonColor.shiny],
     originalSpriteSize: 64,
   },
   numel: {
@@ -2252,427 +2252,427 @@ export const POKEMON_DATA: { [key: string]: PokemonConfig } = {
     name: 'Numel',
     generation: PokemonGeneration.Gen3,
     cry: 'Numel!',
-    possibleColors: [PokemonColor.default],
+    possibleColors: [PokemonColor.default, PokemonColor.shiny],
   },
   camerupt: {
     id: 323,
     name: 'Camerupt',
     generation: PokemonGeneration.Gen3,
     cry: 'Camerupt!',
-    possibleColors: [PokemonColor.default],
+    possibleColors: [PokemonColor.default, PokemonColor.shiny],
   },
   torkoal: {
     id: 324,
     name: 'Torkoal',
     generation: PokemonGeneration.Gen3,
     cry: 'Torkoal!',
-    possibleColors: [PokemonColor.default],
+    possibleColors: [PokemonColor.default, PokemonColor.shiny],
   },
   spoink: {
     id: 325,
     name: 'Spoink',
     generation: PokemonGeneration.Gen3,
     cry: 'Spoink!',
-    possibleColors: [PokemonColor.default],
+    possibleColors: [PokemonColor.default, PokemonColor.shiny],
   },
   grumpig: {
     id: 326,
     name: 'Grumpig',
     generation: PokemonGeneration.Gen3,
     cry: 'Grumpig!',
-    possibleColors: [PokemonColor.default],
+    possibleColors: [PokemonColor.default, PokemonColor.shiny],
   },
   spinda: {
     id: 327,
     name: 'Spinda',
     generation: PokemonGeneration.Gen3,
     cry: 'Spinda!',
-    possibleColors: [PokemonColor.default],
+    possibleColors: [PokemonColor.default, PokemonColor.shiny],
   },
   trapinch: {
     id: 328,
     name: 'Trapinch',
     generation: PokemonGeneration.Gen3,
     cry: 'Trapinch!',
-    possibleColors: [PokemonColor.default],
+    possibleColors: [PokemonColor.default, PokemonColor.shiny],
   },
   vibrava: {
     id: 329,
     name: 'Vibrava',
     generation: PokemonGeneration.Gen3,
     cry: 'Vibrava!',
-    possibleColors: [PokemonColor.default],
+    possibleColors: [PokemonColor.default, PokemonColor.shiny],
   },
   flygon: {
     id: 330,
     name: 'Flygon',
     generation: PokemonGeneration.Gen3,
     cry: 'Flygon!',
-    possibleColors: [PokemonColor.default],
+    possibleColors: [PokemonColor.default, PokemonColor.shiny],
   },
   cacnea: {
     id: 331,
     name: 'Cacnea',
     generation: PokemonGeneration.Gen3,
     cry: 'Cacnea!',
-    possibleColors: [PokemonColor.default],
+    possibleColors: [PokemonColor.default, PokemonColor.shiny],
   },
   cacturne: {
     id: 332,
     name: 'Cacturne',
     generation: PokemonGeneration.Gen3,
     cry: 'Cacturne!',
-    possibleColors: [PokemonColor.default],
+    possibleColors: [PokemonColor.default, PokemonColor.shiny],
   },
   swablu: {
     id: 333,
     name: 'Swablu',
     generation: PokemonGeneration.Gen3,
     cry: 'Swablu!',
-    possibleColors: [PokemonColor.default],
+    possibleColors: [PokemonColor.default, PokemonColor.shiny],
   },
   altaria: {
     id: 334,
     name: 'Altaria',
     generation: PokemonGeneration.Gen3,
     cry: 'Altaria!',
-    possibleColors: [PokemonColor.default],
+    possibleColors: [PokemonColor.default, PokemonColor.shiny],
   },
   zangoose: {
     id: 335,
     name: 'Zangoose',
     generation: PokemonGeneration.Gen3,
     cry: 'Zangoose!',
-    possibleColors: [PokemonColor.default],
+    possibleColors: [PokemonColor.default, PokemonColor.shiny],
   },
   seviper: {
     id: 336,
     name: 'Seviper',
     generation: PokemonGeneration.Gen3,
     cry: 'Seviper!',
-    possibleColors: [PokemonColor.default],
+    possibleColors: [PokemonColor.default, PokemonColor.shiny],
   },
   lunatone: {
     id: 337,
     name: 'Lunatone',
     generation: PokemonGeneration.Gen3,
     cry: 'Lunatone!',
-    possibleColors: [PokemonColor.default],
+    possibleColors: [PokemonColor.default, PokemonColor.shiny],
   },
   solrock: {
     id: 338,
     name: 'Solrock',
     generation: PokemonGeneration.Gen3,
     cry: 'Solrock!',
-    possibleColors: [PokemonColor.default],
+    possibleColors: [PokemonColor.default, PokemonColor.shiny],
   },
   barboach: {
     id: 339,
     name: 'Barboach',
     generation: PokemonGeneration.Gen3,
     cry: 'Barboach!',
-    possibleColors: [PokemonColor.default],
+    possibleColors: [PokemonColor.default, PokemonColor.shiny],
   },
   whiscash: {
     id: 340,
     name: 'Whiscash',
     generation: PokemonGeneration.Gen3,
     cry: 'Whiscash!',
-    possibleColors: [PokemonColor.default],
+    possibleColors: [PokemonColor.default, PokemonColor.shiny],
   },
   corphish: {
     id: 341,
     name: 'Corphish',
     generation: PokemonGeneration.Gen3,
     cry: 'Corphish!',
-    possibleColors: [PokemonColor.default],
+    possibleColors: [PokemonColor.default, PokemonColor.shiny],
   },
   crawdaunt: {
     id: 342,
     name: 'Crawdaunt',
     generation: PokemonGeneration.Gen3,
     cry: 'Crawdaunt!',
-    possibleColors: [PokemonColor.default],
+    possibleColors: [PokemonColor.default, PokemonColor.shiny],
   },
   baltoy: {
     id: 343,
     name: 'Baltoy',
     generation: PokemonGeneration.Gen3,
     cry: 'Baltoy!',
-    possibleColors: [PokemonColor.default],
+    possibleColors: [PokemonColor.default, PokemonColor.shiny],
   },
   claydol: {
     id: 344,
     name: 'Claydol',
     generation: PokemonGeneration.Gen3,
     cry: 'Claydol!',
-    possibleColors: [PokemonColor.default],
+    possibleColors: [PokemonColor.default, PokemonColor.shiny],
   },
   lileep: {
     id: 345,
     name: 'Lileep',
     generation: PokemonGeneration.Gen3,
     cry: 'Lileep!',
-    possibleColors: [PokemonColor.default],
+    possibleColors: [PokemonColor.default, PokemonColor.shiny],
   },
   cradily: {
     id: 346,
     name: 'Cradily',
     generation: PokemonGeneration.Gen3,
     cry: 'Cradily!',
-    possibleColors: [PokemonColor.default],
+    possibleColors: [PokemonColor.default, PokemonColor.shiny],
   },
   anorith: {
     id: 347,
     name: 'Anorith',
     generation: PokemonGeneration.Gen3,
     cry: 'Anorith!',
-    possibleColors: [PokemonColor.default],
+    possibleColors: [PokemonColor.default, PokemonColor.shiny],
   },
   armaldo: {
     id: 348,
     name: 'Armaldo',
     generation: PokemonGeneration.Gen3,
     cry: 'Armaldo!',
-    possibleColors: [PokemonColor.default],
+    possibleColors: [PokemonColor.default, PokemonColor.shiny],
   },
   feebas: {
     id: 349,
     name: 'Feebas',
     generation: PokemonGeneration.Gen3,
     cry: 'Feebas!',
-    possibleColors: [PokemonColor.default],
+    possibleColors: [PokemonColor.default, PokemonColor.shiny],
   },
   milotic: {
     id: 350,
     name: 'Milotic',
     generation: PokemonGeneration.Gen3,
     cry: 'Milotic!',
-    possibleColors: [PokemonColor.default],
+    possibleColors: [PokemonColor.default, PokemonColor.shiny],
   },
   castform: {
     id: 351,
     name: 'Castform',
     generation: PokemonGeneration.Gen3,
     cry: 'Castform!',
-    possibleColors: [PokemonColor.default],
+    possibleColors: [PokemonColor.default, PokemonColor.shiny],
   },
   kecleon: {
     id: 352,
     name: 'Kecleon',
     generation: PokemonGeneration.Gen3,
     cry: 'Kecleon!',
-    possibleColors: [PokemonColor.default],
+    possibleColors: [PokemonColor.default, PokemonColor.shiny],
   },
   shuppet: {
     id: 353,
     name: 'Shuppet',
     generation: PokemonGeneration.Gen3,
     cry: 'Shuppet!',
-    possibleColors: [PokemonColor.default],
+    possibleColors: [PokemonColor.default, PokemonColor.shiny],
   },
   banette: {
     id: 354,
     name: 'Banette',
     generation: PokemonGeneration.Gen3,
     cry: 'Banette!',
-    possibleColors: [PokemonColor.default],
+    possibleColors: [PokemonColor.default, PokemonColor.shiny],
   },
   duskull: {
     id: 355,
     name: 'Duskull',
     generation: PokemonGeneration.Gen3,
     cry: 'Duskull!',
-    possibleColors: [PokemonColor.default],
+    possibleColors: [PokemonColor.default, PokemonColor.shiny],
   },
   dusclops: {
     id: 356,
     name: 'Dusclops',
     generation: PokemonGeneration.Gen3,
     cry: 'Dusclops!',
-    possibleColors: [PokemonColor.default],
+    possibleColors: [PokemonColor.default, PokemonColor.shiny],
   },
   tropius: {
     id: 357,
     name: 'Tropius',
     generation: PokemonGeneration.Gen3,
     cry: 'Tropius!',
-    possibleColors: [PokemonColor.default],
+    possibleColors: [PokemonColor.default, PokemonColor.shiny],
   },
   chimecho: {
     id: 358,
     name: 'Chimecho',
     generation: PokemonGeneration.Gen3,
     cry: 'Chimecho!',
-    possibleColors: [PokemonColor.default],
+    possibleColors: [PokemonColor.default, PokemonColor.shiny],
   },
   absol: {
     id: 359,
     name: 'Absol',
     generation: PokemonGeneration.Gen3,
     cry: 'Absol!',
-    possibleColors: [PokemonColor.default],
+    possibleColors: [PokemonColor.default, PokemonColor.shiny],
   },
   wynaut: {
     id: 360,
     name: 'Wynaut',
     generation: PokemonGeneration.Gen3,
     cry: 'Wynaut!',
-    possibleColors: [PokemonColor.default],
+    possibleColors: [PokemonColor.default, PokemonColor.shiny],
   },
   snorunt: {
     id: 361,
     name: 'Snorunt',
     generation: PokemonGeneration.Gen3,
     cry: 'Snorunt!',
-    possibleColors: [PokemonColor.default],
+    possibleColors: [PokemonColor.default, PokemonColor.shiny],
   },
   glalie: {
     id: 362,
     name: 'Glalie',
     generation: PokemonGeneration.Gen3,
     cry: 'Glalie!',
-    possibleColors: [PokemonColor.default],
+    possibleColors: [PokemonColor.default, PokemonColor.shiny],
   },
   spheal: {
     id: 363,
     name: 'Spheal',
     generation: PokemonGeneration.Gen3,
     cry: 'Spheal!',
-    possibleColors: [PokemonColor.default],
+    possibleColors: [PokemonColor.default, PokemonColor.shiny],
   },
   sealeo: {
     id: 364,
     name: 'Sealeo',
     generation: PokemonGeneration.Gen3,
     cry: 'Sealeo!',
-    possibleColors: [PokemonColor.default],
+    possibleColors: [PokemonColor.default, PokemonColor.shiny],
   },
   walrein: {
     id: 365,
     name: 'Walrein',
     generation: PokemonGeneration.Gen3,
     cry: 'Walrein!',
-    possibleColors: [PokemonColor.default],
+    possibleColors: [PokemonColor.default, PokemonColor.shiny],
   },
   clamperl: {
     id: 366,
     name: 'Clamperl',
     generation: PokemonGeneration.Gen3,
     cry: 'Clamperl!',
-    possibleColors: [PokemonColor.default],
+    possibleColors: [PokemonColor.default, PokemonColor.shiny],
   },
   huntail: {
     id: 367,
     name: 'Huntail',
     generation: PokemonGeneration.Gen3,
     cry: 'Huntail!',
-    possibleColors: [PokemonColor.default],
+    possibleColors: [PokemonColor.default, PokemonColor.shiny],
   },
   gorebyss: {
     id: 368,
     name: 'Gorebyss',
     generation: PokemonGeneration.Gen3,
     cry: 'Gorebyss!',
-    possibleColors: [PokemonColor.default],
+    possibleColors: [PokemonColor.default, PokemonColor.shiny],
   },
   relicanth: {
     id: 369,
     name: 'Relicanth',
     generation: PokemonGeneration.Gen3,
     cry: 'Relicanth!',
-    possibleColors: [PokemonColor.default],
+    possibleColors: [PokemonColor.default, PokemonColor.shiny],
   },
   luvdisc: {
     id: 370,
     name: 'Luvdisc',
     generation: PokemonGeneration.Gen3,
     cry: 'Luvdisc!',
-    possibleColors: [PokemonColor.default],
+    possibleColors: [PokemonColor.default, PokemonColor.shiny],
   },
   bagon: {
     id: 371,
     name: 'Bagon',
     generation: PokemonGeneration.Gen3,
     cry: 'Bagon!',
-    possibleColors: [PokemonColor.default],
+    possibleColors: [PokemonColor.default, PokemonColor.shiny],
   },
   shelgon: {
     id: 372,
     name: 'Shelgon',
     generation: PokemonGeneration.Gen3,
     cry: 'Shelgon!',
-    possibleColors: [PokemonColor.default],
+    possibleColors: [PokemonColor.default, PokemonColor.shiny],
   },
   salamence: {
     id: 373,
     name: 'Salamence',
     generation: PokemonGeneration.Gen3,
     cry: 'Salamence!',
-    possibleColors: [PokemonColor.default],
+    possibleColors: [PokemonColor.default, PokemonColor.shiny],
   },
   beldum: {
     id: 374,
     name: 'Beldum',
     generation: PokemonGeneration.Gen3,
     cry: 'Beldum!',
-    possibleColors: [PokemonColor.default],
+    possibleColors: [PokemonColor.default, PokemonColor.shiny],
   },
   metang: {
     id: 375,
     name: 'Metang',
     generation: PokemonGeneration.Gen3,
     cry: 'Metang!',
-    possibleColors: [PokemonColor.default],
+    possibleColors: [PokemonColor.default, PokemonColor.shiny],
   },
   metagross: {
     id: 376,
     name: 'Metagross',
     generation: PokemonGeneration.Gen3,
     cry: 'Metagross!',
-    possibleColors: [PokemonColor.default],
+    possibleColors: [PokemonColor.default, PokemonColor.shiny],
   },
   regirock: {
     id: 377,
     name: 'Regirock',
     generation: PokemonGeneration.Gen3,
     cry: 'Regirock!',
-    possibleColors: [PokemonColor.default],
+    possibleColors: [PokemonColor.default, PokemonColor.shiny],
   },
   regice: {
     id: 378,
     name: 'Regice',
     generation: PokemonGeneration.Gen3,
     cry: 'Regice!',
-    possibleColors: [PokemonColor.default],
+    possibleColors: [PokemonColor.default, PokemonColor.shiny],
   },
   registeel: {
     id: 379,
     name: 'Registeel',
     generation: PokemonGeneration.Gen3,
     cry: 'Registeel!',
-    possibleColors: [PokemonColor.default],
+    possibleColors: [PokemonColor.default, PokemonColor.shiny],
   },
   latias: {
     id: 380,
     name: 'Latias',
     generation: PokemonGeneration.Gen3,
     cry: 'Latias!',
-    possibleColors: [PokemonColor.default],
+    possibleColors: [PokemonColor.default, PokemonColor.shiny],
   },
   latios: {
     id: 381,
     name: 'Latios',
     generation: PokemonGeneration.Gen3,
     cry: 'Latios!',
-    possibleColors: [PokemonColor.default],
+    possibleColors: [PokemonColor.default, PokemonColor.shiny],
   },
   kyogre: {
     id: 382,
     name: 'Kyogre',
     generation: PokemonGeneration.Gen3,
     cry: 'Kyogre!',
-    possibleColors: [PokemonColor.default],
+    possibleColors: [PokemonColor.default, PokemonColor.shiny],
     originalSpriteSize: 64,
   },
   groudon: {
@@ -2680,7 +2680,7 @@ export const POKEMON_DATA: { [key: string]: PokemonConfig } = {
     name: 'Groudon',
     generation: PokemonGeneration.Gen3,
     cry: 'Groudon!',
-    possibleColors: [PokemonColor.default],
+    possibleColors: [PokemonColor.default, PokemonColor.shiny],
     originalSpriteSize: 64,
   },
   rayquaza: {
@@ -2688,7 +2688,7 @@ export const POKEMON_DATA: { [key: string]: PokemonConfig } = {
     name: 'Rayquaza',
     generation: PokemonGeneration.Gen3,
     cry: 'Rayquaza!',
-    possibleColors: [PokemonColor.default],
+    possibleColors: [PokemonColor.default, PokemonColor.shiny],
     originalSpriteSize: 64,
   },
   jirachi: {
@@ -2696,35 +2696,35 @@ export const POKEMON_DATA: { [key: string]: PokemonConfig } = {
     name: 'Jirachi',
     generation: PokemonGeneration.Gen3,
     cry: 'Jirachi!',
-    possibleColors: [PokemonColor.default],
+    possibleColors: [PokemonColor.default, PokemonColor.shiny],
   },
   deoxys: {
     id: 386,
     name: 'Deoxys',
     generation: PokemonGeneration.Gen3,
     cry: 'Deoxys!',
-    possibleColors: [PokemonColor.default],
+    possibleColors: [PokemonColor.default, PokemonColor.shiny],
   },
   deoxys_speed: {
     id: 386,
     name: 'Deoxys (Speed)',
     generation: PokemonGeneration.Gen3,
     cry: 'Deoxys!',
-    possibleColors: [PokemonColor.default],
+    possibleColors: [PokemonColor.default, PokemonColor.shiny],
   },
   deoxys_attack: {
     id: 386,
     name: 'Deoxys (Attack)',
     generation: PokemonGeneration.Gen3,
     cry: 'Deoxys!',
-    possibleColors: [PokemonColor.default],
+    possibleColors: [PokemonColor.default, PokemonColor.shiny],
   },
   deoxys_defense: {
     id: 386,
     name: 'Deoxys (Defense)',
     generation: PokemonGeneration.Gen3,
     cry: 'Deoxys!',
-    possibleColors: [PokemonColor.default],
+    possibleColors: [PokemonColor.default, PokemonColor.shiny],
   },
 };
 

@@ -1,10 +1,11 @@
 import * as vscode from 'vscode'
 import { Roster, RosterEntry, UserPokemon } from './types'
-import { PokemonType } from '../common/types'
+import { PokemonColor, PokemonType } from '../common/types'
 import { StateStore } from './state-store'
 import {
   EvolutionLine,
   getRandomBasePokemon,
+  getRandomPokemonColor,
   getEvolutionLine,
   getEvolutionLineContaining,
   getPokemonByLevel,
@@ -69,6 +70,14 @@ export class PokemonState {
     if (pokemon && pokemon.id === undefined) {
       pokemon.id = getPokemonId(pokemon.type)
     }
+    // Saves from before shiny support have neither field, so default them to
+    // what those pokemon always were: a default-colored pokemon that can grow.
+    if (pokemon && pokemon.color === undefined) {
+      pokemon.color = PokemonColor.default
+    }
+    if (pokemon && pokemon.canGainXP === undefined) {
+      pokemon.canGainXP = true
+    }
     return pokemon
   }
 
@@ -84,18 +93,34 @@ export class PokemonState {
     store(context).save()
   }
 
+  static getShinyPokedex(context: vscode.ExtensionContext): PokemonType[] {
+    return store(context).getState().shinyPokedex
+  }
+
+  // A shiny catch unlocks both its default and shiny sprite, but a default
+  // catch never unlocks the shiny one.
   static discoverPokemon(
     context: vscode.ExtensionContext,
-    pokemonType: PokemonType
+    pokemonType: PokemonType,
+    color: PokemonColor = PokemonColor.default
   ): boolean {
-    const pokedex = PokemonState.getPokedex(context)
-    if (pokedex.indexOf(pokemonType) >= 0) {
-      return false
+    const state = store(context).getState()
+    let discovered = false
+
+    if (state.pokedex.indexOf(pokemonType) < 0) {
+      state.pokedex.push(pokemonType)
+      discovered = true
     }
 
-    pokedex.push(pokemonType)
-    PokemonState.savePokedex(context)
-    return true
+    if (color === PokemonColor.shiny && state.shinyPokedex.indexOf(pokemonType) < 0) {
+      state.shinyPokedex.push(pokemonType)
+      discovered = true
+    }
+
+    if (discovered) {
+      PokemonState.savePokedex(context)
+    }
+    return discovered
   }
 
   static isPokemonDiscovered(
@@ -103,6 +128,13 @@ export class PokemonState {
     pokemonType: PokemonType
   ): boolean {
     return PokemonState.getPokedex(context).indexOf(pokemonType) >= 0
+  }
+
+  static isPokemonShinyDiscovered(
+    context: vscode.ExtensionContext,
+    pokemonType: PokemonType
+  ): boolean {
+    return PokemonState.getShinyPokedex(context).indexOf(pokemonType) >= 0
   }
 
   static getRoster(context: vscode.ExtensionContext): Roster {
@@ -117,7 +149,9 @@ export class PokemonState {
   // line and back does not lose any XP.
   static rememberActivePokemon(context: vscode.ExtensionContext): void {
     const pokemon = PokemonState.getPokemon(context)
-    if (!pokemon || pokemon.level === 0) {
+    // A pokemon brought out from the Pokedex to view an earlier stage is not
+    // real progress on the line, so it must not overwrite the roster entry.
+    if (!pokemon || pokemon.level === 0 || !pokemon.canGainXP) {
       return
     }
 
@@ -131,6 +165,7 @@ export class PokemonState {
       type: pokemon.type,
       level: pokemon.level,
       xp: pokemon.xp,
+      color: pokemon.color,
     }
     PokemonState.saveRoster(context)
   }
@@ -138,7 +173,8 @@ export class PokemonState {
   private static buildPokemon(
     evolutionLine: EvolutionLine,
     entry: RosterEntry,
-    scaleFactor: number
+    scaleFactor: number,
+    canGainXP: boolean
   ): UserPokemon {
     return {
       id: getPokemonId(entry.type),
@@ -152,14 +188,20 @@ export class PokemonState {
       isTransitionIn: false,
       leftPosition: 0,
       direction: 'right',
+      color: entry.color,
+      canGainXP,
     }
   }
 
-  // Brings out a pokemon picked in the Pokedex. Progress for that evolution
-  // line is restored when the user has raised it before, so nothing is lost.
+  // Brings out a pokemon picked in the Pokedex. Picking the stage the line has
+  // actually reached resumes its real progress. Picking any other stage of the
+  // same line (an earlier one, since evolution only moves forward) shows that
+  // exact stage as a read-only max snapshot instead of jumping to the stage
+  // reached, so it neither grows nor overwrites the line's real progress.
   static selectPokemonFromPokedex(
     context: vscode.ExtensionContext,
-    pokemonType: PokemonType
+    pokemonType: PokemonType,
+    requestedColor?: PokemonColor
   ): UserPokemon | undefined {
     const evolutionLine = getEvolutionLineContaining(pokemonType)
     if (!evolutionLine) {
@@ -174,16 +216,54 @@ export class PokemonState {
 
     const roster = PokemonState.getRoster(context)
     const storedEntry = roster[evolutionLine.base]
-    const entry: RosterEntry = storedEntry ?? {
-      type: pokemonType,
-      level: getPokemonLevel(pokemonType, evolutionLine),
-      xp: 0,
+    if (storedEntry && storedEntry.color === undefined) {
+      storedEntry.color = PokemonColor.default
     }
 
-    const pokemon = PokemonState.buildPokemon(evolutionLine, entry, scaleFactor)
+    let entry: RosterEntry
+    let canGainXP: boolean
+
+    if (!storedEntry) {
+      entry = {
+        type: pokemonType,
+        level: getPokemonLevel(pokemonType, evolutionLine),
+        xp: 0,
+        color: PokemonColor.default,
+      }
+      canGainXP = true
+    } else if (storedEntry.type === pokemonType) {
+      entry = storedEntry
+      canGainXP = true
+    } else {
+      const level = getPokemonLevel(pokemonType, evolutionLine)
+      entry = {
+        type: pokemonType,
+        level,
+        xp: getRequiredXPForLevel(level),
+        color: storedEntry.color,
+      }
+      canGainXP = false
+    }
+
+    // The Pokedex card only offers this choice once the shiny sprite is
+    // actually unlocked for the species, but the color is re-checked here
+    // too rather than trusted from the message.
+    if (
+      requestedColor === PokemonColor.shiny &&
+      !PokemonState.isPokemonShinyDiscovered(context, pokemonType)
+    ) {
+      requestedColor = PokemonColor.default
+    }
+    if (requestedColor !== undefined) {
+      entry.color = requestedColor
+    }
+
+    const pokemon = PokemonState.buildPokemon(evolutionLine, entry, scaleFactor, canGainXP)
 
     store(context).getState().pokemon = pokemon
-    roster[evolutionLine.base] = entry
+    if (canGainXP) {
+      roster[evolutionLine.base] = entry
+    }
     PokemonState.savePokemon(context)
 
     return pokemon
@@ -197,6 +277,7 @@ export class PokemonState {
     PokemonState.rememberActivePokemon(context)
 
     const basePokemon = getRandomBasePokemon()
+    const color = getRandomPokemonColor()
     const evolutionLine = getEvolutionLine(basePokemon)
 
     if (!evolutionLine) {
@@ -217,6 +298,8 @@ export class PokemonState {
       isTransitionIn: true,
       leftPosition: 0,
       direction: 'right',
+      color,
+      canGainXP: true,
     }
 
     store(context).getState().pokemon = pokemon
@@ -271,7 +354,7 @@ export class PokemonState {
     pokemon.state = nextLevel === 1 ? 'idle' : 'walking'
     pokemon.isTransitionIn = true
 
-    PokemonState.discoverPokemon(context, nextPokemon)
+    PokemonState.discoverPokemon(context, nextPokemon, pokemon.color)
     PokemonState.rememberActivePokemon(context)
 
     return true
@@ -280,5 +363,17 @@ export class PokemonState {
   static addXP(pokemon: UserPokemon, amount: number): void {
     pokemon.xp += amount
     pokemon.isTransitionIn = false
+  }
+
+  static getTotalXP(context: vscode.ExtensionContext): number {
+    return store(context).getState().totalXP || 0
+  }
+
+  // Lifetime counter, separate from any one pokemon's XP: it keeps growing
+  // across resets on evolution and across every line ever raised.
+  static addTotalXP(context: vscode.ExtensionContext, amount: number): void {
+    const state = store(context).getState()
+    state.totalXP = (state.totalXP || 0) + amount
+    store(context).save()
   }
 }
