@@ -1103,6 +1103,7 @@ export const POKEMON_DATA: { [key: string]: PokemonConfig } = {
     generation: PokemonGeneration.Gen1,
     cry: 'Omanyte!',
     possibleColors: [PokemonColor.default, PokemonColor.shiny],
+    rarity: PokemonRarity.fossil,
     types: [PokemonElementType.rock, PokemonElementType.water],
   },
   omastar: {
@@ -1111,6 +1112,7 @@ export const POKEMON_DATA: { [key: string]: PokemonConfig } = {
     generation: PokemonGeneration.Gen1,
     cry: 'Omastar!',
     possibleColors: [PokemonColor.default, PokemonColor.shiny],
+    rarity: PokemonRarity.fossil,
     types: [PokemonElementType.rock, PokemonElementType.water],
   },
   kabuto: {
@@ -1119,6 +1121,7 @@ export const POKEMON_DATA: { [key: string]: PokemonConfig } = {
     generation: PokemonGeneration.Gen1,
     cry: 'Kabuto!',
     possibleColors: [PokemonColor.default, PokemonColor.shiny],
+    rarity: PokemonRarity.fossil,
     types: [PokemonElementType.rock, PokemonElementType.water],
   },
   kabutops: {
@@ -1127,6 +1130,7 @@ export const POKEMON_DATA: { [key: string]: PokemonConfig } = {
     generation: PokemonGeneration.Gen1,
     cry: 'Kabutops!',
     possibleColors: [PokemonColor.default, PokemonColor.shiny],
+    rarity: PokemonRarity.fossil,
     types: [PokemonElementType.rock, PokemonElementType.water],
   },
   aerodactyl: {
@@ -1135,6 +1139,7 @@ export const POKEMON_DATA: { [key: string]: PokemonConfig } = {
     generation: PokemonGeneration.Gen1,
     cry: 'Aerodactyl!',
     possibleColors: [PokemonColor.default, PokemonColor.shiny],
+    rarity: PokemonRarity.fossil,
     types: [PokemonElementType.rock, PokemonElementType.flying],
   },
   snorlax: {
@@ -2992,6 +2997,7 @@ export const POKEMON_DATA: { [key: string]: PokemonConfig } = {
     generation: PokemonGeneration.Gen3,
     cry: 'Lileep!',
     possibleColors: [PokemonColor.default, PokemonColor.shiny],
+    rarity: PokemonRarity.fossil,
     types: [PokemonElementType.rock, PokemonElementType.grass],
   },
   cradily: {
@@ -3000,6 +3006,7 @@ export const POKEMON_DATA: { [key: string]: PokemonConfig } = {
     generation: PokemonGeneration.Gen3,
     cry: 'Cradily!',
     possibleColors: [PokemonColor.default, PokemonColor.shiny],
+    rarity: PokemonRarity.fossil,
     types: [PokemonElementType.rock, PokemonElementType.grass],
   },
   anorith: {
@@ -3008,6 +3015,7 @@ export const POKEMON_DATA: { [key: string]: PokemonConfig } = {
     generation: PokemonGeneration.Gen3,
     cry: 'Anorith!',
     possibleColors: [PokemonColor.default, PokemonColor.shiny],
+    rarity: PokemonRarity.fossil,
     types: [PokemonElementType.rock, PokemonElementType.bug],
   },
   armaldo: {
@@ -3016,6 +3024,7 @@ export const POKEMON_DATA: { [key: string]: PokemonConfig } = {
     generation: PokemonGeneration.Gen3,
     cry: 'Armaldo!',
     possibleColors: [PokemonColor.default, PokemonColor.shiny],
+    rarity: PokemonRarity.fossil,
     types: [PokemonElementType.rock, PokemonElementType.bug],
   },
   feebas: {

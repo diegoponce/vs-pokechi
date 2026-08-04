@@ -280,11 +280,15 @@ function getRarity(base: PokemonType): PokemonRarity | undefined {
   return POKEMON_DATA[base]?.rarity
 }
 
-// Legendary-tier species are pulled out of the ordinary single-stage pool so
-// their rarity is intentional rather than an accident of the dex being mostly
-// non-evolving species. hasOwnProperty check keeps a species out of the
-// common pool exactly once - not twice, and not left in by mistake.
+// Legendary-tier species are pulled out of the ordinary spawn pools so their
+// rarity is intentional rather than an accident of the dex being mostly
+// non-evolving species. Sub-legendary/legendary/mythical never evolve in this
+// game so they only ever live in SINGLE_STAGE_SPECIES, but fossils do (Omanyte,
+// Kabuto, Lileep, Anorith), so that tier is filtered from every line instead.
 const COMMON_SINGLE_STAGE_SPECIES = SINGLE_STAGE_SPECIES.filter(
+  line => getRarity(line.base) === undefined
+)
+const COMMON_MULTI_STAGE_EVOLUTION_LINES = MULTI_STAGE_EVOLUTION_LINES.filter(
   line => getRarity(line.base) === undefined
 )
 const SUB_LEGENDARY_SPECIES = SINGLE_STAGE_SPECIES.filter(
@@ -296,6 +300,9 @@ const LEGENDARY_SPECIES = SINGLE_STAGE_SPECIES.filter(
 const MYTHICAL_SPECIES = SINGLE_STAGE_SPECIES.filter(
   line => getRarity(line.base) === PokemonRarity.mythical
 )
+const FOSSIL_SPECIES = ALL_EVOLUTION_LINES.filter(
+  line => getRarity(line.base) === PokemonRarity.fossil
+)
 
 function pickRandomBase(lines: EvolutionLine[]): PokemonType {
   const uniqueBases = Array.from(new Set(lines.map(line => line.base)))
@@ -306,10 +313,12 @@ function pickRandomBase(lines: EvolutionLine[]): PokemonType {
 // Checked rarest first, each an independent roll that falls through to the
 // next, more common tier on a miss. The odds below are the chance of landing
 // in that tier specifically, not the chance of clearing that roll overall:
-// mythical is ~0.5% of all catches, legendary ~1%, sub-legendary ~2%.
+// mythical is ~0.5% of all catches, legendary ~1%, sub-legendary ~2%,
+// fossil ~5%.
 const MYTHICAL_SPAWN_CHANCE = 0.005
 const LEGENDARY_SPAWN_CHANCE = 0.01
 const SUB_LEGENDARY_SPAWN_CHANCE = 0.02
+const FOSSIL_SPAWN_CHANCE = 0.05
 
 export function getRandomBasePokemon(): PokemonType {
   if (MYTHICAL_SPECIES.length && Math.random() < MYTHICAL_SPAWN_CHANCE) {
@@ -321,11 +330,14 @@ export function getRandomBasePokemon(): PokemonType {
   if (SUB_LEGENDARY_SPECIES.length && Math.random() < SUB_LEGENDARY_SPAWN_CHANCE) {
     return pickRandomBase(SUB_LEGENDARY_SPECIES)
   }
+  if (FOSSIL_SPECIES.length && Math.random() < FOSSIL_SPAWN_CHANCE) {
+    return pickRandomBase(FOSSIL_SPECIES)
+  }
 
   const pool =
     Math.random() < SINGLE_STAGE_SPAWN_CHANCE
       ? COMMON_SINGLE_STAGE_SPECIES
-      : MULTI_STAGE_EVOLUTION_LINES
+      : COMMON_MULTI_STAGE_EVOLUTION_LINES
   return pickRandomBase(pool)
 }
 

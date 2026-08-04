@@ -138,6 +138,12 @@ export class PokedexPanel {
         {
           enableScripts: true,
           localResourceRoots: [mediaUri],
+          // Search text, the generation chip, and the two checkboxes only
+          // ever live in this webview's own DOM - without this, hiding the
+          // panel (switching tabs/windows) and coming back tears the webview
+          // down and rebuilds it from the static HTML, silently resetting
+          // every filter.
+          retainContextWhenHidden: true,
         }
       )
 
@@ -651,6 +657,10 @@ export class PokedexPanel {
       border-color: #C77DFF;
     }
 
+    .pokemon-card.discovered.rarity-fossil:hover {
+      border-color: #B08968;
+    }
+
     .pokemon-card:focus-visible {
       outline: 1px solid var(--accent);
       outline-offset: 2px;
@@ -678,6 +688,10 @@ export class PokedexPanel {
       border-color: #C77DFF;
     }
 
+    .pokemon-card.rarity-fossil {
+      border-color: #B08968;
+    }
+
     .pokemon-card.active.rarity-sub-legendary {
       border-color: #5EC8F2;
       box-shadow: inset 0 0 0 1px #5EC8F2;
@@ -691,6 +705,11 @@ export class PokedexPanel {
     .pokemon-card.active.rarity-mythical {
       border-color: #C77DFF;
       box-shadow: inset 0 0 0 1px #C77DFF;
+    }
+
+    .pokemon-card.active.rarity-fossil {
+      border-color: #B08968;
+      box-shadow: inset 0 0 0 1px #B08968;
     }
 
     .pokemon-card.locked {

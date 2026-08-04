@@ -12,6 +12,7 @@ export const enum PokemonRarity {
     subLegendary = 'sub-legendary',
     legendary = 'legendary',
     mythical = 'mythical',
+    fossil = 'fossil',
 }
 
 export enum PokemonGeneration {
