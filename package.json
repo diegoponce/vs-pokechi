@@ -87,9 +87,10 @@
   },
   "scripts": {
     "vscode:prepublish": "npm run compile",
+    "clean": "node -e \"require('fs').rmSync('out',{recursive:true,force:true})\"",
     "compile:panel": "webpack",
     "compile:extension": "tsc -p ./tsconfig.extension.json",
-    "compile": "npm run compile:panel && npm run compile:extension",
+    "compile": "npm run clean && npm run compile:panel && npm run compile:extension",
     "test": "npm run compile:extension && node ./test/state.test.js",
     "package": "vsce package",
     "publish:vscode": "vsce publish",
