@@ -1,140 +1,144 @@
+<div align="center">
+
+<img src="https://raw.githubusercontent.com/diegoponce/vs-pokechi/master/icon.png" width="120" alt="Pokechi" />
+
 # Pokechi
 
-Your Pokémon in VS Code. Evolve your Pokémon by coding!
+**Your Pokémon lives in your editor. Write code, it grows.**
 
-Watch them hatch from Pokéballs, walk around while you code, and evolve as they gain experience from your coding activity.
+[![Installs](https://vsmarketplacebadges.dev/installs-short/d9once.pokechi.svg)](https://marketplace.visualstudio.com/items?itemName=d9once.pokechi)
+[![Open VSX](https://img.shields.io/open-vsx/v/d9once/pokechi?label=open%20vsx)](https://open-vsx.org/extension/d9once/pokechi)
+[![Open VSX downloads](https://img.shields.io/open-vsx/dt/d9once/pokechi?label=downloads)](https://open-vsx.org/extension/d9once/pokechi)
+[![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
+
+<img src="https://raw.githubusercontent.com/diegoponce/vs-pokechi/master/media/gen1/bulbasaur/default_walk_8fps.gif" width="56" />
+<img src="https://raw.githubusercontent.com/diegoponce/vs-pokechi/master/media/gen1/charmander/default_walk_8fps.gif" width="56" />
+<img src="https://raw.githubusercontent.com/diegoponce/vs-pokechi/master/media/gen1/squirtle/default_walk_8fps.gif" width="56" />
+<img src="https://raw.githubusercontent.com/diegoponce/vs-pokechi/master/media/gen1/pikachu/default_walk_8fps.gif" width="56" />
+<img src="https://raw.githubusercontent.com/diegoponce/vs-pokechi/master/media/gen2/cyndaquil/default_walk_8fps.gif" width="56" />
+<img src="https://raw.githubusercontent.com/diegoponce/vs-pokechi/master/media/gen2/totodile/default_walk_8fps.gif" width="56" />
+<img src="https://raw.githubusercontent.com/diegoponce/vs-pokechi/master/media/gen3/treecko/default_walk_8fps.gif" width="56" />
+<img src="https://raw.githubusercontent.com/diegoponce/vs-pokechi/master/media/gen3/mudkip/default_walk_8fps.gif" width="56" />
+<img src="https://raw.githubusercontent.com/diegoponce/vs-pokechi/master/media/gen1/eevee/default_walk_8fps.gif" width="56" />
+<img src="https://raw.githubusercontent.com/diegoponce/vs-pokechi/master/media/gen1/gengar/default_walk_8fps.gif" width="56" />
+<img src="https://raw.githubusercontent.com/diegoponce/vs-pokechi/master/media/gen1/dragonite/default_walk_8fps.gif" width="56" />
+<img src="https://raw.githubusercontent.com/diegoponce/vs-pokechi/master/media/gen1/snorlax/default_walk_8fps.gif" width="56" />
+
+</div>
+
+---
+
+Install it and a Pokéball shows up in your editor. Keep coding and it hatches, walks around while you work, and evolves as it earns XP. Everything you meet is recorded in the **Pokechidex** — 416 species across Gen 1 to 3, shinies included.
+
+<!-- SCREENSHOT SLOT - panel mode.
+     Record a short GIF of a Pokémon walking in the panel while the XP bar fills,
+     save it as media/docs/panel.gif, push it, and delete these two comment
+     markers. Kept commented so the image never renders broken on the
+     marketplace before the file exists.
+
+<div align="center">
+  <img src="https://raw.githubusercontent.com/diegoponce/vs-pokechi/master/media/docs/panel.gif" width="800" alt="Pokechi in panel mode" />
+</div>
+
+-->
 
 ## Features
 
-- **Random Pokémon Assignment**: Get a random Pokémon from the full Gen 1-3 roster, usually from an evolution line with 2 or 3 stages
-- **XP System**: Your Pokémon gains experience as you code:
-  - Writing code: 1 XP
-  - Saving files: 2 XP
-- **Evolution System**: Your Pokémon evolves through multiple stages as it gains XP
-- **Starts as Pokéball**: Your Pokémon begins as a Pokéball and hatches when you start coding
-- **XP Bar**: Always visible XP progress bar showing your progress to the next evolution, or `MAX` once your Pokémon reaches its final stage
-- **Panel and Explorer Modes**: Choose where to display your Pokémon companion
-- **Hover Interaction**: Hover over your Pokémon to make it stop and use idle animation
-- **Pokechidex**: Open a Pokédex-style view of all Pokémon you have discovered, with search and a generation filter
-- **Pokechidex Selection**: Click any discovered Pokémon to bring it out, keeping the XP of every line you have raised
-- **Shared Across Windows**: Your progress follows you between VS Code windows
+|  | |
+| --- | --- |
+| <img src="https://raw.githubusercontent.com/diegoponce/vs-pokechi/master/media/gen1/charmander/default_walk_8fps.gif" width="48" /> | **It grows while you work.** 1 XP per edit, 2 per save. Enough XP and it hatches, then evolves through its line. |
+| <img src="https://raw.githubusercontent.com/diegoponce/vs-pokechi/master/media/gen1/charizard/shiny_walk_8fps.gif" width="48" /> | **Shinies.** A 5% chance on every new Pokémon. The colour sticks through every evolution, and the Pokechidex counts them separately. |
+| <img src="https://raw.githubusercontent.com/diegoponce/vs-pokechi/master/media/gen3/rayquaza/default_walk_8fps.gif" width="48" /> | **Legendaries are actually rare.** Mythical ~0.5%, legendary ~1%, sub-legendary ~2%, on their own odds instead of the common pool. |
+| <img src="https://raw.githubusercontent.com/diegoponce/vs-pokechi/master/media/gen2/unown_a/default_walk_8fps.gif" width="48" /> | **All 416 species**, every Unown form included, each tagged with its real Generation III typing. |
+| <img src="https://raw.githubusercontent.com/diegoponce/vs-pokechi/master/media/gen1/eevee/default_walk_8fps.gif" width="48" /> | **Every line keeps its own XP.** Switch Pokémon from the Pokechidex whenever you like — nothing you have raised is lost. |
+| <img src="https://raw.githubusercontent.com/diegoponce/vs-pokechi/master/media/gen1/snorlax/default_walk_8fps.gif" width="48" /> | **Follows you between windows.** Your progress is shared, so a second window picks up where the first left off. |
 
-## Installation
+## The Pokechidex
 
-Install this extension from the VS Code marketplace or build it locally.
+Every species you have met, in one grid. Search by name or number, filter by generation, or narrow it to what you have already caught. Locked species stay hidden behind a Pokéball — the grid never gives away what you have not met yet.
 
-### Local Installation
+<!-- SCREENSHOT SLOT - the Pokechidex.
+     A still PNG is enough. Show the grid with a few species discovered,
+     ideally one shiny and one legendary so the sparkle toggle and the rarity
+     border are both visible. Save as media/docs/pokechidex.png, push it, and
+     delete these two comment markers.
 
-1. Clone the repository
-2. Run `npm install`
-3. Run `npm run compile`
-4. Press `F5` to run the extension in a new Extension Development Host window
+<div align="center">
+  <img src="https://raw.githubusercontent.com/diegoponce/vs-pokechi/master/media/docs/pokechidex.png" width="800" alt="The Pokechidex" />
+</div>
 
-## Getting Started
+-->
 
-### Panel Mode (Default)
+Click any species you have discovered to bring it out. Caught it shiny? Its card gets a sparkle toggle, and it comes out in whichever colour is showing.
 
-Launch VS Code Quick Open (`Ctrl` + `Shift` + `P` on Windows/Linux or `Cmd` + `Shift` + `P` on macOS), paste the following command, and press Enter:
+## Getting started
 
-```
-Pokechi: Show Panel
-```
+Install, and that is it — your first Pokémon is created for you. Start typing and it hatches.
 
-This will show the Pokechi panel. Your Pokémon will walk around here.
+| Command | What it does |
+| --- | --- |
+| `Pokechi: Show Panel` | Open your Pokémon in a panel |
+| `Pokechi: Show Pokechidex` | Open the Pokechidex |
+| `Pokechi: New Pokemon` | Trade it in for a new random one |
+| `Pokechi: Open Explorer View` | Move it into the Explorer sidebar |
 
-### Explorer Mode
+### Panel or Explorer
 
-To use Explorer mode instead, run:
+Pokechi lives in a panel by default, or docked in the Explorer sidebar if you would rather keep it out of the way. `Pokechi: Open Explorer View` switches, or set `pokechi.position` yourself.
 
-```
-Pokechi: Open Explorer View
-```
+<!-- SCREENSHOT SLOT - explorer mode.
+     Show the Pokémon docked in the Explorer sidebar next to the file tree, so
+     the difference from panel mode is obvious. Save as media/docs/explorer.png,
+     push it, and delete these two comment markers.
 
-Your Pokémon will now appear in the Explorer panel. This keeps your Pokémon visible while you work.
+<div align="center">
+  <img src="https://raw.githubusercontent.com/diegoponce/vs-pokechi/master/media/docs/explorer.png" width="420" alt="Pokechi in the Explorer sidebar" />
+</div>
 
-### Spawning a New Pokémon
-
-Your first Pokémon is created for you the first time the extension starts, inside a Pokéball. Just start typing to hatch it — no setup command needed.
-
-To trade it in for a different random Pokémon, hit `Ctrl` + `Shift` + `P` (or `Cmd` + `Shift` + `P` on macOS), paste the following command, and press Enter:
-
-```
-Pokechi: New Pokemon
-```
-
-Your Pokémon gains XP as you code in either mode. Only edits to real files count, so scrolling through an output channel or a log will not feed it.
-
-Progress is shared across VS Code windows. Raising a Pokémon in one window and switching to another picks up where you left off.
-
-### Switching Between Modes
-
-You can switch between Panel and Explorer modes in two ways:
-
-1. **Via Settings**:
-   - Open VS Code Settings (`Ctrl` + `,` on Windows/Linux or `Cmd` + `,` on macOS)
-   - Search for "pokechi.position"
-   - Select either "panel" or "explorer"
-
-2. **Via Commands**:
-   - Use `Pokechi: Show Panel` to switch to Panel mode
-   - Use `Pokechi: Open Explorer View` to switch to Explorer mode
-
-## Commands
-
-- `Pokechi: Show Panel` - Show the Pokechi panel
-- `Pokechi: Show Pokechidex` - Open the Pokechidex
-- `Pokechi: New Pokemon` - Spawn a new random Pokémon
-- `Pokechi: Open Explorer View` - Switch to explorer view mode
-
-## Pokechidex
-
-The Pokechidex shows every Gen 1-3 species in a compact grid. Species you have not met yet stay hidden behind a Pokéball, and a species is discovered when it hatches from a Pokéball or when one of your Pokémon evolves into it.
-
-Search by name or number, filter by generation, or narrow the grid down to what you have already discovered.
-
-Click any discovered Pokémon to bring it out in the active view, either the panel or the Explorer view. Every evolution line keeps its own XP, so switching away and coming back later picks up exactly where you left off. Because evolution only moves forward, clicking an earlier stage of a line you have already raised brings out the stage you reached.
-
-Not every species evolves. Those hatch straight from a Pokéball and show `MAX` on the XP bar instead of a progress bar.
+-->
 
 ## Settings
 
-Open the setting panel with `Ctrl` + `,` on Windows/Linux or `Cmd` + `,` on macOS. In the search bar, enter "pokechi" to see all available options.
+| Setting | Default | What it does |
+| --- | --- | --- |
+| `pokechi.position` | `panel` | Where your Pokémon lives: `panel` or `explorer` |
+| `pokechi.scaleFactor` | `1.0` | How big it is, from `0.5` to `1.5` |
 
-- **`pokechi.position`**: Where to show your Pokémon (panel or explorer)
-- **`pokechi.scaleFactor`**: Scale factor for Pokémon size (0.5 to 1.5, default: 1.0)
+## How XP works
 
-## XP System
+| Action | XP |
+| --- | --- |
+| Editing a file | 1 |
+| Saving a file | 2 |
 
-Your Pokémon gains experience points (XP) through various coding activities:
+Only real files count — output channels, logs and diff views do not feed your Pokémon.
 
-- **Writing code**: 1 XP per keystroke (throttled to prevent spam)
-- **Saving files**: 2 XP per save
+| Stage | XP to advance |
+| --- | --- |
+| Pokéball | 500 to hatch |
+| First stage | 1000 to evolve |
+| Second stage | 2000 to evolve |
 
-### Evolution Requirements
+Species that do not evolve show `MAX` on the bar instead of a target they can never reach.
 
-- **Level 0 (Pokéball)**: Requires 500 XP to hatch
-- **Level 1 (First evolution)**: Requires 1000 XP to evolve
-- **Level 2 (Second evolution)**: Requires 2000 XP to evolve
-- **Higher levels**: 2000 + (level - 2) × 50 XP per level
+## Building it yourself
 
-Your Pokémon will automatically evolve when it reaches the required XP for the next level.
+```bash
+git clone https://github.com/diegoponce/vs-pokechi
+cd vs-pokechi
+npm install
+npm run compile
+```
 
-## Interaction
-
-- **Hover**: Hover your mouse over the Pokémon area to make it stop walking and use the idle animation
-- **Movement**: When not hovering, your Pokémon will walk back and forth automatically
+Press `F5` to launch it in an Extension Development Host. `npm test` runs the state tests, `npm run package` builds a `.vsix`.
 
 ## Credits
 
-### Sprite Sources
-- Pokémon Sprites: © The Pokémon Company / Nintendo / Game Freak
-- The sprites are used for non-commercial, fan project purposes only
-- Original sprite artwork belongs to the respective copyright holders
+Pokémon sprites are © The Pokémon Company / Nintendo / Game Freak, used here for a non-commercial fan project. This extension is not affiliated with Nintendo, The Pokémon Company or Game Freak, and all sprite artwork belongs to its original creators.
 
-### Acknowledgments
-- All sprites are property of their original creators
-- This repository is a fan project and is not affiliated with Nintendo, The Pokémon Company, or Game Freak
+Built on top of:
 
-This repository is inspired by and based on:
 - [codachi](https://github.com/blairjordan/codachi) by [blairjordan](https://github.com/blairjordan), MIT licensed. Pokechi is a derivative work of Codachi and retains its copyright notice, as the MIT License requires. See [LICENSE](LICENSE).
 - [vscode-pokemon](https://github.com/jakobhoeg/vscode-pokemon) by [jakobhoeg](https://github.com/jakobhoeg)
+
+The Pokechidex, and the shiny, rarity and typing systems, were contributed by [@ApuTHC](https://github.com/ApuTHC).
