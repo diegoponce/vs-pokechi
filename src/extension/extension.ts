@@ -4,8 +4,10 @@ import { PokedexPanel } from './pokedex-panel'
 import { generateNonce } from './nonce'
 import { UserPokemon, Position } from './types'
 import { PokemonColor, PokemonElementType, PokemonType } from '../common/types'
-import { SPARKLE_ICON, getSparkleBurstMarkup, getSparkleBurstCssRules } from '../common/icons'
+import { SPARKLE_ICON, LOCATE_ICON, getSparkleBurstMarkup, getSparkleBurstCssRules } from '../common/icons'
 import { TYPE_BADGES, getTypeBadgeCssRules } from '../common/type-badges'
+import { getRarityBorderCssRules } from '../common/rarity-colors'
+import { POKEMON_DATA } from '../common/pokemon-data'
 import { XPTracker, setUpdateCallbacks } from './xp-tracker'
 
 interface PokemonSelectionFromPokedex {
@@ -38,6 +40,31 @@ async function updateExtensionPositionContext() {
     'setContext',
     'pokechi.position',
     getConfigurationPosition()
+  )
+}
+
+// Reveals the Pokechidex (creating it if it is not already open) scrolled to
+// and briefly highlighting the given species, so "locate" always lands
+// somewhere visible instead of a card the current filters happen to hide.
+async function revealPokemonInPokedex(
+  context: vscode.ExtensionContext,
+  pokemonType: PokemonType,
+  isShiny: boolean
+): Promise<void> {
+  if (PokechiState.pokedex?.panel) {
+    PokechiState.pokedex.panel.reveal(vscode.ViewColumn.Two)
+    PokechiState.pokedex.refresh()
+  } else {
+    PokechiState.pokedex = new PokedexPanel(context)
+    PokechiState.pokedex.createPanel()
+    // Callers post to the webview as soon as this resolves, and a webview
+    // that has not finished loading drops what it is sent.
+    await new Promise<void>((resolve) => setTimeout(resolve, 100))
+  }
+
+  PokechiState.pokedex?.locatePokemon(
+    pokemonType,
+    isShiny ? PokemonColor.shiny : PokemonColor.default
   )
 }
 
@@ -146,6 +173,21 @@ class PokechiContentProvider {
     // Levels 0 to 3 cover every line in the game; anything beyond is
     // extrapolated in the webview with the same formula as the host.
     const xpThresholds = JSON.stringify([0, 1, 2, 3].map(getRequiredXPForLevel))
+    // Still inside its Pokeball, a pokemon has not been revealed yet, so its
+    // rarity must not show through the border ahead of the actual reveal.
+    const rarity =
+      pokemon && pokemon.level > 0 ? POKEMON_DATA[pokemon.type]?.rarity : undefined
+    const rarityClass = rarity ? ` rarity-${rarity}` : ''
+    // Species -> rarity, only for the ones that have one, so the webview can
+    // keep this in sync as the pokemon changes without a full page reload.
+    const pokemonRarity = JSON.stringify(
+      Object.entries(POKEMON_DATA).reduce<Record<string, string>>((acc, [type, data]) => {
+        if (data.rarity) {
+          acc[type] = data.rarity
+        }
+        return acc
+      }, {})
+    )
 
     return `<!DOCTYPE html>
     <html lang="en">
@@ -171,13 +213,38 @@ class PokechiContentProvider {
           background-color: rgba(0, 0, 0, 0.5);
           padding: 8px;
           border-radius: 5px;
+          border: 2px solid transparent;
+          box-sizing: border-box;
           display: block;
         }
+        ${getRarityBorderCssRules('.xp-container')}
         .xp-text {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 6px;
           color: white;
           font-size: 12px;
           margin-bottom: 4px;
           font-weight: bold;
+        }
+        .locate-button {
+          display: none;
+          align-items: center;
+          justify-content: center;
+          flex-shrink: 0;
+          width: 16px;
+          height: 16px;
+          padding: 0;
+          border: none;
+          border-radius: 3px;
+          background: transparent;
+          color: rgba(255, 255, 255, 0.75);
+          cursor: pointer;
+        }
+        .locate-button:hover {
+          background: rgba(255, 255, 255, 0.15);
+          color: white;
         }
         .xp-progress-bg {
           width: 100%;
@@ -255,7 +322,7 @@ class PokechiContentProvider {
       </style>
     </head>
     <body>
-      <div class="xp-container">
+      <div class="xp-container${rarityClass}" id="xp-container">
         <div class="pokemon-name" id="pokemon-name">
           <span class="pokemon-name-group">
             <span id="pokemon-name-text">${pokemon && pokemon.level > 0 ? pokemon.name : ''}</span>
@@ -263,7 +330,10 @@ class PokechiContentProvider {
           </span>
           <span class="type-badges" id="pokemon-type-badges">${pokemon && pokemon.level > 0 ? renderTypeBadgesMarkup(pokemon.types) : ''}</span>
         </div>
-        <div class="xp-text">XP: <span id="current-xp">0</span><span id="xp-required-wrap"> / <span id="required-xp">${requiredXP}</span></span><span class="xp-max" id="xp-max">MAX</span></div>
+        <div class="xp-text">
+          <span class="xp-text-value">XP: <span id="current-xp">0</span><span id="xp-required-wrap"> / <span id="required-xp">${requiredXP}</span></span><span class="xp-max" id="xp-max">MAX</span></span>
+          <button type="button" class="locate-button" id="locate-button" title="Locate in Pokechidex" aria-label="Locate in Pokechidex">${LOCATE_ICON}</button>
+        </div>
         <div class="xp-progress-bg">
           <div class="xp-progress-fill" id="xp-progress"></div>
         </div>
@@ -309,6 +379,8 @@ class PokechiContentProvider {
         const XP_THRESHOLDS = ${xpThresholds};
 
         const TYPE_BADGES = ${JSON.stringify(TYPE_BADGES)};
+        const POKEMON_RARITY = ${pokemonRarity};
+        const RARITY_CLASSES = ['rarity-sub-legendary', 'rarity-legendary', 'rarity-mythical', 'rarity-fossil'];
 
         function getRequiredXPForLevel(level) {
           if (XP_THRESHOLDS[level] !== undefined) {
@@ -317,14 +389,15 @@ class PokechiContentProvider {
           const highest = Object.keys(XP_THRESHOLDS).length - 1;
           return XP_THRESHOLDS[highest] + (level - highest) * 50;
         }
-        
+
         function updateXP(userPokemon) {
-          const xpContainer = document.querySelector('.xp-container');
+          const xpContainer = document.getElementById('xp-container');
           const xpText = document.querySelector('.xp-text');
           const currentXPEl = document.getElementById('current-xp');
           const requiredXPEl = document.getElementById('required-xp');
           const xpProgressFill = document.getElementById('xp-progress');
-          
+          const locateButton = document.getElementById('locate-button');
+
           const requiredWrapEl = document.getElementById('xp-required-wrap');
           const maxEl = document.getElementById('xp-max');
 
@@ -350,6 +423,22 @@ class PokechiContentProvider {
 
             xpProgressFill.classList.toggle('is-max', isFinalStage);
             xpProgressFill.style.width = isFinalStage ? "100%" : percentage + "%";
+
+            // Still inside its Pokeball, a pokemon has not been revealed yet,
+            // so neither the rarity border nor the locate button (nothing to
+            // find in the Pokechidex yet) should show.
+            const isRevealed = (userPokemon.level || 0) > 0;
+            const rarity = isRevealed ? POKEMON_RARITY[userPokemon.type] : undefined;
+            xpContainer.classList.remove.apply(xpContainer.classList, RARITY_CLASSES);
+            if (rarity) {
+              xpContainer.classList.add('rarity-' + rarity);
+            }
+
+            if (locateButton) {
+              locateButton.style.display = isRevealed ? 'inline-flex' : 'none';
+              locateButton.dataset.pokemonType = userPokemon.type || '';
+              locateButton.dataset.isShiny = userPokemon.color === 'shiny' ? '1' : '0';
+            }
           }
         }
         
@@ -384,7 +473,23 @@ class PokechiContentProvider {
           updateXP(${pokemonData});
           updatePokemonName(${pokemonData});
         }
-        
+
+        const vscodeApi = acquireVsCodeApi();
+        const locateButtonEl = document.getElementById('locate-button');
+        if (locateButtonEl) {
+          locateButtonEl.addEventListener('click', () => {
+            const pokemonType = locateButtonEl.dataset.pokemonType;
+            if (!pokemonType) {
+              return;
+            }
+            vscodeApi.postMessage({
+              command: 'locate-in-pokedex',
+              pokemonType: pokemonType,
+              isShiny: locateButtonEl.dataset.isShiny === '1',
+            });
+          });
+        }
+
         window.addEventListener('message', (event) => {
           const { command, data } = event.data;
           if (command === 'update-pokemon' && data && data.userPokemon) {
@@ -509,6 +614,15 @@ class PokemonPanel extends PokechiContentProvider {
               'pokechi.position'
             )
             break
+          case 'locate-in-pokedex':
+            if (message.pokemonType) {
+              void revealPokemonInPokedex(
+                this._context,
+                message.pokemonType,
+                !!message.isShiny
+              )
+            }
+            break
         }
       },
       undefined,
@@ -585,6 +699,11 @@ class PokechiViewProvider
       switch (data.command) {
         case 'alert':
           vscode.window.showInformationMessage(data.text)
+          break
+        case 'locate-in-pokedex':
+          if (data.pokemonType) {
+            void revealPokemonInPokedex(this._context, data.pokemonType, !!data.isShiny)
+          }
           break
       }
     })
@@ -698,8 +817,10 @@ export function activate(context: vscode.ExtensionContext) {
   if (!currentPokemon) {
     // Without this a fresh install has no state at all: the view falls back to
     // a placeholder and the XP tracker drops every event, so the extension
-    // looks broken until the user finds the New Pokemon command.
-    currentPokemon = PokemonState.createNewPokemon(context)
+    // looks broken until the user finds the New Pokemon command. This is the
+    // only path that can ever run with nothing caught yet, so it is also
+    // where a starter gets picked instead of the usual fully random roll.
+    currentPokemon = PokemonState.createStarterPokemon(context)
   }
 
   if (currentPokemon.level > 0) {
@@ -827,7 +948,20 @@ export function activate(context: vscode.ExtensionContext) {
   )
 
   context.subscriptions.push(
-    vscode.commands.registerCommand('pokechi.spawnNewPokemon', () => {
+    vscode.commands.registerCommand('pokechi.spawnNewPokemon', async () => {
+      // Catching a new one hides whatever is currently out (its own progress
+      // is safe either way - rememberActivePokemon banks it before this
+      // proceeds), which is a jarring surprise from one stray click on the
+      // header button, so it is confirmed first rather than undoable after.
+      const confirmed = await vscode.window.showWarningMessage(
+        'Catch a new Pokemon? The one currently out will be tucked away - its progress is saved and you can bring it back from the Pokechidex.',
+        { modal: true },
+        'Catch a New Pokemon'
+      )
+      if (confirmed !== 'Catch a New Pokemon') {
+        return
+      }
+
       const position = getConfigurationPosition()
 
       if (position === 'panel' && !PokechiState.panel?.panel) {

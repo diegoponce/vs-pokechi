@@ -12,6 +12,7 @@ import {
   getPokemonByLevel,
   getPokemonLevel,
   hasFurtherEvolution,
+  STARTER_POKEMON,
 } from '../common/pokemon-evolutions'
 import { POKEMON_DATA } from '../common/pokemon-data'
 
@@ -370,19 +371,16 @@ export class PokemonState {
     return pokemon
   }
 
-  // Every catch opens as a real Pokeball, needing the same XP as any other -
-  // including a line (branching or not) that turns out to already be fully
-  // owned. What differs for that case is only what happens once the Pokeball
-  // actually hatches, which pendingAlreadyOwned flags for evolvePokemon to
-  // act on.
-  static createNewPokemon(context: vscode.ExtensionContext): UserPokemon {
+  // Shared by createNewPokemon and createStarterPokemon: everything past
+  // "which base species" is identical for both.
+  private static buildFreshPokeball(
+    context: vscode.ExtensionContext,
+    basePokemon: PokemonType
+  ): UserPokemon {
     const scaleFactor = vscode.workspace
       .getConfiguration()
       .get('pokechi.scaleFactor', 1.0)
 
-    PokemonState.rememberActivePokemon(context)
-
-    const basePokemon = getRandomBasePokemon()
     const color = getRandomPokemonColor()
     // A branching base (Eevee, Oddish, ...) has more than one possible line;
     // this rolls which one this specific catch commits to. Non-branching
@@ -436,6 +434,27 @@ export class PokemonState {
     store(context).getState().pokemon = pokemon
     PokemonState.savePokemon(context)
     return pokemon
+  }
+
+  // Every catch opens as a real Pokeball, needing the same XP as any other -
+  // including a line (branching or not) that turns out to already be fully
+  // owned. What differs for that case is only what happens once the Pokeball
+  // actually hatches, which pendingAlreadyOwned flags for evolvePokemon to
+  // act on.
+  static createNewPokemon(context: vscode.ExtensionContext): UserPokemon {
+    PokemonState.rememberActivePokemon(context)
+    return PokemonState.buildFreshPokeball(context, getRandomBasePokemon())
+  }
+
+  // The very first Pokeball a fresh install ever gets is always one of the
+  // 12 starters, rather than the fully random roll every catch after it
+  // uses - matches the games, and gives a new player a species they
+  // actually recognize as day one instead of a coin flip that could be
+  // anything from Magikarp to Unown.
+  static createStarterPokemon(context: vscode.ExtensionContext): UserPokemon {
+    PokemonState.rememberActivePokemon(context)
+    const starter = STARTER_POKEMON[Math.floor(Math.random() * STARTER_POKEMON.length)]
+    return PokemonState.buildFreshPokeball(context, starter)
   }
 
   static getRequiredXP(pokemon: UserPokemon): number {

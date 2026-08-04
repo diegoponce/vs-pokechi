@@ -216,6 +216,19 @@ export class PokedexPanel {
     }
   }
 
+  // Scrolls to and briefly highlights a card, clearing whatever filters
+  // would otherwise hide it - used by the "locate in Pokechidex" button on
+  // the active pokemon's XP row.
+  locatePokemon(pokemonType: PokemonType, color: PokemonColor): void {
+    if (!this.panel) {
+      return
+    }
+    this.panel.webview.postMessage({
+      command: 'locate-pokemon',
+      data: { pokemonType, isShiny: color === PokemonColor.shiny },
+    })
+  }
+
   // Full rebuild of the webview. Only worth doing when the panel is created or
   // restored: it emits every card and restarts all the sprite animations.
   updateContent(): void {
@@ -672,6 +685,26 @@ export class PokedexPanel {
     .pokemon-card.active {
       border-color: var(--accent);
       box-shadow: inset 0 0 0 1px var(--accent);
+    }
+
+    /* Outline rather than border/box-shadow, so it layers over the active
+       and rarity states above instead of fighting them for the same
+       property - the "locate in Pokechidex" button needs this to stand out
+       no matter what the card already looks like. */
+    @keyframes locate-pulse {
+      0%, 100% {
+        outline-color: rgba(255, 215, 0, 0.9);
+        outline-offset: 2px;
+      }
+      50% {
+        outline-color: rgba(255, 215, 0, 0.35);
+        outline-offset: 5px;
+      }
+    }
+
+    .pokemon-card.locate-highlight {
+      outline: 3px solid rgba(255, 215, 0, 0.9);
+      animation: locate-pulse 0.8s ease-in-out 3;
     }
 
     /* Locked cards never get a rarity-* class, so this never spoils how rare
@@ -1162,6 +1195,56 @@ export class PokedexPanel {
           if (totalXPEl && message.data && typeof message.data.totalXPText === 'string') {
             totalXPEl.textContent = message.data.totalXPText;
           }
+          return;
+        }
+
+        if (message.command === 'locate-pokemon') {
+          var locateData = message.data || {};
+          var target = grid && grid.querySelector('[data-pokemon-type="' + locateData.pokemonType + '"]');
+          if (!target) {
+            return;
+          }
+
+          // Filters are only touched if they would actually hide the
+          // target - whatever the user was already searching for is left
+          // alone otherwise, rather than "locating" clearing it every time.
+          var term = (search && search.value ? search.value : '').trim().toLowerCase();
+          var matchesGeneration =
+            generation === 'all' || target.dataset.generation === generation;
+          var matchesDiscovered =
+            !onlyDiscovered || !onlyDiscovered.checked || target.classList.contains('discovered');
+          var matchesShiny =
+            !onlyShiny || !onlyShiny.checked || target.dataset.hasShiny === '1';
+          var matchesTerm =
+            !term ||
+            (target.dataset.name && target.dataset.name.indexOf(term) >= 0) ||
+            (target.dataset.number && target.dataset.number.indexOf(term) >= 0);
+
+          if (!(matchesGeneration && matchesDiscovered && matchesShiny && matchesTerm)) {
+            generation = 'all';
+            Array.prototype.forEach.call(document.querySelectorAll('.filter-chip'), function (chip) {
+              chip.classList.toggle('is-selected', chip.dataset.generation === 'all');
+            });
+            if (search) {
+              search.value = '';
+            }
+            if (onlyDiscovered) {
+              onlyDiscovered.checked = false;
+            }
+            if (onlyShiny) {
+              onlyShiny.checked = false;
+            }
+            applyFilters();
+          }
+
+          syncShinyState(target, !!locateData.isShiny);
+
+          target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          target.classList.add('locate-highlight');
+          clearTimeout(target._locateHighlightTimer);
+          target._locateHighlightTimer = setTimeout(function () {
+            target.classList.remove('locate-highlight');
+          }, 2500);
           return;
         }
 

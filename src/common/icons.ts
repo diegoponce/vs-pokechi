@@ -3,6 +3,11 @@
 export const SPARKLE_ICON =
   '<svg viewBox="0 0 16 16" width="11" height="11" fill="currentColor" aria-hidden="true"><path d="M8 0c.3 2.7 1 4.7 2 6s3.3 1.7 6 2c-2.7.3-4.7 1-6 2s-1.7 3.3-2 6c-.3-2.7-1-4.7-2-6s-3.3-1.7-6-2c2.7-.3 4.7-1 6-2s1.7-3.3 2-6z"/></svg>'
 
+// A target/reticle, used by the "locate in Pokechidex" button on the active
+// pokemon's XP row.
+export const LOCATE_ICON =
+  '<svg viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.3" aria-hidden="true"><circle cx="8" cy="8" r="5.25"/><circle cx="8" cy="8" r="1.4" fill="currentColor" stroke="none"/><path d="M8 0.5v2.5M8 13v2.5M0.5 8h2.5M13 8h2.5"/></svg>'
+
 // Scattered around a center point, roughly in a ring - not a perfect circle,
 // so the burst reads as a scatter of sparkles rather than a mechanical spin.
 const SPARKLE_BURST_OFFSETS: Array<[number, number]> = [

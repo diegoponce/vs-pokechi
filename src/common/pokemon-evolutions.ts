@@ -6,6 +6,24 @@ export interface EvolutionLine {
   evolutions: PokemonType[]
 }
 
+// The starting pokemon of each generation represented in the dex, in dex
+// order. A fresh install's very first Pokeball is always one of these
+// instead of the fully random roll every catch after it uses.
+export const STARTER_POKEMON: PokemonType[] = [
+  'bulbasaur',
+  'charmander',
+  'squirtle',
+  'chikorita',
+  'cyndaquil',
+  'totodile',
+  'treecko',
+  'torchic',
+  'mudkip',
+  'turtwig',
+  'chimchar',
+  'piplup',
+]
+
 const THREE_STAGE_EVOLUTIONS: EvolutionLine[] = [
   { base: 'bulbasaur', evolutions: ['ivysaur', 'venusaur'] },
   { base: 'charmander', evolutions: ['charmeleon', 'charizard'] },

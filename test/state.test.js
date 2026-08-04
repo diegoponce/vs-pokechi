@@ -644,6 +644,27 @@ test('an older build stripping a field does not cost the data', () => {
   assert.strictEqual(merged.totalXP, 5000)
 })
 
+// --- starter pokemon --------------------------------------------------------
+console.log('\nstarter pokemon')
+
+test('the very first pokemon a fresh install gets is always a starter', () => {
+  const starters = [
+    'bulbasaur', 'charmander', 'squirtle',
+    'chikorita', 'cyndaquil', 'totodile',
+    'treecko', 'torchic', 'mudkip',
+    'turtwig', 'chimchar', 'piplup',
+  ]
+  for (let i = 0; i < 100; i++) {
+    const starter = PokemonState.createStarterPokemon(context)
+    assert.ok(
+      starters.includes(starter.type),
+      `${starter.type} is not one of the 12 starters`
+    )
+    assert.strictEqual(starter.level, 0)
+    assert.strictEqual(starter.state, 'pokeball')
+  }
+})
+
 fs.rmSync(storageDir, { recursive: true, force: true })
 
 console.log(`\n${passed} passed, ${failed} failed\n`)
