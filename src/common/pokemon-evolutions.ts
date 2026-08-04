@@ -1,4 +1,5 @@
-import { PokemonColor, PokemonType } from './types'
+import { PokemonColor, PokemonRarity, PokemonType } from './types'
+import { POKEMON_DATA } from './pokemon-data'
 
 export interface EvolutionLine {
   base: PokemonType
@@ -299,16 +300,55 @@ export const ALL_EVOLUTION_LINES: EvolutionLine[] = [
 // evolves. Keep evolving lines as the common case.
 const SINGLE_STAGE_SPAWN_CHANCE = 0.2
 
+function getRarity(base: PokemonType): PokemonRarity | undefined {
+  return POKEMON_DATA[base]?.rarity
+}
+
+// Legendary-tier species are pulled out of the ordinary single-stage pool so
+// their rarity is intentional rather than an accident of the dex being mostly
+// non-evolving species. hasOwnProperty check keeps a species out of the
+// common pool exactly once - not twice, and not left in by mistake.
+const COMMON_SINGLE_STAGE_SPECIES = SINGLE_STAGE_SPECIES.filter(
+  line => getRarity(line.base) === undefined
+)
+const SUB_LEGENDARY_SPECIES = SINGLE_STAGE_SPECIES.filter(
+  line => getRarity(line.base) === PokemonRarity.subLegendary
+)
+const LEGENDARY_SPECIES = SINGLE_STAGE_SPECIES.filter(
+  line => getRarity(line.base) === PokemonRarity.legendary
+)
+const MYTHICAL_SPECIES = SINGLE_STAGE_SPECIES.filter(
+  line => getRarity(line.base) === PokemonRarity.mythical
+)
+
 function pickRandomBase(lines: EvolutionLine[]): PokemonType {
   const uniqueBases = Array.from(new Set(lines.map(line => line.base)))
   const randomIndex = Math.floor(Math.random() * uniqueBases.length)
   return uniqueBases[randomIndex]
 }
 
+// Checked rarest first, each an independent roll that falls through to the
+// next, more common tier on a miss. The odds below are the chance of landing
+// in that tier specifically, not the chance of clearing that roll overall:
+// mythical is ~0.5% of all catches, legendary ~1%, sub-legendary ~2%.
+const MYTHICAL_SPAWN_CHANCE = 0.005
+const LEGENDARY_SPAWN_CHANCE = 0.01
+const SUB_LEGENDARY_SPAWN_CHANCE = 0.02
+
 export function getRandomBasePokemon(): PokemonType {
+  if (MYTHICAL_SPECIES.length && Math.random() < MYTHICAL_SPAWN_CHANCE) {
+    return pickRandomBase(MYTHICAL_SPECIES)
+  }
+  if (LEGENDARY_SPECIES.length && Math.random() < LEGENDARY_SPAWN_CHANCE) {
+    return pickRandomBase(LEGENDARY_SPECIES)
+  }
+  if (SUB_LEGENDARY_SPECIES.length && Math.random() < SUB_LEGENDARY_SPAWN_CHANCE) {
+    return pickRandomBase(SUB_LEGENDARY_SPECIES)
+  }
+
   const pool =
     Math.random() < SINGLE_STAGE_SPAWN_CHANCE
-      ? SINGLE_STAGE_SPECIES
+      ? COMMON_SINGLE_STAGE_SPECIES
       : MULTI_STAGE_EVOLUTION_LINES
   return pickRandomBase(pool)
 }

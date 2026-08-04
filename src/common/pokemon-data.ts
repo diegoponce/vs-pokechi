@@ -1,4 +1,4 @@
-import { PokemonColor, PokemonConfig, PokemonGeneration, PokemonType } from "./types";
+import { PokemonColor, PokemonConfig, PokemonGeneration, PokemonRarity, PokemonType } from "./types";
 
 export const POKEMON_DATA: { [key: string]: PokemonConfig } = {
   bulbasaur: {
@@ -1007,21 +1007,24 @@ export const POKEMON_DATA: { [key: string]: PokemonConfig } = {
     name: 'Articuno',
     generation: PokemonGeneration.Gen1,
     cry: 'Articuno!',
-    possibleColors: [PokemonColor.default, PokemonColor.shiny]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny],
+    rarity: PokemonRarity.subLegendary,
   },
   zapdos: {
     id: 145,
     name: 'Zapdos',
     generation: PokemonGeneration.Gen1,
     cry: 'Zapdos!',
-    possibleColors: [PokemonColor.default, PokemonColor.shiny]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny],
+    rarity: PokemonRarity.subLegendary,
   },
   moltres: {
     id: 146,
     name: 'Moltres',
     generation: PokemonGeneration.Gen1,
     cry: 'Moltres!',
-    possibleColors: [PokemonColor.default, PokemonColor.shiny]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny],
+    rarity: PokemonRarity.subLegendary,
   },
   dratini: {
     id: 147,
@@ -1049,14 +1052,16 @@ export const POKEMON_DATA: { [key: string]: PokemonConfig } = {
     name: 'Mewtwo',
     generation: PokemonGeneration.Gen1,
     cry: 'Mewtwo!',
-    possibleColors: [PokemonColor.default, PokemonColor.shiny]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny],
+    rarity: PokemonRarity.legendary,
   },
   mew: {
     id: 151,
     name: 'Mew',
     generation: PokemonGeneration.Gen1,
     cry: 'Mew!',
-    possibleColors: [PokemonColor.default, PokemonColor.shiny]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny],
+    rarity: PokemonRarity.mythical,
   },
   // Generation 2
   chikorita: {
@@ -1891,21 +1896,24 @@ export const POKEMON_DATA: { [key: string]: PokemonConfig } = {
     name: 'Raikou',
     generation: PokemonGeneration.Gen2,
     cry: 'Raikou!',
-    possibleColors: [PokemonColor.default, PokemonColor.shiny]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny],
+    rarity: PokemonRarity.subLegendary,
   },
   entei: {
     id: 244,
     name: 'Entei',
     generation: PokemonGeneration.Gen2,
     cry: 'Entei!',
-    possibleColors: [PokemonColor.default, PokemonColor.shiny]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny],
+    rarity: PokemonRarity.subLegendary,
   },
   suicune: {
     id: 245,
     name: 'Suicune',
     generation: PokemonGeneration.Gen2,
     cry: 'Suicune!',
-    possibleColors: [PokemonColor.default, PokemonColor.shiny]
+    possibleColors: [PokemonColor.default, PokemonColor.shiny],
+    rarity: PokemonRarity.subLegendary,
   },
   larvitar: {
     id: 246,
@@ -1934,6 +1942,7 @@ export const POKEMON_DATA: { [key: string]: PokemonConfig } = {
     generation: PokemonGeneration.Gen2,
     cry: 'Lugia!',
     possibleColors: [PokemonColor.default, PokemonColor.shiny],
+    rarity: PokemonRarity.legendary,
     originalSpriteSize: 64
   },
   hooh: {
@@ -1942,6 +1951,7 @@ export const POKEMON_DATA: { [key: string]: PokemonConfig } = {
     generation: PokemonGeneration.Gen2,
     cry: 'Ho-Oh!',
     possibleColors: [PokemonColor.default, PokemonColor.shiny],
+    rarity: PokemonRarity.legendary,
     originalSpriteSize: 64,
   },
   celebi: {
@@ -1950,6 +1960,7 @@ export const POKEMON_DATA: { [key: string]: PokemonConfig } = {
     generation: PokemonGeneration.Gen2,
     cry: 'Celebi!',
     possibleColors: [PokemonColor.default, PokemonColor.shiny],
+    rarity: PokemonRarity.mythical,
   },
   // Generation 3
   treecko: {
@@ -2834,6 +2845,7 @@ export const POKEMON_DATA: { [key: string]: PokemonConfig } = {
     generation: PokemonGeneration.Gen3,
     cry: 'Regirock!',
     possibleColors: [PokemonColor.default, PokemonColor.shiny],
+    rarity: PokemonRarity.subLegendary,
   },
   regice: {
     id: 378,
@@ -2841,6 +2853,7 @@ export const POKEMON_DATA: { [key: string]: PokemonConfig } = {
     generation: PokemonGeneration.Gen3,
     cry: 'Regice!',
     possibleColors: [PokemonColor.default, PokemonColor.shiny],
+    rarity: PokemonRarity.subLegendary,
   },
   registeel: {
     id: 379,
@@ -2848,6 +2861,7 @@ export const POKEMON_DATA: { [key: string]: PokemonConfig } = {
     generation: PokemonGeneration.Gen3,
     cry: 'Registeel!',
     possibleColors: [PokemonColor.default, PokemonColor.shiny],
+    rarity: PokemonRarity.subLegendary,
   },
   latias: {
     id: 380,
@@ -2855,6 +2869,7 @@ export const POKEMON_DATA: { [key: string]: PokemonConfig } = {
     generation: PokemonGeneration.Gen3,
     cry: 'Latias!',
     possibleColors: [PokemonColor.default, PokemonColor.shiny],
+    rarity: PokemonRarity.subLegendary,
   },
   latios: {
     id: 381,
@@ -2862,6 +2877,7 @@ export const POKEMON_DATA: { [key: string]: PokemonConfig } = {
     generation: PokemonGeneration.Gen3,
     cry: 'Latios!',
     possibleColors: [PokemonColor.default, PokemonColor.shiny],
+    rarity: PokemonRarity.subLegendary,
   },
   kyogre: {
     id: 382,
@@ -2869,6 +2885,7 @@ export const POKEMON_DATA: { [key: string]: PokemonConfig } = {
     generation: PokemonGeneration.Gen3,
     cry: 'Kyogre!',
     possibleColors: [PokemonColor.default, PokemonColor.shiny],
+    rarity: PokemonRarity.legendary,
     originalSpriteSize: 64,
   },
   groudon: {
@@ -2877,6 +2894,7 @@ export const POKEMON_DATA: { [key: string]: PokemonConfig } = {
     generation: PokemonGeneration.Gen3,
     cry: 'Groudon!',
     possibleColors: [PokemonColor.default, PokemonColor.shiny],
+    rarity: PokemonRarity.legendary,
     originalSpriteSize: 64,
   },
   rayquaza: {
@@ -2885,6 +2903,7 @@ export const POKEMON_DATA: { [key: string]: PokemonConfig } = {
     generation: PokemonGeneration.Gen3,
     cry: 'Rayquaza!',
     possibleColors: [PokemonColor.default, PokemonColor.shiny],
+    rarity: PokemonRarity.legendary,
     originalSpriteSize: 64,
   },
   jirachi: {
@@ -2893,6 +2912,7 @@ export const POKEMON_DATA: { [key: string]: PokemonConfig } = {
     generation: PokemonGeneration.Gen3,
     cry: 'Jirachi!',
     possibleColors: [PokemonColor.default, PokemonColor.shiny],
+    rarity: PokemonRarity.mythical,
   },
   deoxys: {
     id: 386,
@@ -2900,6 +2920,7 @@ export const POKEMON_DATA: { [key: string]: PokemonConfig } = {
     generation: PokemonGeneration.Gen3,
     cry: 'Deoxys!',
     possibleColors: [PokemonColor.default, PokemonColor.shiny],
+    rarity: PokemonRarity.mythical,
   },
   deoxys_speed: {
     id: 386,
@@ -2907,6 +2928,7 @@ export const POKEMON_DATA: { [key: string]: PokemonConfig } = {
     generation: PokemonGeneration.Gen3,
     cry: 'Deoxys!',
     possibleColors: [PokemonColor.default, PokemonColor.shiny],
+    rarity: PokemonRarity.mythical,
   },
   deoxys_attack: {
     id: 386,
@@ -2914,6 +2936,7 @@ export const POKEMON_DATA: { [key: string]: PokemonConfig } = {
     generation: PokemonGeneration.Gen3,
     cry: 'Deoxys!',
     possibleColors: [PokemonColor.default, PokemonColor.shiny],
+    rarity: PokemonRarity.mythical,
   },
   deoxys_defense: {
     id: 386,
@@ -2921,6 +2944,7 @@ export const POKEMON_DATA: { [key: string]: PokemonConfig } = {
     generation: PokemonGeneration.Gen3,
     cry: 'Deoxys!',
     possibleColors: [PokemonColor.default, PokemonColor.shiny],
+    rarity: PokemonRarity.mythical,
   },
 };
 

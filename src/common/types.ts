@@ -6,6 +6,14 @@ export const enum PokemonColor {
     null = 'null',
 }
 
+// Absent (undefined) on a PokemonConfig means common - the vast majority of
+// the dex - so only the handful of legendary-tier species need to set this.
+export const enum PokemonRarity {
+    subLegendary = 'sub-legendary',
+    legendary = 'legendary',
+    mythical = 'mythical',
+}
+
 export enum PokemonGeneration {
     Gen1 = 1,
     Gen2 = 2,
@@ -23,4 +31,5 @@ export interface PokemonConfig {
     cry: string;
     possibleColors: PokemonColor[];
     originalSpriteSize?: number,
+    rarity?: PokemonRarity,
 }

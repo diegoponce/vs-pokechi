@@ -256,6 +256,7 @@ export class PokedexPanel {
               shinySpriteUri: isShiny
                 ? this.getSpriteUri(webview, getSpritePath(type, PokemonColor.shiny))
                 : undefined,
+              rarity: POKEMON_DATA[type]?.rarity,
             }
           }),
       },
@@ -297,6 +298,10 @@ export class PokedexPanel {
         : 'Undiscovered pokemon'
       const cry = POKEMON_DATA[entry.type] ? POKEMON_DATA[entry.type].cry : ''
       const tooltip = discovered && cry ? ` title="${escapeHtml(cry)}"` : ''
+      // Never set for a locked card: the border must not spoil how rare an
+      // undiscovered species is.
+      const rarity = discovered ? POKEMON_DATA[entry.type]?.rarity : undefined
+      const rarityClass = rarity ? ` rarity-${rarity}` : ''
 
       // The shiny toggle lives outside the card button: interactive elements
       // cannot nest, and it must not trigger selecting the pokemon.
@@ -319,7 +324,7 @@ export class PokedexPanel {
         <div class="pokemon-card-wrapper">
           <button
             type="button"
-            class="pokemon-card ${discovered ? 'discovered' : 'locked'}${isActive ? ' active' : ''}"
+            class="pokemon-card ${discovered ? 'discovered' : 'locked'}${isActive ? ' active' : ''}${rarityClass}"
             data-index="${index}"
             data-generation="${entry.generation}"
             data-name="${discovered ? escapeHtml(entry.name.toLowerCase()) : ''}"
@@ -608,6 +613,20 @@ export class PokedexPanel {
       border-color: var(--vscode-contrastActiveBorder, var(--accent));
     }
 
+    /* More specific than the plain hover rule above (an extra rarity-*
+       class), so these win on hover regardless of source order. */
+    .pokemon-card.discovered.rarity-sub-legendary:hover {
+      border-color: #5EC8F2;
+    }
+
+    .pokemon-card.discovered.rarity-legendary:hover {
+      border-color: #E3A008;
+    }
+
+    .pokemon-card.discovered.rarity-mythical:hover {
+      border-color: #C77DFF;
+    }
+
     .pokemon-card:focus-visible {
       outline: 1px solid var(--accent);
       outline-offset: 2px;
@@ -616,6 +635,38 @@ export class PokedexPanel {
     .pokemon-card.active {
       border-color: var(--accent);
       box-shadow: inset 0 0 0 1px var(--accent);
+    }
+
+    /* Locked cards never get a rarity-* class, so this never spoils how rare
+       an undiscovered species is. Selectors here are more specific than the
+       plain .active rule above regardless of source order, so a rare
+       pokemon that is also the one currently out keeps its own color
+       instead of being flattened to the generic accent highlight. */
+    .pokemon-card.rarity-sub-legendary {
+      border-color: #5EC8F2;
+    }
+
+    .pokemon-card.rarity-legendary {
+      border-color: #E3A008;
+    }
+
+    .pokemon-card.rarity-mythical {
+      border-color: #C77DFF;
+    }
+
+    .pokemon-card.active.rarity-sub-legendary {
+      border-color: #5EC8F2;
+      box-shadow: inset 0 0 0 1px #5EC8F2;
+    }
+
+    .pokemon-card.active.rarity-legendary {
+      border-color: #E3A008;
+      box-shadow: inset 0 0 0 1px #E3A008;
+    }
+
+    .pokemon-card.active.rarity-mythical {
+      border-color: #C77DFF;
+      box-shadow: inset 0 0 0 1px #C77DFF;
     }
 
     .pokemon-card.locked {
@@ -979,6 +1030,10 @@ export class PokedexPanel {
         var name = card.querySelector('.pokemon-name');
         if (name) {
           name.textContent = entry.name;
+        }
+
+        if (entry.rarity) {
+          card.classList.add('rarity-' + entry.rarity);
         }
 
         ensureShinyToggle(card, entry);
