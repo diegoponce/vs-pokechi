@@ -242,6 +242,67 @@ test('evolving a shiny pokemon discovers its next stage as shiny too', () => {
   assert.strictEqual(PokemonState.isPokemonShinyDiscovered(context, 'ninetales'), true)
 })
 
+// --- evolution data restructuring -------------------------------------------
+console.log('\nevolution data restructuring')
+
+test('an active pokemon on a line that gained a later stage picks it up, not stuck at max', () => {
+  const golbat = PokemonState.getPokemon(context)
+  Object.assign(golbat, {
+    type: 'golbat',
+    name: 'Golbat',
+    id: 42,
+    level: 2,
+    xp: 0,
+    canGainXP: true,
+    // Stale: what this pokemon's evolutionLine looked like before crobat was
+    // added as a third stage. Simulates a save from before that change.
+    evolutionLine: ['zubat', 'golbat'],
+  })
+  PokemonState.savePokemon(context)
+
+  const refreshed = PokemonState.getPokemon(context)
+  assert.deepStrictEqual(refreshed.evolutionLine, ['zubat', 'golbat', 'crobat'])
+  assert.strictEqual(refreshed.level, 2)
+  assert.strictEqual(PokemonState.hasFurtherEvolution(refreshed), true)
+})
+
+test('roster progress moves over when a pre-evolution becomes the line new base', () => {
+  const roster = PokemonState.getRoster(context)
+  // Stale: pikachu used to be the base before pichu was added ahead of it.
+  delete roster.pichu
+  roster.pikachu = { type: 'raichu', level: 2, xp: 500, color: 'default' }
+  PokemonState.saveRoster(context)
+  PokemonState.flush(context)
+
+  const migrated = PokemonState.getRoster(context)
+  assert.strictEqual(migrated.pikachu, undefined)
+  assert.deepStrictEqual(migrated.pichu, {
+    type: 'raichu',
+    level: 3,
+    xp: 500,
+    color: 'default',
+  })
+})
+
+test('progress from two species that used to be independent lines keeps whichever is further along', () => {
+  const roster = PokemonState.getRoster(context)
+  // Stale: houndoom used to be catchable as its own single-stage line, before
+  // houndour -> houndoom became one line. This one is further along.
+  roster.houndour = { type: 'houndour', level: 1, xp: 100, color: 'default' }
+  roster.houndoom = { type: 'houndoom', level: 1, xp: 50, color: 'default' }
+  PokemonState.saveRoster(context)
+  PokemonState.flush(context)
+
+  const migrated = PokemonState.getRoster(context)
+  assert.strictEqual(migrated.houndoom, undefined)
+  assert.deepStrictEqual(migrated.houndour, {
+    type: 'houndoom',
+    level: 2,
+    xp: 50,
+    color: 'default',
+  })
+})
+
 // --- total XP -----------------------------------------------------------
 console.log('\ntotal XP')
 

@@ -47,6 +47,55 @@ function getPokemonTypes(pokemonType: PokemonType): PokemonElementType[] {
   return pokemonData ? pokemonData.types : []
 }
 
+function isRosterEntryAhead(left: RosterEntry, right: RosterEntry): boolean {
+  if (left.level !== right.level) {
+    return left.level > right.level
+  }
+  return left.xp > right.xp
+}
+
+// The roster is keyed by each line's base species, but evolution data can be
+// restructured over time (e.g. a pre-evolution like Pichu gets added ahead of
+// an existing base, or a species that used to be its own single-stage line -
+// like Houndoom - becomes a later stage of a different one). A key that no
+// longer names a current base holds progress that has to move somewhere, so
+// this re-derives the right home from the entry's actual species (which never
+// changes) and keeps whichever of the two sides - old key or new key, if both
+// exist - is further along. Runs on every read; once a key is migrated it is
+// gone, so later calls have nothing left to do for it.
+function reconcileRoster(roster: Roster): boolean {
+  let changed = false
+
+  for (const key of Object.keys(roster)) {
+    if (getEvolutionLine(key as PokemonType)) {
+      continue
+    }
+
+    const entry = roster[key]
+    const correctLine = getEvolutionLineContaining(entry.type)
+    if (!correctLine || correctLine.base === key) {
+      continue
+    }
+
+    delete roster[key]
+
+    const migratedEntry: RosterEntry = {
+      type: entry.type,
+      level: getPokemonLevel(entry.type, correctLine),
+      xp: entry.xp,
+      color: entry.color,
+    }
+
+    const existing = roster[correctLine.base]
+    if (!existing || isRosterEntryAhead(migratedEntry, existing)) {
+      roster[correctLine.base] = migratedEntry
+    }
+    changed = true
+  }
+
+  return changed
+}
+
 let _store: StateStore | undefined
 
 function store(context: vscode.ExtensionContext): StateStore {
@@ -85,6 +134,19 @@ export class PokemonState {
     }
     if (pokemon && pokemon.types === undefined) {
       pokemon.types = getPokemonTypes(pokemon.type)
+    }
+    // The evolution data can be restructured over time (a pre-evolution gets
+    // added ahead of an existing base, or a species that used to be its own
+    // single-stage line becomes a later stage of a different one). Re-deriving
+    // from pokemon.type - the one thing that never changes - keeps an
+    // already-saved pokemon's line and level in step with the current data,
+    // instead of trusting the stale array/level captured when it was built.
+    if (pokemon) {
+      const evolutionLine = getEvolutionLineContaining(pokemon.type)
+      if (evolutionLine) {
+        pokemon.evolutionLine = [evolutionLine.base, ...evolutionLine.evolutions]
+        pokemon.level = getPokemonLevel(pokemon.type, evolutionLine)
+      }
     }
     return pokemon
   }
@@ -146,7 +208,11 @@ export class PokemonState {
   }
 
   static getRoster(context: vscode.ExtensionContext): Roster {
-    return store(context).getState().roster
+    const roster = store(context).getState().roster
+    if (reconcileRoster(roster)) {
+      PokemonState.saveRoster(context)
+    }
+    return roster
   }
 
   static saveRoster(context: vscode.ExtensionContext): void {
