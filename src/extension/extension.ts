@@ -3,14 +3,29 @@ import { PokemonState, getRequiredXPForLevel } from './pokemon-state'
 import { PokedexPanel } from './pokedex-panel'
 import { generateNonce } from './nonce'
 import { UserPokemon, Position } from './types'
-import { PokemonType } from '../common/types'
+import { PokemonColor, PokemonElementType, PokemonType } from '../common/types'
+import { SPARKLE_ICON } from '../common/icons'
+import { TYPE_BADGES, getTypeBadgeCssRules } from '../common/type-badges'
 import { XPTracker, setUpdateCallbacks } from './xp-tracker'
 
 interface PokemonSelectionFromPokedex {
   pokemonType: PokemonType
+  color?: PokemonColor
 }
 
 let _isViewSwitching = false
+
+function renderTypeBadgesMarkup(types: PokemonElementType[] | undefined): string {
+  if (!types || types.length === 0) {
+    return ''
+  }
+  return types
+    .map((type) => {
+      const badge = TYPE_BADGES[type]
+      return badge ? `<span class="type-badge type-${type}">${badge.abbr}</span>` : ''
+    })
+    .join('')
+}
 
 function getConfigurationPosition(): Position {
   return vscode.workspace
@@ -185,11 +200,68 @@ class PokechiContentProvider {
           margin-left: 6px;
           letter-spacing: 0.08em;
         }
+        .type-badges {
+          display: flex;
+          align-items: center;
+          gap: 4px;
+          flex-shrink: 0;
+        }
+        .type-badge {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          padding: 1px 5px;
+          border-radius: 3px;
+          font-size: 8px;
+          font-weight: 700;
+          letter-spacing: 0.03em;
+          line-height: 1.3;
+        }
+        /* This webview's CSP has no 'unsafe-inline' for style-src, and a nonce
+           only covers <style>/<script> elements - a style="" attribute is
+           dropped in its entirety, silently. Everything static lives here as
+           real rules instead; only the show/hide toggles stay script-driven
+           (element.style.x from JS is not affected by style-src at all). */
+        .pokemon-name {
+          display: none;
+          align-items: center;
+          justify-content: space-between;
+          gap: 4px;
+          color: white;
+          font-size: 14px;
+          margin-bottom: 4px;
+          font-weight: bold;
+        }
+        .pokemon-name-group {
+          display: flex;
+          align-items: center;
+          gap: 4px;
+          min-width: 0;
+          overflow: hidden;
+        }
+        #pokemon-name-text {
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+        #pokemon-shiny-star {
+          display: none;
+          color: #FFD700;
+          margin-left: 4px;
+          flex-shrink: 0;
+        }
+        ${getTypeBadgeCssRules()}
       </style>
     </head>
     <body>
       <div class="xp-container">
-        <div class="pokemon-name" id="pokemon-name" style="color: white; font-size: 14px; margin-bottom: 4px; font-weight: bold; display: ${pokemon && pokemon.level > 0 ? 'block' : 'none'};">${pokemon && pokemon.level > 0 ? pokemon.name : ''}</div>
+        <div class="pokemon-name" id="pokemon-name">
+          <span class="pokemon-name-group">
+            <span id="pokemon-name-text">${pokemon && pokemon.level > 0 ? pokemon.name : ''}</span>
+            <span id="pokemon-shiny-star">${SPARKLE_ICON}</span>
+          </span>
+          <span class="type-badges" id="pokemon-type-badges">${pokemon && pokemon.level > 0 ? renderTypeBadgesMarkup(pokemon.types) : ''}</span>
+        </div>
         <div class="xp-text">XP: <span id="current-xp">0</span><span id="xp-required-wrap"> / <span id="required-xp">${requiredXP}</span></span><span class="xp-max" id="xp-max">MAX</span></div>
         <div class="xp-progress-bg">
           <div class="xp-progress-fill" id="xp-progress"></div>
@@ -234,6 +306,8 @@ class PokechiContentProvider {
         // getRequiredXPForLevel in pokemon-state.ts.
         const XP_THRESHOLDS = ${xpThresholds};
 
+        const TYPE_BADGES = ${JSON.stringify(TYPE_BADGES)};
+
         function getRequiredXPForLevel(level) {
           if (XP_THRESHOLDS[level] !== undefined) {
             return XP_THRESHOLDS[level];
@@ -262,8 +336,10 @@ class PokechiContentProvider {
 
             // evolutionLine holds every stage, so the last level equals its
             // length. Species that never evolve reach it as soon as they hatch.
+            // A Pokedex snapshot of an earlier stage always reads as MAX too,
+            // since it is read-only and cannot gain any more XP.
             const line = userPokemon.evolutionLine;
-            const isFinalStage = Array.isArray(line) && (userPokemon.level || 0) >= line.length;
+            const isFinalStage = userPokemon.canGainXP === false || (Array.isArray(line) && (userPokemon.level || 0) >= line.length);
 
             if (requiredWrapEl && maxEl) {
               requiredWrapEl.style.display = isFinalStage ? 'none' : 'inline';
@@ -277,10 +353,25 @@ class PokechiContentProvider {
         
         function updatePokemonName(userPokemon) {
           const nameEl = document.getElementById('pokemon-name');
+          const nameTextEl = document.getElementById('pokemon-name-text');
+          const starEl = document.getElementById('pokemon-shiny-star');
+          const typeBadgesEl = document.getElementById('pokemon-type-badges');
           if (nameEl && userPokemon) {
             if (userPokemon.level > 0) {
-              nameEl.textContent = userPokemon.name;
-              nameEl.style.display = 'block';
+              if (nameTextEl) {
+                nameTextEl.textContent = userPokemon.name;
+              }
+              if (starEl) {
+                starEl.style.display = userPokemon.color === 'shiny' ? 'inline-flex' : 'none';
+              }
+              if (typeBadgesEl) {
+                const types = userPokemon.types || [];
+                typeBadgesEl.innerHTML = types.map(function (t) {
+                  const badge = TYPE_BADGES[t];
+                  return badge ? '<span class="type-badge type-' + t + '">' + badge.abbr + '</span>' : '';
+                }).join('');
+              }
+              nameEl.style.display = 'flex';
             } else {
               nameEl.style.display = 'none';
             }
@@ -669,7 +760,8 @@ export function activate(context: vscode.ExtensionContext) {
       async (selection: PokemonSelectionFromPokedex) => {
         const pokemon = PokemonState.selectPokemonFromPokedex(
           context,
-          selection.pokemonType
+          selection.pokemonType,
+          selection.color
         )
 
         if (!pokemon) {
@@ -679,12 +771,26 @@ export function activate(context: vscode.ExtensionContext) {
           return
         }
 
-        if (pokemon.type !== selection.pokemonType) {
-          // The line was already raised further, and evolution only moves
-          // forward, so the saved stage is what comes out.
-          vscode.window.showInformationMessage(
-            `${pokemon.name} is the stage you had reached on that line.`
+        if (!pokemon.canGainXP) {
+          // Not the stage the line has actually reached: a read-only
+          // snapshot, so typing/saving will not grow it further. What to
+          // suggest next depends on what is left to discover on this line.
+          const stages = pokemon.evolutionLine as PokemonType[]
+          const lineFullyDiscovered = stages.every((stage) =>
+            PokemonState.isPokemonDiscovered(context, stage)
           )
+          const lineFullyShiny = stages.every((stage) =>
+            PokemonState.isPokemonShinyDiscovered(context, stage)
+          )
+
+          let message = `${pokemon.name} is shown at max here.`
+          if (!lineFullyDiscovered) {
+            message += ' Catch it again to keep raising that line.'
+          } else if (!lineFullyShiny) {
+            message += ' Catch it shiny to keep raising that line.'
+          }
+
+          vscode.window.showInformationMessage(message)
         }
 
         const position = getConfigurationPosition()

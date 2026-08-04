@@ -12,11 +12,15 @@ const WRITE_DEBOUNCE_MS = 2000
 export interface PokechiState {
   pokemon?: UserPokemon
   pokedex: PokemonType[]
+  shinyPokedex: PokemonType[]
   roster: Roster
+  // Lifetime XP ever granted, regardless of resets on evolution or of which
+  // line earned it. A vanity counter, not gameplay state.
+  totalXP: number
 }
 
 function emptyState(): PokechiState {
-  return { pokemon: undefined, pokedex: [], roster: {} }
+  return { pokemon: undefined, pokedex: [], shinyPokedex: [], roster: {}, totalXP: 0 }
 }
 
 // Progress within a level only ever grows, so the further along entry wins.
@@ -37,6 +41,13 @@ export function mergeStates(local: PokechiState, remote: PokechiState): PokechiS
   remote.pokedex.forEach((type) => {
     if (pokedex.indexOf(type) < 0) {
       pokedex.push(type)
+    }
+  })
+
+  const shinyPokedex = (local.shinyPokedex || []).slice()
+  ;(remote.shinyPokedex || []).forEach((type) => {
+    if (shinyPokedex.indexOf(type) < 0) {
+      shinyPokedex.push(type)
     }
   })
 
@@ -64,7 +75,12 @@ export function mergeStates(local: PokechiState, remote: PokechiState): PokechiS
         : remote.pokemon
   }
 
-  return { pokemon, pokedex, roster }
+  // Both windows independently add to their own copy from the same shared
+  // starting point, so summing would double count; the higher figure is the
+  // one that has seen the most of the combined history.
+  const totalXP = Math.max(local.totalXP || 0, remote.totalXP || 0)
+
+  return { pokemon, pokedex, shinyPokedex, roster, totalXP }
 }
 
 export class StateStore {
@@ -147,7 +163,9 @@ export class StateStore {
       return {
         pokemon: parsed.pokemon,
         pokedex: Array.isArray(parsed.pokedex) ? parsed.pokedex : [],
+        shinyPokedex: Array.isArray(parsed.shinyPokedex) ? parsed.shinyPokedex : [],
         roster: parsed.roster && typeof parsed.roster === 'object' ? parsed.roster : {},
+        totalXP: typeof parsed.totalXP === 'number' ? parsed.totalXP : 0,
       }
     } catch (error) {
       console.error('Pokechi: could not read state, starting fresh', error)
@@ -165,7 +183,9 @@ export class StateStore {
     const migrated: PokechiState = {
       pokemon,
       pokedex: Array.isArray(pokedex) ? pokedex : [],
+      shinyPokedex: [],
       roster: roster && typeof roster === 'object' ? roster : {},
+      totalXP: 0,
     }
 
     if (migrated.pokemon || migrated.pokedex.length > 0) {
@@ -200,7 +220,9 @@ export class StateStore {
     this.state = mergeStates(this.state, {
       pokemon: remote.pokemon,
       pokedex: Array.isArray(remote.pokedex) ? remote.pokedex : [],
+      shinyPokedex: Array.isArray(remote.shinyPokedex) ? remote.shinyPokedex : [],
       roster: remote.roster && typeof remote.roster === 'object' ? remote.roster : {},
+      totalXP: typeof remote.totalXP === 'number' ? remote.totalXP : 0,
     })
 
     // The merge can hold things the other window never had, a species only we

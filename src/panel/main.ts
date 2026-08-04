@@ -1,6 +1,6 @@
 import { UserPokemon } from '../extension/types'
 import { POKEMON_DATA } from '../common/pokemon-data'
-import { PokemonGeneration } from '../common/types'
+import { PokemonColor, PokemonGeneration } from '../common/types'
 
 declare global {
   interface Window {
@@ -45,6 +45,7 @@ function visualSignature(pokemon: UserPokemon | null): string {
     pokemon.scale,
     pokemon.isHovered ? 1 : 0,
     pokemon.isTransitionIn ? 1 : 0,
+    pokemon.color,
   ].join('|')
 }
 
@@ -69,8 +70,9 @@ function getPokemonSpritePath(pokemon: UserPokemon, isIdle = false): string {
   } else if (pokemonData.generation === PokemonGeneration.Gen3) {
     generation = 'gen3'
   }
-  
-  const animation = isIdle ? 'default_idle_8fps.gif' : 'default_walk_8fps.gif'
+
+  const colorPrefix = pokemon.color === PokemonColor.shiny ? 'shiny' : 'default'
+  const animation = isIdle ? `${colorPrefix}_idle_8fps.gif` : `${colorPrefix}_walk_8fps.gif`
   return `${generation}/${pokemonType}/${animation}`
 }
 

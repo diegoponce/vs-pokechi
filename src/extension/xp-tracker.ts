@@ -1,6 +1,7 @@
 import * as vscode from 'vscode'
 import { PokemonState } from './pokemon-state'
 import { UserPokemon } from './types'
+import { PokemonColor } from '../common/types'
 import { POKEMON_DATA } from '../common/pokemon-data'
 
 const XP_TEXT = 1
@@ -75,12 +76,15 @@ export class XPTracker {
 
   private addXP(amount: number): void {
     const pokemon = PokemonState.getPokemon(this.context)
-    if (!pokemon) {
+    // A pokemon brought out from the Pokedex to view an earlier stage of its
+    // line is a read-only snapshot: typing/saving must not grow it.
+    if (!pokemon || !pokemon.canGainXP) {
       return
     }
 
     const previousLevel = pokemon.level
     PokemonState.addXP(pokemon, amount)
+    PokemonState.addTotalXP(this.context, amount)
     PokemonState.savePokemon(this.context)
 
     if (PokemonState.canEvolve(pokemon)) {
@@ -91,13 +95,18 @@ export class XPTracker {
         PokemonState.flush(this.context)
         const pokemonName = pokemon.name
         const cry = getPokemonCry(pokemon)
+        const isShiny = pokemon.color === PokemonColor.shiny
         if (previousLevel === 0) {
           vscode.window.showInformationMessage(
-            `${pokemonName} hatched from the Pokéball! ${cry}`
+            isShiny
+              ? `✨ A shiny ${pokemonName} hatched from the Pokéball! ${cry}`
+              : `${pokemonName} hatched from the Pokéball! ${cry}`
           )
         } else {
           vscode.window.showInformationMessage(
-            `${pokemonName} evolved! ${cry}`
+            isShiny
+              ? `✨ Your shiny ${pokemonName} evolved! ${cry}`
+              : `${pokemonName} evolved! ${cry}`
           )
         }
         
