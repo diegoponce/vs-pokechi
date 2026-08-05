@@ -6,8 +6,8 @@ All notable changes to the Pokechi extension are documented here.
 
 ### Added
 
-- **Generation 4 (Sinnoh)**: 138 more species, bringing the Pokechidex to 553 across four generations. Includes the new legendaries and mythicals (Dialga, Palkia, Giratina, Arceus and more) and two more fossils.
-- **Branching evolutions**: species that can grow into more than one line — Eevee (now also into Leafeon and Glaceon), Oddish, Poliwag, Slowpoke, Clamperl, Wurmple, Tyrogue, Nincada, Ralts, Snorunt, and Burmy's three cloaks. A path you already own comes out already at ma x XP, so you never have to re-grind something you have already raised; a new path hatches and grows as usual.
+- **Generation 4 (Sinnoh)**: 137 more species, bringing the Pokechidex to 553 across four generations. Includes the new legendaries and mythicals (Dialga, Palkia, Giratina, Arceus and more) and two more fossils.
+- **Branching evolutions**: species that can grow into more than one line — Eevee (now also into Leafeon and Glaceon), Oddish, Poliwag, Slowpoke, Clamperl, Wurmple, Tyrogue, Nincada, Ralts, Snorunt, and Burmy's three cloaks. A path you already own comes out already at max XP, so you never have to re-grind something you have already raised; a new path hatches and grows as usual.
 - **Fossil rarity tier**, on its own ~5% odds alongside the other rarity tiers. Both stages of every fossil line now share the same Pokechidex border colour.
 - A **rarity-coloured border** on the active Pokémon's XP bar, matching its Pokechidex card.
 - A **locate button** on the XP bar that opens the Pokechidex, scrolls to your current Pokémon and highlights it for a few seconds.

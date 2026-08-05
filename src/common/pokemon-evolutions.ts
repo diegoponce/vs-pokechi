@@ -473,7 +473,10 @@ export function getEvolutionLine(basePokemon: PokemonType): EvolutionLine | unde
   return ALL_EVOLUTION_LINES.find(line => line.base === basePokemon)
 }
 
-// Unlike getEvolutionLine, this matches any stage of the line, not just its base.
+// Unlike getEvolutionLine, this matches any stage of the line, not just its
+// base. A stage can sit on more than one line (see getEvolutionLinesContaining),
+// so this only returns the first match - use the plural form wherever picking
+// the wrong one of several would matter.
 export function getEvolutionLineContaining(
   pokemon: PokemonType
 ): EvolutionLine | undefined {
@@ -482,11 +485,26 @@ export function getEvolutionLineContaining(
   )
 }
 
-// A branching base (Eevee, Oddish, ...) has more than one EvolutionLine
-// entry sharing that base, one per possible path. Every non-base stage still
-// belongs to exactly one entry, so getEvolutionLineContaining stays
-// unambiguous for those; this is only needed to see every path from the base
-// itself, or to pick one.
+// Every line a species appears anywhere on. More than one comes up in two
+// separate shapes:
+//
+//   - a branching base (Eevee, Oddish, ...) has one entry per path it can
+//     take, all sharing that base;
+//   - a few stages past the base sit on several paths at once - Gloom,
+//     Poliwhirl and Kirlia are each shared by the two branches that split
+//     after them, and Mothim is the shared destination of all three Burmy
+//     cloaks, which are three different bases.
+//
+// That last shape is why "a non-base stage belongs to exactly one line" does
+// not hold, and why resolving a stage against the roster (rather than taking
+// the first match) matters.
+export function getEvolutionLinesContaining(pokemon: PokemonType): EvolutionLine[] {
+  return ALL_EVOLUTION_LINES.filter(
+    line => line.base === pokemon || line.evolutions.indexOf(pokemon) >= 0
+  )
+}
+
+// Every path a branching base (Eevee, Oddish, ...) can take, one entry each.
 export function getEvolutionLinesForBase(base: PokemonType): EvolutionLine[] {
   return ALL_EVOLUTION_LINES.filter(line => line.base === base)
 }

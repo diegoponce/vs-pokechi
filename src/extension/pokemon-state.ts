@@ -3,10 +3,12 @@ import { Roster, RosterEntry, UserPokemon } from './types'
 import { PokemonColor, PokemonElementType, PokemonType } from '../common/types'
 import { StateStore } from './state-store'
 import {
+  EvolutionLine,
   getRandomBasePokemon,
   getRandomPokemonColor,
   getEvolutionLine,
   getEvolutionLineContaining,
+  getEvolutionLinesContaining,
   pickEvolutionLineForBase,
   resolveEvolutionLine,
   getPokemonByLevel,
@@ -47,6 +49,31 @@ function getPokemonName(pokemonType: PokemonType): string {
 function getPokemonTypes(pokemonType: PokemonType): PokemonElementType[] {
   const pokemonData = POKEMON_DATA[pokemonType]
   return pokemonData ? pokemonData.types : []
+}
+
+// Settles which line a Pokechidex card belongs to. Nearly every species sits
+// on exactly one, but a few sit on several at once - Gloom, Poliwhirl and
+// Kirlia on the two branches that split after them, and Mothim on all three
+// Burmy cloaks, which are three separate bases and so three separate roster
+// keys. Taking the first match there would resume, or on a cloak the player
+// never raised outright start, a line that is not the one they own. So a
+// candidate the roster already has progress on wins: first one sitting on
+// this very species, then any one at all, and only then the first match as a
+// last resort.
+function getEvolutionLineForSelection(
+  pokemonType: PokemonType,
+  roster: Roster
+): EvolutionLine | undefined {
+  const candidates = getEvolutionLinesContaining(pokemonType)
+  if (candidates.length <= 1) {
+    return candidates[0]
+  }
+
+  return (
+    candidates.find(line => roster[line.base]?.type === pokemonType) ??
+    candidates.find(line => roster[line.base] !== undefined) ??
+    candidates[0]
+  )
 }
 
 function isRosterEntryAhead(left: RosterEntry, right: RosterEntry): boolean {
@@ -147,18 +174,26 @@ export class PokemonState {
     // that has not evolved past the branch point is committed to. Only fall
     // back to a fresh lookup when the stored path is genuinely stale.
     //
-    // Skipped for a still-unhatched Pokeball (level 0): getPokemonLevel has
-    // no notion of "not hatched yet" and would always report at least level
-    // 1 for the base species, silently popping the ball open the moment this
+    // The path is repaired whatever the level, including a still-unhatched
+    // Pokeball: evolvePokemon resolves that exact path to find what to hatch
+    // into and gives up outright when it does not match a current line, so
+    // leaving a stale one in place leaves the ball unable to ever open - it
+    // just keeps banking XP against a hatch that never comes.
+    //
+    // The level is what has to stay untouched at 0: getPokemonLevel has no
+    // notion of "not hatched yet" and would always report at least level 1
+    // for the base species, silently popping the ball open the moment this
     // runs - which happens on every webview refresh, including the one right
     // after a catch, before the player has earned a single point of XP.
-    if (pokemon && pokemon.level > 0) {
+    if (pokemon) {
       const evolutionLine =
         resolveEvolutionLine(pokemon.evolutionLine as PokemonType[]) ??
         getEvolutionLineContaining(pokemon.type)
       if (evolutionLine) {
         pokemon.evolutionLine = [evolutionLine.base, ...evolutionLine.evolutions]
-        pokemon.level = getPokemonLevel(pokemon.type, evolutionLine)
+        if (pokemon.level > 0) {
+          pokemon.level = getPokemonLevel(pokemon.type, evolutionLine)
+        }
       }
     }
     return pokemon
@@ -294,10 +329,12 @@ export class PokemonState {
     pokemonType: PokemonType,
     requestedColor?: PokemonColor
   ): UserPokemon | undefined {
-    // Unambiguous even on a branching base: every stage past the base itself
-    // belongs to exactly one line, and the base's own card is handled below
-    // by trusting whichever branch the roster already committed to.
-    const clickedLine = getEvolutionLineContaining(pokemonType)
+    const roster = PokemonState.getRoster(context)
+
+    // The base's own card is handled below by trusting whichever branch the
+    // roster already committed to; this only has to settle the stages that
+    // sit on several lines at once (Gloom, Poliwhirl, Kirlia, Mothim).
+    const clickedLine = getEvolutionLineForSelection(pokemonType, roster)
     if (!clickedLine) {
       return undefined
     }
@@ -308,7 +345,6 @@ export class PokemonState {
       .getConfiguration()
       .get('pokechi.scaleFactor', 1.0)
 
-    const roster = PokemonState.getRoster(context)
     const storedEntry = roster[clickedLine.base]
     if (storedEntry && storedEntry.color === undefined) {
       storedEntry.color = PokemonColor.default

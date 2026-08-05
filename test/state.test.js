@@ -321,6 +321,50 @@ test('progress from two species that used to be independent lines keeps whicheve
   })
 })
 
+// evolvePokemon resolves the stored path to find what to hatch into, and gives
+// up outright when it no longer matches a current line. A Pokeball is the one
+// state getPokemon cannot recompute a level for, so if its path were left
+// unrepaired the ball would bank XP forever against a hatch that never comes.
+test('an unhatched Pokeball whose line was restructured still hatches', () => {
+  const cases = [
+    // Was its own single-stage line, now the base of a branching one.
+    ['eevee', ['eevee'], 'eevee'],
+    // Was its own single-stage line, now a later stage of another.
+    ['onix', ['onix'], 'onix'],
+    // Was the base, now has a pre-evolution ahead of it.
+    ['pikachu', ['pikachu', 'raichu'], 'pichu'],
+  ]
+
+  for (const [type, staleLine, expectedHatch] of cases) {
+    const ball = PokemonState.createNewPokemon(context)
+    Object.assign(ball, {
+      type,
+      name: type,
+      level: 0,
+      xp: 0,
+      state: 'pokeball',
+      evolutionLine: staleLine,
+      color: 'default',
+      canGainXP: true,
+      pendingAlreadyOwned: false,
+    })
+    PokemonState.savePokemon(context)
+
+    const refreshed = PokemonState.getPokemon(context)
+    assert.strictEqual(refreshed.level, 0, `${type} popped open on refresh`)
+    assert.strictEqual(refreshed.state, 'pokeball')
+
+    PokemonState.addXP(refreshed, PokemonState.getRequiredXP(refreshed))
+    assert.strictEqual(
+      PokemonState.evolvePokemon(context, refreshed),
+      true,
+      `${type} never hatched`
+    )
+    assert.strictEqual(refreshed.level, 1)
+    assert.strictEqual(refreshed.type, expectedHatch)
+  }
+})
+
 // --- branching evolutions ----------------------------------------------
 console.log('\nbranching evolutions')
 
@@ -353,6 +397,35 @@ test('omanyte and kabuto are two-stage lines, not standalone species', () => {
 
 test('a non-branching base still has exactly one line', () => {
   assert.strictEqual(getEvolutionLinesForBase('charmander').length, 1)
+})
+
+// Every Burmy cloak evolves into the same Mothim, so unlike Gloom/Poliwhirl/
+// Kirlia - shared by branches off a single base - Mothim is shared across
+// three separate bases, and so three separate roster keys.
+test('a stage shared by several lines resumes the one actually raised', () => {
+  const roster = PokemonState.getRoster(context)
+  for (const cloak of ['burmy_plant', 'burmy_sandy', 'burmy_trash']) {
+    delete roster[cloak]
+  }
+  roster.burmy_trash = {
+    type: 'mothim',
+    level: 2,
+    xp: 120,
+    color: 'default',
+    evolutionLine: ['burmy_trash', 'mothim'],
+  }
+  PokemonState.saveRoster(context)
+
+  const selected = PokemonState.selectPokemonFromPokedex(context, 'mothim')
+  assert.deepStrictEqual(selected.evolutionLine, ['burmy_trash', 'mothim'])
+  assert.strictEqual(selected.xp, 120)
+
+  // The cloaks the player never raised stay unraised - picking the first
+  // matching line would have opened a free level 2 entry under burmy_plant.
+  const after = PokemonState.getRoster(context)
+  assert.strictEqual(after.burmy_plant, undefined)
+  assert.strictEqual(after.burmy_sandy, undefined)
+  assert.strictEqual(after.burmy_trash.type, 'mothim')
 })
 
 test('picking a line for a branching base always returns a valid path', () => {
