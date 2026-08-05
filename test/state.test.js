@@ -55,6 +55,7 @@ const { mergeStates, normalizeState } = require(path.join(OUT, 'extension/state-
 const {
   getEvolutionLinesForBase,
   pickEvolutionLineForBase,
+  repairEvolutionLine,
   resolveEvolutionLine,
 } = require(path.join(OUT, 'common/pokemon-evolutions.js'))
 
@@ -321,6 +322,150 @@ test('progress from two species that used to be independent lines keeps whicheve
   })
 })
 
+// evolvePokemon resolves the stored path to find what to hatch into, and gives
+// up outright when it no longer matches a current line. A Pokeball is the one
+// state getPokemon cannot recompute a level for, so if its path were left
+// unrepaired the ball would bank XP forever against a hatch that never comes.
+test('an unhatched Pokeball whose line was restructured still hatches', () => {
+  const cases = [
+    // Was its own single-stage line, now the base of a branching one.
+    ['eevee', ['eevee'], 'eevee'],
+    // Was its own single-stage line, now a later stage of another.
+    ['onix', ['onix'], 'onix'],
+    // Was the base, now has a pre-evolution ahead of it.
+    ['pikachu', ['pikachu', 'raichu'], 'pichu'],
+  ]
+
+  for (const [type, staleLine, expectedHatch] of cases) {
+    const ball = PokemonState.createNewPokemon(context)
+    Object.assign(ball, {
+      type,
+      name: type,
+      level: 0,
+      xp: 0,
+      state: 'pokeball',
+      evolutionLine: staleLine,
+      color: 'default',
+      canGainXP: true,
+      pendingAlreadyOwned: false,
+    })
+    PokemonState.savePokemon(context)
+
+    const refreshed = PokemonState.getPokemon(context)
+    assert.strictEqual(refreshed.level, 0, `${type} popped open on refresh`)
+    assert.strictEqual(refreshed.state, 'pokeball')
+
+    PokemonState.addXP(refreshed, PokemonState.getRequiredXP(refreshed))
+    assert.strictEqual(
+      PokemonState.evolvePokemon(context, refreshed),
+      true,
+      `${type} never hatched`
+    )
+    assert.strictEqual(refreshed.level, 1)
+    assert.strictEqual(refreshed.type, expectedHatch)
+  }
+})
+
+// Eevee, Tyrogue and Nincada could not evolve at all before 1.3.0, so a save
+// from then never committed to a branch and there is nothing to preserve.
+// Handing them all the first branch listed would turn every Eevee ever raised
+// into a Vaporeon, so the migration rolls instead, same as a fresh catch.
+test('a pokemon raised before its base could branch rolls a branch, not always the first', () => {
+  const cases = [
+    ['eevee', ['eevee'], 7],
+    ['tyrogue', ['tyrogue'], 3],
+    ['nincada', ['nincada'], 2],
+  ]
+
+  for (const [type, staleLine, pathCount] of cases) {
+    const rolled = new Set()
+    for (let i = 0; i < 400; i++) {
+      const line = repairEvolutionLine(staleLine, type)
+      rolled.add(line.evolutions[0])
+    }
+    assert.strictEqual(
+      rolled.size,
+      pathCount,
+      `${type} only ever rolled ${rolled.size} of its ${pathCount} branches`
+    )
+  }
+})
+
+// The roll has to happen once and stick. Within one window the repair is
+// made in place, so re-reading is already stable; what needs forcing is the
+// write, since the roll only reaches a second window through the state file.
+// Left to the write debounce, two windows opening together would each roll
+// their own branch for the same pokemon.
+test('the branch a migration rolls is settled once, in memory and on disk', () => {
+  for (const level of [0, 1]) {
+    const eevee = PokemonState.createNewPokemon(context)
+    Object.assign(eevee, {
+      type: 'eevee',
+      name: 'Eevee',
+      level,
+      xp: 0,
+      state: level === 0 ? 'pokeball' : 'walking',
+      evolutionLine: ['eevee'],
+      color: 'default',
+      canGainXP: true,
+      pendingAlreadyOwned: false,
+    })
+    PokemonState.savePokemon(context)
+
+    const settled = PokemonState.getPokemon(context).evolutionLine.join('>')
+    assert.strictEqual(settled.split('>').length, 2, 'the branch was not settled')
+
+    for (let i = 0; i < 200; i++) {
+      assert.strictEqual(
+        PokemonState.getPokemon(context).evolutionLine.join('>'),
+        settled,
+        `level ${level} eevee wandered off ${settled}`
+      )
+    }
+    assert.strictEqual(PokemonState.getPokemon(context).level, level)
+
+    // What a second window would read, without waiting out the debounce.
+    const onDisk = JSON.parse(
+      fs.readFileSync(path.join(storageDir, 'state.json'), 'utf8')
+    )
+    assert.strictEqual(
+      onDisk.pokemon.evolutionLine.join('>'),
+      settled,
+      `level ${level} eevee did not reach disk`
+    )
+  }
+})
+
+// Rolling freely would be wrong for a pokemon already past the branch point:
+// an Oddish save that reached Vileplume must not be moved onto the Bellossom
+// branch, which does not contain Vileplume at all.
+test('a stage already past the split is never rolled onto a branch it is not on', () => {
+  for (let i = 0; i < 200; i++) {
+    for (const stage of ['vileplume', 'bellossom']) {
+      const line = repairEvolutionLine(['oddish'], stage)
+      assert.ok(
+        [line.base, ...line.evolutions].includes(stage),
+        `${stage} landed on ${line.base}>${line.evolutions.join('>')}`
+      )
+    }
+  }
+})
+
+test('a path that still resolves is kept exactly, with no roll', () => {
+  const paths = [
+    ['eevee', 'jolteon'],
+    ['oddish', 'gloom', 'vileplume'],
+    ['charmander', 'charmeleon', 'charizard'],
+  ]
+
+  for (const stored of paths) {
+    for (let i = 0; i < 100; i++) {
+      const line = repairEvolutionLine(stored, stored[stored.length - 1])
+      assert.deepStrictEqual([line.base, ...line.evolutions], stored)
+    }
+  }
+})
+
 // --- branching evolutions ----------------------------------------------
 console.log('\nbranching evolutions')
 
@@ -353,6 +498,35 @@ test('omanyte and kabuto are two-stage lines, not standalone species', () => {
 
 test('a non-branching base still has exactly one line', () => {
   assert.strictEqual(getEvolutionLinesForBase('charmander').length, 1)
+})
+
+// Every Burmy cloak evolves into the same Mothim, so unlike Gloom/Poliwhirl/
+// Kirlia - shared by branches off a single base - Mothim is shared across
+// three separate bases, and so three separate roster keys.
+test('a stage shared by several lines resumes the one actually raised', () => {
+  const roster = PokemonState.getRoster(context)
+  for (const cloak of ['burmy_plant', 'burmy_sandy', 'burmy_trash']) {
+    delete roster[cloak]
+  }
+  roster.burmy_trash = {
+    type: 'mothim',
+    level: 2,
+    xp: 120,
+    color: 'default',
+    evolutionLine: ['burmy_trash', 'mothim'],
+  }
+  PokemonState.saveRoster(context)
+
+  const selected = PokemonState.selectPokemonFromPokedex(context, 'mothim')
+  assert.deepStrictEqual(selected.evolutionLine, ['burmy_trash', 'mothim'])
+  assert.strictEqual(selected.xp, 120)
+
+  // The cloaks the player never raised stay unraised - picking the first
+  // matching line would have opened a free level 2 entry under burmy_plant.
+  const after = PokemonState.getRoster(context)
+  assert.strictEqual(after.burmy_plant, undefined)
+  assert.strictEqual(after.burmy_sandy, undefined)
+  assert.strictEqual(after.burmy_trash.type, 'mothim')
 })
 
 test('picking a line for a branching base always returns a valid path', () => {
