@@ -3,7 +3,7 @@ import { PokemonState } from './pokemon-state'
 import { generateNonce } from './nonce'
 import { PokemonColor, PokemonElementType, PokemonGeneration, PokemonType } from '../common/types'
 import { POKEMON_DATA } from '../common/pokemon-data'
-import { SPARKLE_ICON } from '../common/icons'
+import { SPARKLE_ICON, getSparkleBurstMarkup, getSparkleBurstCssRules } from '../common/icons'
 import { TYPE_BADGES, getTypeBadgeCssRules } from '../common/type-badges'
 
 function renderTypeBadges(types: PokemonElementType[] | undefined): string {
@@ -71,6 +71,8 @@ function getSpritePath(
     generation = 'gen2'
   } else if (pokemonData.generation === PokemonGeneration.Gen3) {
     generation = 'gen3'
+  } else if (pokemonData.generation === PokemonGeneration.Gen4) {
+    generation = 'gen4'
   }
 
   const colorPrefix = color === PokemonColor.shiny ? 'shiny' : 'default'
@@ -138,6 +140,12 @@ export class PokedexPanel {
         {
           enableScripts: true,
           localResourceRoots: [mediaUri],
+          // Search text, the generation chip, and the two checkboxes only
+          // ever live in this webview's own DOM - without this, hiding the
+          // panel (switching tabs/windows) and coming back tears the webview
+          // down and rebuilds it from the static HTML, silently resetting
+          // every filter.
+          retainContextWhenHidden: true,
         }
       )
 
@@ -206,6 +214,19 @@ export class PokedexPanel {
     if (this.panel) {
       this.panel.title = `Pokechidex (${discoveredCount}/${POKEDEX_ENTRIES.length})`
     }
+  }
+
+  // Scrolls to and briefly highlights a card, clearing whatever filters
+  // would otherwise hide it - used by the "locate in Pokechidex" button on
+  // the active pokemon's XP row.
+  locatePokemon(pokemonType: PokemonType, color: PokemonColor): void {
+    if (!this.panel) {
+      return
+    }
+    this.panel.webview.postMessage({
+      command: 'locate-pokemon',
+      data: { pokemonType, isShiny: color === PokemonColor.shiny },
+    })
   }
 
   // Full rebuild of the webview. Only worth doing when the panel is created or
@@ -372,6 +393,7 @@ export class PokedexPanel {
                 alt=""
                 loading="lazy"
               />
+              <div class="sparkle-burst">${getSparkleBurstMarkup()}</div>
             </div>
             <div class="pokemon-name">${name}</div>
             <div class="type-badges">${typeBadgesHtml}</div>
@@ -651,6 +673,10 @@ export class PokedexPanel {
       border-color: #C77DFF;
     }
 
+    .pokemon-card.discovered.rarity-fossil:hover {
+      border-color: #B08968;
+    }
+
     .pokemon-card:focus-visible {
       outline: 1px solid var(--accent);
       outline-offset: 2px;
@@ -659,6 +685,26 @@ export class PokedexPanel {
     .pokemon-card.active {
       border-color: var(--accent);
       box-shadow: inset 0 0 0 1px var(--accent);
+    }
+
+    /* Outline rather than border/box-shadow, so it layers over the active
+       and rarity states above instead of fighting them for the same
+       property - the "locate in Pokechidex" button needs this to stand out
+       no matter what the card already looks like. */
+    @keyframes locate-pulse {
+      0%, 100% {
+        outline-color: rgba(255, 215, 0, 0.9);
+        outline-offset: 2px;
+      }
+      50% {
+        outline-color: rgba(255, 215, 0, 0.35);
+        outline-offset: 5px;
+      }
+    }
+
+    .pokemon-card.locate-highlight {
+      outline: 3px solid rgba(255, 215, 0, 0.9);
+      animation: locate-pulse 0.8s ease-in-out 3;
     }
 
     /* Locked cards never get a rarity-* class, so this never spoils how rare
@@ -678,6 +724,10 @@ export class PokedexPanel {
       border-color: #C77DFF;
     }
 
+    .pokemon-card.rarity-fossil {
+      border-color: #B08968;
+    }
+
     .pokemon-card.active.rarity-sub-legendary {
       border-color: #5EC8F2;
       box-shadow: inset 0 0 0 1px #5EC8F2;
@@ -691,6 +741,11 @@ export class PokedexPanel {
     .pokemon-card.active.rarity-mythical {
       border-color: #C77DFF;
       box-shadow: inset 0 0 0 1px #C77DFF;
+    }
+
+    .pokemon-card.active.rarity-fossil {
+      border-color: #B08968;
+      box-shadow: inset 0 0 0 1px #B08968;
     }
 
     .pokemon-card.locked {
@@ -723,6 +778,7 @@ export class PokedexPanel {
     }
 
     .sprite-frame {
+      position: relative;
       display: grid;
       place-items: center;
       flex: 1;
@@ -776,6 +832,7 @@ export class PokedexPanel {
     }
 
     ${getTypeBadgeCssRules()}
+    ${getSparkleBurstCssRules()}
 
     /* The badge takes the generation chip's slot rather than stacking under it:
        one chip per card, no overlap, and no reflow when a card becomes active.
@@ -857,6 +914,7 @@ export class PokedexPanel {
         <button type="button" class="filter-chip" data-generation="1">Gen 1</button>
         <button type="button" class="filter-chip" data-generation="2">Gen 2</button>
         <button type="button" class="filter-chip" data-generation="3">Gen 3</button>
+        <button type="button" class="filter-chip" data-generation="4">Gen 4</button>
         <label class="filter-toggle">
           <input type="checkbox" id="only-discovered" />
           Discovered only
@@ -1007,6 +1065,31 @@ export class PokedexPanel {
         sprite.dataset.showingShiny = showingShiny ? '0' : '1';
         toggle.classList.toggle('is-shiny-active', !showingShiny);
         toggle.setAttribute('aria-pressed', showingShiny ? 'false' : 'true');
+
+        // Only switching into shiny is worth the sparkle - toggling back to
+        // default is not a reveal.
+        if (!showingShiny) {
+          playShinyBurst(wrapper);
+        }
+      }
+
+      function playShinyBurst(wrapper) {
+        var burst = wrapper && wrapper.querySelector('.sparkle-burst');
+        if (!burst) {
+          return;
+        }
+
+        // Removing and immediately re-adding the class in the same tick
+        // would be a no-op, so the reflow in between forces the browser to
+        // notice it was ever gone and actually restart the animation.
+        burst.classList.remove('is-active');
+        void burst.offsetWidth;
+        burst.classList.add('is-active');
+
+        clearTimeout(burst._hideTimer);
+        burst._hideTimer = setTimeout(function () {
+          burst.classList.remove('is-active');
+        }, 1000);
       }
 
       // Keeps a card's sprite/toggle in step with whatever is actually shown
@@ -1112,6 +1195,56 @@ export class PokedexPanel {
           if (totalXPEl && message.data && typeof message.data.totalXPText === 'string') {
             totalXPEl.textContent = message.data.totalXPText;
           }
+          return;
+        }
+
+        if (message.command === 'locate-pokemon') {
+          var locateData = message.data || {};
+          var target = grid && grid.querySelector('[data-pokemon-type="' + locateData.pokemonType + '"]');
+          if (!target) {
+            return;
+          }
+
+          // Filters are only touched if they would actually hide the
+          // target - whatever the user was already searching for is left
+          // alone otherwise, rather than "locating" clearing it every time.
+          var term = (search && search.value ? search.value : '').trim().toLowerCase();
+          var matchesGeneration =
+            generation === 'all' || target.dataset.generation === generation;
+          var matchesDiscovered =
+            !onlyDiscovered || !onlyDiscovered.checked || target.classList.contains('discovered');
+          var matchesShiny =
+            !onlyShiny || !onlyShiny.checked || target.dataset.hasShiny === '1';
+          var matchesTerm =
+            !term ||
+            (target.dataset.name && target.dataset.name.indexOf(term) >= 0) ||
+            (target.dataset.number && target.dataset.number.indexOf(term) >= 0);
+
+          if (!(matchesGeneration && matchesDiscovered && matchesShiny && matchesTerm)) {
+            generation = 'all';
+            Array.prototype.forEach.call(document.querySelectorAll('.filter-chip'), function (chip) {
+              chip.classList.toggle('is-selected', chip.dataset.generation === 'all');
+            });
+            if (search) {
+              search.value = '';
+            }
+            if (onlyDiscovered) {
+              onlyDiscovered.checked = false;
+            }
+            if (onlyShiny) {
+              onlyShiny.checked = false;
+            }
+            applyFilters();
+          }
+
+          syncShinyState(target, !!locateData.isShiny);
+
+          target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          target.classList.add('locate-highlight');
+          clearTimeout(target._locateHighlightTimer);
+          target._locateHighlightTimer = setTimeout(function () {
+            target.classList.remove('locate-highlight');
+          }, 2500);
           return;
         }
 

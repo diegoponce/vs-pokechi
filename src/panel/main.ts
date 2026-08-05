@@ -69,6 +69,8 @@ function getPokemonSpritePath(pokemon: UserPokemon, isIdle = false): string {
     generation = 'gen2'
   } else if (pokemonData.generation === PokemonGeneration.Gen3) {
     generation = 'gen3'
+  } else if (pokemonData.generation === PokemonGeneration.Gen4) {
+    generation = 'gen4'
   }
 
   const colorPrefix = pokemon.color === PokemonColor.shiny ? 'shiny' : 'default'
@@ -121,6 +123,10 @@ function updatePokemonDisplay(pokemon: UserPokemon | null): void {
     transitionImg.style.transform = `scale(${pokemon.scale})`
     transitionContainer.style.display = 'block'
 
+    if (pokemon.color === PokemonColor.shiny) {
+      playSparkleBurst(pokemon.scale)
+    }
+
     setTimeout(() => {
       if (transitionImg) {
         transitionImg.style.display = 'none'
@@ -138,6 +144,27 @@ function updatePokemonDisplay(pokemon: UserPokemon | null): void {
       transitionContainer.style.display = 'none'
     }
   }
+}
+
+// Twinkles a ring of sparkles around the pokemon for a shiny reveal (hatching,
+// evolving, or being brought out of the Pokedex already shiny).
+function playSparkleBurst(scale: number): void {
+  const burst = document.getElementById('shiny-burst')
+  if (!burst) {
+    return
+  }
+
+  burst.style.transform = `scale(${scale})`
+  // A restart needs a fresh animation, not just the class re-added: removing
+  // and re-adding it in the same tick would be a no-op, so the reflow in
+  // between forces the browser to actually notice the class was ever gone.
+  burst.classList.remove('is-active')
+  void burst.offsetWidth
+  burst.classList.add('is-active')
+
+  setTimeout(() => {
+    burst.classList.remove('is-active')
+  }, 1000)
 }
 
 function tick(): void {

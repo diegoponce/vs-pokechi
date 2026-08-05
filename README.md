@@ -28,7 +28,7 @@
 
 ---
 
-Install it and a Pokéball shows up in your editor. Keep coding and it hatches, walks around while you work, and evolves as it earns XP. Everything you meet is recorded in the **Pokechidex** — 416 species across Gen 1 to 3, shinies included.
+Install it and a Pokéball shows up in your editor. Keep coding and it hatches, walks around while you work, and evolves as it earns XP. Everything you meet is recorded in the **Pokechidex** — 553 species across Gen 1 to 4, shinies included.
 
 <div align="center">
   <img src="https://raw.githubusercontent.com/diegoponce/vs-pokechi/master/media/docs/panel.gif" width="800" alt="Pokechi in panel mode" />
@@ -40,8 +40,9 @@ Install it and a Pokéball shows up in your editor. Keep coding and it hatches, 
 | --- | --- |
 | <img src="https://raw.githubusercontent.com/diegoponce/vs-pokechi/master/media/gen1/charmander/default_walk_8fps.gif" width="48" /> | **It grows while you work.** 1 XP per edit, 2 per save. Enough XP and it hatches, then evolves through its line. |
 | <img src="https://raw.githubusercontent.com/diegoponce/vs-pokechi/master/media/gen1/charizard/shiny_walk_8fps.gif" width="48" /> | **Shinies.** A 5% chance on every new Pokémon. The colour sticks through every evolution, and the Pokechidex counts them separately. |
-| <img src="https://raw.githubusercontent.com/diegoponce/vs-pokechi/master/media/gen3/rayquaza/default_walk_8fps.gif" width="48" /> | **Legendaries are actually rare.** Mythical ~0.5%, legendary ~1%, sub-legendary ~2%, on their own odds instead of the common pool. |
-| <img src="https://raw.githubusercontent.com/diegoponce/vs-pokechi/master/media/gen2/unown_a/default_walk_8fps.gif" width="48" /> | **All 416 species**, every Unown form included, each tagged with its real Generation III typing. |
+| <img src="https://raw.githubusercontent.com/diegoponce/vs-pokechi/master/media/gen3/rayquaza/default_walk_8fps.gif" width="48" /> | **Legendaries are actually rare.** Mythical ~0.5%, legendary ~1%, sub-legendary ~2%, fossils ~5%, each on their own odds instead of the common pool. |
+| <img src="https://raw.githubusercontent.com/diegoponce/vs-pokechi/master/media/gen2/unown_a/default_walk_8fps.gif" width="48" /> | **All 553 species**, across four generations, every Unown form included, each tagged with its classic (pre-Fairy) typing. |
+| <img src="https://raw.githubusercontent.com/diegoponce/vs-pokechi/master/media/gen4/leafeon/default_walk_8fps.gif" width="48" /> | **Branching evolutions.** Eevee, Oddish, Tyrogue and more can grow into any of several lines. Catch a path you already have and it comes out at max, no re-grinding — a new one hatches and grows as usual. |
 | <img src="https://raw.githubusercontent.com/diegoponce/vs-pokechi/master/media/gen1/eevee/default_walk_8fps.gif" width="48" /> | **Every line keeps its own XP.** Switch Pokémon from the Pokechidex whenever you like — nothing you have raised is lost. |
 | <img src="https://raw.githubusercontent.com/diegoponce/vs-pokechi/master/media/gen1/snorlax/default_walk_8fps.gif" width="48" /> | **Follows you between windows.** Your progress is shared, so a second window picks up where the first left off. |
 
@@ -50,20 +51,20 @@ Install it and a Pokéball shows up in your editor. Keep coding and it hatches, 
 Every species you have met, in one grid. Search by name or number, filter by generation, or narrow it to what you have already caught. Locked species stay hidden behind a Pokéball — the grid never gives away what you have not met yet.
 
 <div align="center">
-  <img src="https://raw.githubusercontent.com/diegoponce/vs-pokechi/master/media/docs/pokechidex.png" width="800" alt="The Pokechidex" />
+  <img src="https://raw.githubusercontent.com/diegoponce/vs-pokechi/master/media/docs/pokechidex_1.gif" width="800" alt="The Pokechidex" />
 </div>
 
-Click any species you have discovered to bring it out. Caught it shiny? Its card gets a sparkle toggle, and it comes out in whichever colour is showing.
+Click any species you have discovered to bring it out. Caught it shiny? Its card gets a sparkle toggle, and it comes out in whichever colour is showing. Lost track of your current Pokémon in the grid? The locate button on its XP bar jumps straight to its card and highlights it.
 
 ## Getting started
 
-Install, and that is it — your first Pokémon is created for you. Start typing and it hatches.
+Install, and that is it — your first Pokémon, always one of the 12 starters, is created for you. Start typing and it hatches.
 
 | Command | What it does |
 | --- | --- |
 | `Pokechi: Show Panel` | Open your Pokémon in a panel |
 | `Pokechi: Show Pokechidex` | Open the Pokechidex |
-| `Pokechi: New Pokemon` | Trade it in for a new random one |
+| `Pokechi: New Pokemon` | Trade it in for a new random one (also a button in the Explorer view's title bar) |
 | `Pokechi: Open Explorer View` | Move it into the Explorer sidebar |
 
 ### Panel or Explorer
@@ -71,7 +72,9 @@ Install, and that is it — your first Pokémon is created for you. Start typing
 Pokechi lives in a panel by default, or docked in the Explorer sidebar if you would rather keep it out of the way. `Pokechi: Open Explorer View` switches, or set `pokechi.position` yourself.
 
 <div align="center">
-  <img src="https://raw.githubusercontent.com/diegoponce/vs-pokechi/master/media/docs/explorer.png" width="420" alt="Pokechi in the Explorer sidebar" />
+  <img src="https://raw.githubusercontent.com/diegoponce/vs-pokechi/master/media/docs/explorer_1.gif" width="260" alt="Pokechi in the Explorer sidebar" />
+  <img src="https://raw.githubusercontent.com/diegoponce/vs-pokechi/master/media/docs/explorer_2.gif" width="260" alt="Pokechi in the Explorer sidebar" />
+  <img src="https://raw.githubusercontent.com/diegoponce/vs-pokechi/master/media/docs/explorer_3.gif" width="260" alt="Pokechi in the Explorer sidebar" />
 </div>
 
 ## Settings
