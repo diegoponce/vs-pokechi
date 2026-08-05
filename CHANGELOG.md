@@ -2,6 +2,24 @@
 
 All notable changes to the Pokechi extension are documented here.
 
+## [1.3.0]
+
+### Added
+
+- **Generation 4 (Sinnoh)**: 138 more species, bringing the Pokechidex to 553 across four generations. Includes the new legendaries and mythicals (Dialga, Palkia, Giratina, Arceus and more) and two more fossils.
+- **Branching evolutions**: species that can grow into more than one line — Eevee (now also into Leafeon and Glaceon), Oddish, Poliwag, Slowpoke, Clamperl, Wurmple, Tyrogue, Nincada, Ralts, Snorunt, and Burmy's three cloaks. A path you already own comes out already at ma x XP, so you never have to re-grind something you have already raised; a new path hatches and grows as usual.
+- **Fossil rarity tier**, on its own ~5% odds alongside the other rarity tiers. Both stages of every fossil line now share the same Pokechidex border colour.
+- A **rarity-coloured border** on the active Pokémon's XP bar, matching its Pokechidex card.
+- A **locate button** on the XP bar that opens the Pokechidex, scrolls to your current Pokémon and highlights it for a few seconds.
+- A **New Pokémon button** in the Explorer view's title bar, with a confirmation prompt so an accidental click cannot lose your current one.
+- Your very first Pokémon is now always one of the **12 starters**, instead of a fully random catch.
+- A CSS sparkle burst plays when a shiny Pokémon is revealed, in the panel, the Explorer view and the Pokechidex.
+
+### Fixed
+
+- Over 20 species that belonged to a real evolutionary line (Pichu, Onix, Chansey, Porygon and others) were sitting as standalone species with nothing to evolve into or from. Existing saves migrate automatically, without losing progress.
+- The Pokechidex no longer resets its search, generation and shiny filters when the panel is hidden and shown again.
+
 ## [1.2.1]
 
 ### Fixed
