@@ -10,6 +10,7 @@ import {
   getEvolutionLineContaining,
   getEvolutionLinesContaining,
   pickEvolutionLineForBase,
+  repairEvolutionLine,
   resolveEvolutionLine,
   getPokemonByLevel,
   getPokemonLevel,
@@ -56,10 +57,7 @@ function getPokemonTypes(pokemonType: PokemonType): PokemonElementType[] {
 // Kirlia on the two branches that split after them, and Mothim on all three
 // Burmy cloaks, which are three separate bases and so three separate roster
 // keys. Taking the first match there would resume, or on a cloak the player
-// never raised outright start, a line that is not the one they own. So a
-// candidate the roster already has progress on wins: first one sitting on
-// this very species, then any one at all, and only then the first match as a
-// last resort.
+// never raised outright start, a line that is not the one they own.
 function getEvolutionLineForSelection(
   pokemonType: PokemonType,
   roster: Roster
@@ -69,11 +67,24 @@ function getEvolutionLineForSelection(
     return candidates[0]
   }
 
-  return (
+  // A candidate the roster already has progress on wins: first one standing
+  // on this very species, then any one at all.
+  const raised =
     candidates.find(line => roster[line.base]?.type === pokemonType) ??
-    candidates.find(line => roster[line.base] !== undefined) ??
-    candidates[0]
-  )
+    candidates.find(line => roster[line.base] !== undefined)
+
+  // Untouched on every candidate, so this is as uncommitted as a fresh catch
+  // and gets the same roll rather than always the first branch listed.
+  if (!raised) {
+    return pickEvolutionLineForBase(pokemonType) ?? candidates[0]
+  }
+
+  // There is progress, so that entry's own path decides. It may predate
+  // branching entirely (an Eevee raised back when it could not evolve at all
+  // has no path stored), which repairEvolutionLine settles the same way the
+  // active pokemon's is.
+  const entry = roster[raised.base]
+  return repairEvolutionLine(entry.evolutionLine ?? [raised.base], entry.type) ?? raised
 }
 
 function isRosterEntryAhead(left: RosterEntry, right: RosterEntry): boolean {
@@ -167,12 +178,11 @@ export class PokemonState {
     }
     // The evolution data can be restructured over time (a pre-evolution gets
     // added ahead of an existing base, or a species that used to be its own
-    // single-stage line becomes a later stage of a different one). Trust the
-    // stored path if it still matches a current line - a branching base
-    // (Eevee, Oddish, ...) has more than one, and re-deriving from scratch
-    // would be ambiguous and could silently switch which branch a pokemon
-    // that has not evolved past the branch point is committed to. Only fall
-    // back to a fresh lookup when the stored path is genuinely stale.
+    // single-stage line becomes a later stage of a different one), which
+    // leaves a stored path pointing at a line that is no longer there.
+    // repairEvolutionLine keeps a path that still resolves exactly as it is -
+    // that is what stops a pokemon sitting on a branching base from being
+    // silently switched to a different branch - and settles the rest.
     //
     // The path is repaired whatever the level, including a still-unhatched
     // Pokeball: evolvePokemon resolves that exact path to find what to hatch
@@ -186,13 +196,27 @@ export class PokemonState {
     // runs - which happens on every webview refresh, including the one right
     // after a catch, before the player has earned a single point of XP.
     if (pokemon) {
-      const evolutionLine =
-        resolveEvolutionLine(pokemon.evolutionLine as PokemonType[]) ??
-        getEvolutionLineContaining(pokemon.type)
+      const evolutionLine = repairEvolutionLine(
+        pokemon.evolutionLine as PokemonType[],
+        pokemon.type
+      )
       if (evolutionLine) {
-        pokemon.evolutionLine = [evolutionLine.base, ...evolutionLine.evolutions]
+        const repairedPath = [evolutionLine.base, ...evolutionLine.evolutions]
+        const wasStale = repairedPath.join() !== pokemon.evolutionLine.join()
+
+        pokemon.evolutionLine = repairedPath
         if (pokemon.level > 0) {
           pokemon.level = getPokemonLevel(pokemon.type, evolutionLine)
+        }
+
+        // Settling a branching base costs a roll, so the result has to reach
+        // disk before this is read again - re-rolling on every webview
+        // refresh would let the pokemon wander between branches. Flushed
+        // rather than left to the write debounce so a second window opening
+        // right after reads the settled path instead of rolling its own.
+        if (wasStale) {
+          PokemonState.savePokemon(context)
+          PokemonState.flush(context)
         }
       }
     }
