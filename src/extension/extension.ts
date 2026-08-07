@@ -15,6 +15,7 @@ import {
 import { TYPE_BADGES, getTypeBadgeCssRules } from '../common/type-badges'
 import { getRarityBorderCssRules } from '../common/rarity-colors'
 import { POKEMON_DATA } from '../common/pokemon-data'
+import { ITEMS } from '../common/items'
 import { XPTracker, setUpdateCallbacks } from './xp-tracker'
 
 interface PokemonSelectionFromPokedex {
@@ -839,6 +840,18 @@ export function activate(context: vscode.ExtensionContext) {
     PokemonState.rememberActivePokemon(context)
   }
 
+  // Badges did not exist before this version, so anyone whose existing
+  // pokedex/shiny/candy-use progress already clears a badge's requirements
+  // gets it the moment the new version first activates, not only for
+  // progress made from here on.
+  const retroactiveBadges = PokemonState.refreshBadges(context)
+  if (retroactiveBadges.length > 0) {
+    const names = retroactiveBadges.map((badge) => badge.name).join(', ')
+    vscode.window.showInformationMessage(
+      `🏅 Your existing progress already earned you ${retroactiveBadges.length === 1 ? 'a badge' : 'badges'}: ${names}!`
+    )
+  }
+
   const pokemonPanel = new PokemonPanel(context)
   PokechiState.panel = pokemonPanel
 
@@ -1028,6 +1041,62 @@ export function activate(context: vscode.ExtensionContext) {
           })
         }
       }
+    })
+  )
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand('pokechi.useRareCandy', async () => {
+      const pokemon = PokemonState.getPokemon(context)
+      if (
+        !pokemon ||
+        PokemonState.getItemCount(context, 'rare-candy') <= 0 ||
+        !PokemonState.canUseRareCandy(pokemon)
+      ) {
+        return
+      }
+
+      const itemName = ITEMS['rare-candy'].name
+      const confirmed = await vscode.window.showWarningMessage(
+        `Use a ${itemName} to instantly evolve ${pokemon.name}? This uses up one ${itemName}.`,
+        { modal: true },
+        `Use ${itemName}`
+      )
+      if (confirmed !== `Use ${itemName}`) {
+        return
+      }
+
+      const previousName = pokemon.name
+      const isShiny = pokemon.color === PokemonColor.shiny
+      const evolved = PokemonState.useRareCandy(context, pokemon)
+      if (!evolved) {
+        return
+      }
+
+      PokemonState.flush(context)
+
+      const cry = POKEMON_DATA[pokemon.type]?.cry ?? ''
+      vscode.window.showInformationMessage(
+        isShiny
+          ? `✨ Your shiny ${previousName} evolved into ${pokemon.name}! ${cry}`
+          : `${previousName} evolved into ${pokemon.name}! ${cry}`
+      )
+
+      const newlyEarnedBadges = PokemonState.refreshBadges(context)
+      newlyEarnedBadges.forEach((badge) => {
+        vscode.window.showInformationMessage(`🏅 ${badge.name} earned!`)
+      })
+
+      if (getConfigurationPosition() === 'panel') {
+        PokechiState.panel?.updateViews(pokemon, false)
+      } else {
+        PokechiState.explorerView?.updateViews(pokemon, false)
+      }
+      if (PokechiState.panel?.panel) {
+        PokechiState.panel.panel.title =
+          pokemon.level === 0 ? 'Your Pokemon' : pokemon.name
+      }
+
+      refreshPokedex()
     })
   )
 

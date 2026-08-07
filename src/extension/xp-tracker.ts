@@ -3,6 +3,7 @@ import { PokemonState } from './pokemon-state'
 import { UserPokemon } from './types'
 import { PokemonColor } from '../common/types'
 import { POKEMON_DATA } from '../common/pokemon-data'
+import { ITEMS } from '../common/items'
 
 const XP_TEXT = 1
 const XP_SAVE = 2
@@ -110,10 +111,24 @@ export class XPTracker {
         const cry = getPokemonCry(pokemon)
         const isShiny = pokemon.color === PokemonColor.shiny
         if (previousLevel === 0) {
+          // Every item with hatchDropChance gets its own independent roll,
+          // so adding one to the registry (src/common/items.ts) is enough
+          // to have it start dropping here - nothing in this file has to
+          // know it exists.
+          const droppedItemNames: string[] = []
+          for (const item of Object.values(ITEMS)) {
+            if (item.hatchDropChance && Math.random() < item.hatchDropChance) {
+              PokemonState.addItem(this.context, item.id, 1)
+              droppedItemNames.push(item.name)
+            }
+          }
+          const dropNote = droppedItemNames.length
+            ? ' 🎁 ' + droppedItemNames.map((name) => `${name} dropped!`).join(' ')
+            : ''
           vscode.window.showInformationMessage(
             isShiny
-              ? `✨ A shiny ${pokemonName} hatched from the Pokéball! ${cry}`
-              : `${pokemonName} hatched from the Pokéball! ${cry}`
+              ? `✨ A shiny ${pokemonName} hatched from the Pokéball! ${cry}${dropNote}`
+              : `${pokemonName} hatched from the Pokéball! ${cry}${dropNote}`
           )
         } else {
           vscode.window.showInformationMessage(
@@ -122,7 +137,15 @@ export class XPTracker {
               : `${pokemonName} evolved! ${cry}`
           )
         }
-        
+
+        // A hatch/evolve is the only way the pokedex (and so a badge
+        // condition) can change during normal play, so this is the one
+        // place that needs to check for a newly-earned badge.
+        const newlyEarnedBadges = PokemonState.refreshBadges(this.context)
+        newlyEarnedBadges.forEach((badge) => {
+          vscode.window.showInformationMessage(`🏅 ${badge.name} earned!`)
+        })
+
         // Update views and panel title
         if (updatePanelTitleCallback) {
           updatePanelTitleCallback(pokemon.level === 0 ? 'Your Pokemon' : pokemon.name)

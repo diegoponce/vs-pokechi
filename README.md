@@ -45,17 +45,31 @@ Install it and a Pokéball shows up in your editor. Keep coding and it hatches, 
 | <img src="https://raw.githubusercontent.com/diegoponce/vs-pokechi/master/media/gen4/leafeon/default_walk_8fps.gif" width="48" /> | **Branching evolutions.** Eevee, Oddish, Tyrogue and more can grow into any of several lines. Catch a path you already have and it comes out at max, no re-grinding — a new one hatches and grows as usual. |
 | <img src="https://raw.githubusercontent.com/diegoponce/vs-pokechi/master/media/gen1/eevee/default_walk_8fps.gif" width="48" /> | **Every line keeps its own XP.** Switch Pokémon from the Pokechidex whenever you like — nothing you have raised is lost. |
 | <img src="https://raw.githubusercontent.com/diegoponce/vs-pokechi/master/media/gen4/chatot/default_walk_8fps.gif" width="48" /> | **Every species has a cry.** Click yours to hear it, or a card in the Pokechidex. Picking one from the Pokechidex plays it too — turn that off with `pokechi.playCrySounds` if you would rather it stay quiet. |
+| <img src="https://raw.githubusercontent.com/diegoponce/vs-pokechi/master/media/gen1/alakazam/default_walk_8fps.gif" width="48" /> | **Every card flips over.** An info button shows its Pokédex description and base stats; an attacks button shows four representative moves, ranked so a species' real signature moves surface first. |
+| <img src="https://raw.githubusercontent.com/diegoponce/vs-pokechi/master/media/objects/rare-candy.png" width="48" /> | **Rare Candy and badges.** Hatching has a small chance to drop a candy — spend it to instantly evolve your current Pokémon. 32 badges track your progress through each generation, both in the Pokechidex's new Bag section. |
 | <img src="https://raw.githubusercontent.com/diegoponce/vs-pokechi/master/media/gen1/snorlax/default_walk_8fps.gif" width="48" /> | **Follows you between windows.** Your progress is shared, so a second window picks up where the first left off. |
 
 ## The Pokechidex
 
-Every species you have met, in one grid. Search by name or number, filter by generation, or narrow it to what you have already caught. Locked species stay hidden behind a Pokéball — the grid never gives away what you have not met yet.
+Every species you have met, in one grid. Search by name or number, filter by generation or by type, or narrow it to what you have already caught. Locked species stay hidden behind a Pokéball — the grid never gives away what you have not met yet.
 
 <div align="center">
   <img src="https://raw.githubusercontent.com/diegoponce/vs-pokechi/master/media/docs/pokechidex_1.gif" width="800" alt="The Pokechidex" />
 </div>
 
 Click any species you have discovered to bring it out. Caught it shiny? Its card gets a sparkle toggle, and it comes out in whichever colour is showing. Every card also has a play button for its cry, and picking one plays it too. Lost track of your current Pokémon in the grid? The locate button on its XP bar jumps straight to its card and highlights it.
+
+### Info and attacks
+
+Every discovered card flips over. An info button on one corner shows its Pokédex description and base stats; an attacks button on the other shows four representative moves — each with its type, power and a short description, pulled from the game matching its generation and ranked so a species' real signature moves come first.
+
+<div align="center">
+  <img src="https://raw.githubusercontent.com/diegoponce/vs-pokechi/master/media/docs/pokechidex_info.gif" width="800" alt="Flipping a Pokechidex card to see its info and attacks" />
+</div>
+
+### The Bag
+
+A collapsible section below the header, with two tabs. **Items** holds Rare Candy — hatching a Pokéball has a small chance to drop one, and spending it instantly evolves your current Pokémon, skipping the XP grind for that stage (it only works on one that has already hatched and is not already fully evolved). **Badges** tracks 32 achievement medals, 8 per generation, for milestones like discovering a share of that generation's species, catching your first shiny or fossil, and meeting its rarer Pokémon — each card shows what is left to earn it.
 
 ## Getting started
 

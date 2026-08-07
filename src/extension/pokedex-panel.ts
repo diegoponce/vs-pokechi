@@ -1,9 +1,11 @@
 import * as vscode from 'vscode'
-import { PokemonState } from './pokemon-state'
+import { PokemonState, BadgeStatus } from './pokemon-state'
+import { ItemConfig } from '../common/items'
 import { generateNonce } from './nonce'
 import { PokemonColor, PokemonElementType, PokemonGeneration, PokemonType } from '../common/types'
 import { POKEMON_DATA } from '../common/pokemon-data'
 import { POKEMON_INFO_DATA, PokemonInfoEntry } from '../common/pokemon-info-data'
+import { ITEMS } from '../common/items'
 import {
   SPARKLE_ICON,
   SOUND_ICON,
@@ -47,6 +49,106 @@ function renderTypeFilterOptions(): string {
       `
     })
     .join('')
+}
+
+// Names come from user-facing config (items.ts, badges.ts), which the
+// project convention treats the same as any other interpolated text: run it
+// through escapeHtml even though nothing in either registry currently
+// contains markup-sensitive characters.
+function renderItemRowHtml(
+  spriteUri: string,
+  item: ItemConfig,
+  count: number,
+  usable: boolean
+): string {
+  return `
+    <div class="item-row">
+      <img class="item-row-icon" src="${spriteUri}" alt="" />
+      <div class="item-row-info">
+        <div class="item-row-name">${escapeHtml(item.name)}</div>
+        <div class="item-row-description">${escapeHtml(item.description)}</div>
+      </div>
+      <div class="item-row-count" data-item-count="${item.id}">x${count}</div>
+      <button
+        type="button"
+        class="item-row-use-button"
+        data-use-item="${item.id}"
+        ${usable ? '' : 'disabled'}
+      >Use</button>
+    </div>
+  `
+}
+
+function renderBadgeCardHtml(spriteUri: string, status: BadgeStatus): string {
+  const requirementsHtml = status.requirements
+    .map(
+      (r) => `
+        <li class="badge-requirement${r.met ? ' is-met' : ''}">
+          ${escapeHtml(r.label)}: ${r.current}/${r.required}
+        </li>
+      `
+    )
+    .join('')
+
+  return `
+    <div class="badge-card ${status.earned ? 'is-earned' : 'is-locked'}">
+      <div class="badge-card-name">${escapeHtml(status.badge.name)}</div>
+      <img class="badge-card-image" src="${spriteUri}" alt="" />
+      <ul class="badge-card-requirements">${requirementsHtml}</ul>
+      <div class="badge-card-status">${status.earned ? 'Obtained' : 'Locked'}</div>
+    </div>
+  `
+}
+
+const BAG_GENERATIONS = [
+  PokemonGeneration.Gen1,
+  PokemonGeneration.Gen2,
+  PokemonGeneration.Gen3,
+  PokemonGeneration.Gen4,
+]
+
+// getSpritePath rather than a resolved URI, since resolving one needs the
+// webview instance - callers pass a small closure that already has it.
+// One generation's row shows at a time, picked by its own tab row rather
+// than all four stacked - each row scrolls sideways instead of wrapping, so
+// 8 badges stay a single line regardless of how narrow the panel is.
+function renderBadgesPanelHtml(
+  resolveSpriteUri: (spritePath: string) => string,
+  statuses: BadgeStatus[]
+): string {
+  const byGeneration = new Map<PokemonGeneration, BadgeStatus[]>()
+  for (const status of statuses) {
+    const list = byGeneration.get(status.badge.generation) ?? []
+    list.push(status)
+    byGeneration.set(status.badge.generation, list)
+  }
+
+  const tabsHtml = BAG_GENERATIONS.map(
+    (gen, index) => `
+      <button
+        type="button"
+        class="badge-gen-tab${index === 0 ? ' is-selected' : ''}"
+        data-badge-gen="${gen}"
+        role="tab"
+        aria-selected="${index === 0 ? 'true' : 'false'}"
+      >${getGenerationLabel(gen)}</button>
+    `
+  ).join('')
+
+  const rowsHtml = BAG_GENERATIONS.map((gen, index) => {
+    const list = (byGeneration.get(gen) ?? []).sort((a, b) => a.badge.order - b.badge.order)
+    const cards = list
+      .map((status) => renderBadgeCardHtml(resolveSpriteUri(status.badge.spritePath), status))
+      .join('')
+    return `
+      <div class="badge-row" data-badge-gen-row="${gen}" ${index === 0 ? '' : 'hidden'}>${cards}</div>
+    `
+  }).join('')
+
+  return `
+    <div class="badge-gen-tabs" role="tablist">${tabsHtml}</div>
+    <div class="badge-row-wrapper" id="badge-row-wrapper">${rowsHtml}</div>
+  `
 }
 
 interface PokedexEntry {
@@ -258,6 +360,17 @@ interface PokedexSnapshot {
   shinyDiscovered: PokemonType[]
   activeType: PokemonType | undefined
   activeColor: PokemonColor | undefined
+  rareCandyCount: number
+  // Whether the active pokemon itself is eligible for a candy (hatched,
+  // not a read-only snapshot, not already at the end of its line) -
+  // independent of whether there is actually a candy to spend on it, which
+  // the button combines this with client-side.
+  canUseRareCandy: boolean
+  // Just the ids, sorted, purely so a newly-earned badge shows up as a
+  // snapshot change even on the rare tick where nothing else here also
+  // happens to change - the actual badge data sent to the webview is built
+  // fresh from PokemonState.getBadgeStatuses, not from this list.
+  earnedBadgeIds: string[]
 }
 
 export class PokedexPanel {
@@ -314,6 +427,9 @@ export class PokedexPanel {
               )
             }
             break
+          case 'use-rare-candy':
+            void vscode.commands.executeCommand('pokechi.useRareCandy')
+            break
         }
       })
     )
@@ -342,6 +458,9 @@ export class PokedexPanel {
         activePokemon && activePokemon.level > 0 ? activePokemon.type : undefined,
       activeColor:
         activePokemon && activePokemon.level > 0 ? activePokemon.color : undefined,
+      rareCandyCount: PokemonState.getItemCount(this.context, 'rare-candy'),
+      canUseRareCandy: PokemonState.canUseRareCandy(activePokemon),
+      earnedBadgeIds: PokemonState.getEarnedBadges(this.context).slice().sort(),
     }
   }
 
@@ -420,6 +539,16 @@ export class PokedexPanel {
         activeColor: snapshot.activeColor,
         discoveredCount: snapshot.discovered.length,
         shinyDiscoveredCount: snapshot.shinyDiscovered.length,
+        rareCandyCount: snapshot.rareCandyCount,
+        canUseRareCandy: snapshot.canUseRareCandy,
+        badges: PokemonState.getBadgeStatuses(this.context).map((status) => ({
+          name: status.badge.name,
+          generation: status.badge.generation,
+          order: status.badge.order,
+          spriteUri: this.getSpriteUri(webview, status.badge.spritePath),
+          earned: status.earned,
+          requirements: status.requirements,
+        })),
         discovered: snapshot.discovered
           .filter((type) => POKEDEX_INDEX_BY_TYPE[type] !== undefined)
           .map((type) => {
@@ -458,6 +587,23 @@ export class PokedexPanel {
     const shinyDiscoveredCount = shinyPokedex.size
     const totalCount = POKEDEX_ENTRIES.length
     const totalXPText = formatAbbreviatedNumber(PokemonState.getTotalXP(this.context))
+    const rareCandyItem = ITEMS['rare-candy']
+    const candySpriteUri = this.getSpriteUri(webview, rareCandyItem.spritePath)
+    const rareCandyCount = snapshot.rareCandyCount
+    const rareCandyUsable = snapshot.canUseRareCandy && rareCandyCount > 0
+    const itemsPanelHtml = renderItemRowHtml(
+      candySpriteUri,
+      rareCandyItem,
+      rareCandyCount,
+      rareCandyUsable
+    )
+    const badgeStatuses = PokemonState.getBadgeStatuses(this.context)
+    const earnedBadgeCount = badgeStatuses.filter((status) => status.earned).length
+    const totalBadgeCount = badgeStatuses.length
+    const badgesPanelHtml = renderBadgesPanelHtml(
+      (spritePath) => this.getSpriteUri(webview, spritePath),
+      badgeStatuses
+    )
     // Picking a card counts as "picked from the Pokechidex" for this
     // setting, same as the automatic reveal it triggers elsewhere - unlike
     // the dedicated play button, which is an explicit "let me hear it" click
@@ -673,7 +819,7 @@ export class PokedexPanel {
     .counter {
       flex: 0 0 auto;
       display: flex;
-      align-items: baseline;
+      align-items: center;
       gap: 6px;
       padding: 6px 12px;
       border-radius: 999px;
@@ -692,6 +838,287 @@ export class PokedexPanel {
       text-transform: uppercase;
       letter-spacing: 0.08em;
       opacity: 0.85;
+    }
+
+    /* A button rather than the plain div the other three counters are - it
+       is the only one that does something when clicked - so it needs its
+       own reset on top of the shared .counter look. */
+    .counter-candy {
+      border: none;
+      font: inherit;
+      cursor: pointer;
+      appearance: none;
+    }
+
+    .counter-candy:not(:disabled):hover {
+      background: var(--vscode-button-background);
+      color: var(--vscode-button-foreground);
+    }
+
+    .counter-candy:focus-visible {
+      outline: 1px solid var(--accent);
+      outline-offset: 2px;
+    }
+
+    .counter-candy:disabled {
+      cursor: default;
+      opacity: 0.6;
+    }
+
+    .counter-candy-icon {
+      width: 16px;
+      height: 16px;
+      object-fit: contain;
+      image-rendering: pixelated;
+    }
+
+    .bag-accordion {
+      border: 1px solid var(--vscode-widget-border, var(--card-border));
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    .bag-toggle {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      width: 100%;
+      padding: 8px 12px;
+      border: none;
+      background: var(--card-bg);
+      color: inherit;
+      font: inherit;
+      font-weight: 600;
+      text-align: left;
+      cursor: pointer;
+      appearance: none;
+    }
+
+    .bag-toggle:hover {
+      background: var(--vscode-list-hoverBackground);
+    }
+
+    .bag-toggle:focus-visible {
+      outline: 1px solid var(--accent);
+      outline-offset: -2px;
+    }
+
+    .bag-chevron {
+      display: inline-block;
+      font-size: 10px;
+      transition: transform 150ms ease;
+    }
+
+    .bag-toggle[aria-expanded="true"] .bag-chevron {
+      transform: rotate(90deg);
+    }
+
+    .bag-content {
+      padding: 10px 12px 14px;
+      border-top: 1px solid var(--vscode-widget-border, var(--card-border));
+    }
+
+    .bag-tabs {
+      display: flex;
+      gap: 4px;
+      margin-bottom: 10px;
+    }
+
+    .bag-tab {
+      padding: 4px 12px;
+      border: 1px solid var(--vscode-widget-border, transparent);
+      border-radius: 999px;
+      background: transparent;
+      color: var(--muted);
+      font: inherit;
+      font-size: 11px;
+      cursor: pointer;
+    }
+
+    .bag-tab:hover {
+      background: var(--vscode-list-hoverBackground);
+    }
+
+    .bag-tab.is-selected {
+      background: var(--vscode-button-background);
+      color: var(--vscode-button-foreground);
+      border-color: var(--vscode-button-background);
+    }
+
+    .bag-panel[hidden] {
+      display: none;
+    }
+
+    .item-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px;
+      border-radius: 6px;
+      background: var(--vscode-editorWidget-background, var(--card-bg));
+    }
+
+    .item-row-icon {
+      width: 28px;
+      height: 28px;
+      object-fit: contain;
+      image-rendering: pixelated;
+      flex: 0 0 auto;
+    }
+
+    .item-row-info {
+      flex: 1 1 auto;
+      min-width: 0;
+    }
+
+    .item-row-name {
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .item-row-description {
+      font-size: 11px;
+      color: var(--muted);
+    }
+
+    .item-row-count {
+      flex: 0 0 auto;
+      font-size: 12px;
+      font-weight: 600;
+      font-family: var(--vscode-editor-font-family, monospace);
+    }
+
+    .item-row-use-button {
+      flex: 0 0 auto;
+      padding: 4px 12px;
+      border: 1px solid var(--vscode-widget-border, transparent);
+      border-radius: 4px;
+      background: var(--vscode-button-background);
+      color: var(--vscode-button-foreground);
+      font: inherit;
+      font-size: 11px;
+      cursor: pointer;
+    }
+
+    .item-row-use-button:not(:disabled):hover {
+      background: var(--vscode-button-hoverBackground, var(--vscode-button-background));
+    }
+
+    .item-row-use-button:disabled {
+      cursor: default;
+      opacity: 0.5;
+    }
+
+    .badge-gen-tabs {
+      display: flex;
+      gap: 4px;
+      margin-bottom: 8px;
+    }
+
+    .badge-gen-tab {
+      padding: 3px 10px;
+      border: 1px solid var(--vscode-widget-border, transparent);
+      border-radius: 999px;
+      background: transparent;
+      color: var(--muted);
+      font: inherit;
+      font-size: 10.5px;
+      cursor: pointer;
+    }
+
+    .badge-gen-tab:hover {
+      background: var(--vscode-list-hoverBackground);
+    }
+
+    .badge-gen-tab.is-selected {
+      background: var(--vscode-button-background);
+      color: var(--vscode-button-foreground);
+      border-color: var(--vscode-button-background);
+    }
+
+    .badge-row-wrapper {
+      /* Keeps the horizontal scrollbar this row can get contained to the
+         bag, instead of the whole Pokechidex page scrolling sideways. */
+      overflow-x: auto;
+    }
+
+    .badge-row[hidden] {
+      display: none;
+    }
+
+    .badge-row {
+      display: flex;
+      flex-wrap: nowrap;
+      gap: 8px;
+      padding-bottom: 4px;
+    }
+
+    .badge-row .badge-card {
+      flex: 0 0 110px;
+    }
+
+    .badge-card {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      padding: 8px;
+      border-radius: 6px;
+      border: 1px solid var(--card-border);
+      background: var(--vscode-editorWidget-background, var(--card-bg));
+      text-align: center;
+    }
+
+    .badge-card.is-locked {
+      opacity: 0.6;
+    }
+
+    .badge-card.is-earned {
+      border-color: #E3A008;
+    }
+
+    .badge-card-name {
+      font-size: 10.5px;
+      font-weight: 600;
+    }
+
+    .badge-card-image {
+      width: 40px;
+      height: 40px;
+      object-fit: contain;
+      image-rendering: pixelated;
+    }
+
+    .badge-card.is-locked .badge-card-image {
+      filter: grayscale(1);
+    }
+
+    .badge-card-requirements {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      width: 100%;
+    }
+
+    .badge-requirement {
+      font-size: 9px;
+      color: var(--muted);
+    }
+
+    .badge-requirement.is-met {
+      color: #6bbf6b;
+    }
+
+    .badge-card-status {
+      font-size: 9px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--muted);
+    }
+
+    .badge-card.is-earned .badge-card-status {
+      color: #E3A008;
     }
 
     .toolbar {
@@ -1352,7 +1779,7 @@ export class PokedexPanel {
     <header class="header">
       <div class="title-block">
         <h1>Pokechidex</h1>
-        <p class="subtitle">Species you have met from a Pok&eacute;ball or an evolution. Pick one to bring it out &mdash; each line keeps its own XP, so nothing is lost when you switch. Picking one plays its cry, which you can turn off with the <code>pokechi.playCrySounds</code> setting.</p>
+        <p class="subtitle">Species you have met from a Pok&eacute;ball or an evolution. Pick one to bring it out &mdash; each line keeps its own XP, so nothing is lost when you switch. Picking one plays its cry, which you can turn off with the <code>pokechi.playCrySounds</code> setting. Open the Bag below to track your items and badges.</p>
       </div>
       <div class="counters">
         <div class="counter">
@@ -1364,11 +1791,57 @@ export class PokedexPanel {
           <span class="counter-label">Shiny</span>
         </div>
         <div class="counter">
+          <span class="counter-value" id="badge-counter-value">${earnedBadgeCount}/${totalBadgeCount}</span>
+          <span class="counter-label">Badges</span>
+        </div>
+        <div class="counter">
           <span class="counter-value" id="total-xp-value">${totalXPText}</span>
           <span class="counter-label">Total XP</span>
         </div>
+        <button
+          type="button"
+          class="counter counter-candy"
+          id="candy-counter"
+          ${rareCandyUsable ? '' : 'disabled'}
+          title="${
+            rareCandyCount === 0
+              ? `No ${rareCandyItem.name} yet - hatching a Pokeball has a small chance to drop one`
+              : rareCandyUsable
+              ? escapeHtml(rareCandyItem.description)
+              : `Your current pokemon cannot use a ${rareCandyItem.name} right now`
+          }"
+        >
+          <img class="counter-candy-icon" src="${candySpriteUri}" alt="" />
+          <span class="counter-value" id="candy-counter-value">${rareCandyCount}</span>
+          <span class="counter-label">${escapeHtml(rareCandyItem.name)}</span>
+        </button>
       </div>
     </header>
+
+    <section class="bag-accordion">
+      <button
+        type="button"
+        class="bag-toggle"
+        id="bag-toggle"
+        aria-expanded="false"
+        aria-controls="bag-content"
+      >
+        <span class="bag-chevron">&#9656;</span>
+        Bag
+      </button>
+      <div class="bag-content" id="bag-content" hidden>
+        <div class="bag-tabs" role="tablist">
+          <button type="button" class="bag-tab is-selected" data-bag-tab="items" role="tab" aria-selected="true">Items</button>
+          <button type="button" class="bag-tab" data-bag-tab="badges" role="tab" aria-selected="false">Badges</button>
+        </div>
+        <div class="bag-panel bag-panel-items" data-bag-tabpanel="items" id="bag-panel-items">
+          ${itemsPanelHtml}
+        </div>
+        <div class="bag-panel bag-panel-badges" data-bag-tabpanel="badges" id="bag-panel-badges" hidden>
+          ${badgesPanelHtml}
+        </div>
+      </div>
+    </section>
 
     <div class="toolbar">
       <input
@@ -1428,11 +1901,16 @@ export class PokedexPanel {
 
       var TYPE_BADGES = ${JSON.stringify(TYPE_BADGES)};
       var playCrySoundsEnabled = ${JSON.stringify(playCrySoundsEnabled)};
+      var RARE_CANDY_NAME = ${JSON.stringify(rareCandyItem.name)};
+      var RARE_CANDY_DESCRIPTION = ${JSON.stringify(rareCandyItem.description)};
 
       var grid = document.querySelector('.grid');
       var counter = document.getElementById('counter-value');
       var shinyCounter = document.getElementById('shiny-counter-value');
+      var badgeCounter = document.getElementById('badge-counter-value');
       var totalXPEl = document.getElementById('total-xp-value');
+      var candyCounter = document.getElementById('candy-counter');
+      var candyCounterValue = document.getElementById('candy-counter-value');
       var search = document.getElementById('search');
       var emptyState = document.getElementById('empty-state');
       var onlyDiscovered = document.getElementById('only-discovered');
@@ -1593,6 +2071,94 @@ export class PokedexPanel {
           setTypeFilterOpen(false);
         }
       });
+
+      // The actual eligibility check (hatched, not a read-only snapshot, not
+      // already at the end of its line, and a candy to spend) lives on the
+      // extension side and runs again there regardless - disabled here is
+      // just so the button does not invite a click that would do nothing.
+      if (candyCounter) {
+        candyCounter.addEventListener('click', function () {
+          if (candyCounter.disabled) {
+            return;
+          }
+          vscode.postMessage({ command: 'use-rare-candy' });
+        });
+      }
+
+      // Collapsed on every fresh load/reload by design - the accordion's
+      // open/closed state itself is otherwise just DOM state, which
+      // retainContextWhenHidden already carries across the panel being
+      // hidden and shown again, same as the search/filter state below.
+      var bagToggle = document.getElementById('bag-toggle');
+      var bagContent = document.getElementById('bag-content');
+      if (bagToggle && bagContent) {
+        bagToggle.addEventListener('click', function () {
+          var open = bagContent.hidden;
+          bagContent.hidden = !open;
+          bagToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+        });
+      }
+
+      Array.prototype.forEach.call(
+        document.querySelectorAll('[data-bag-tab]'),
+        function (tab) {
+          tab.addEventListener('click', function () {
+            var target = tab.dataset.bagTab;
+            Array.prototype.forEach.call(
+              document.querySelectorAll('[data-bag-tab]'),
+              function (other) {
+                var isTarget = other === tab;
+                other.classList.toggle('is-selected', isTarget);
+                other.setAttribute('aria-selected', isTarget ? 'true' : 'false');
+              }
+            );
+            Array.prototype.forEach.call(
+              document.querySelectorAll('[data-bag-tabpanel]'),
+              function (panel) {
+                panel.hidden = panel.dataset.bagTabpanel !== target;
+              }
+            );
+          });
+        }
+      );
+
+      var bagPanelItems = document.getElementById('bag-panel-items');
+      var bagPanelBadges = document.getElementById('bag-panel-badges');
+
+      if (bagPanelBadges) {
+        bagPanelBadges.addEventListener('click', function (event) {
+          var genTab = event.target.closest('[data-badge-gen]');
+          if (!genTab) {
+            return;
+          }
+          var target = genTab.dataset.badgeGen;
+          Array.prototype.forEach.call(
+            bagPanelBadges.querySelectorAll('.badge-gen-tab'),
+            function (other) {
+              var isTarget = other === genTab;
+              other.classList.toggle('is-selected', isTarget);
+              other.setAttribute('aria-selected', isTarget ? 'true' : 'false');
+            }
+          );
+          Array.prototype.forEach.call(
+            bagPanelBadges.querySelectorAll('[data-badge-gen-row]'),
+            function (row) {
+              row.hidden = row.dataset.badgeGenRow !== target;
+            }
+          );
+        });
+      }
+      if (bagPanelItems) {
+        bagPanelItems.addEventListener('click', function (event) {
+          var useButton = event.target.closest('[data-use-item]');
+          if (!useButton || useButton.disabled) {
+            return;
+          }
+          // Only one item exists so far - every use button maps to the same
+          // command regardless of which one was clicked.
+          vscode.postMessage({ command: 'use-rare-candy' });
+        });
+      }
 
       // Same reasoning as the main panel/Explorer view: a fresh
       // HTMLAudioElement re-checks the browser's autoplay gesture policy on
@@ -1895,6 +2461,52 @@ export class PokedexPanel {
           .replace(/'/g, '&#39;');
       }
 
+      // Mirrors renderBadgeCardHtml/renderBadgesPanelHtml in getWebviewContent
+      // - the Pokedex webview is never fully reloaded after it is first
+      // created (only ever sent pokedex-update messages), so a badge earned
+      // mid-session has to be rendered here too, not just on the server.
+      function buildBadgeCardHtml(status) {
+        var requirementsHtml = status.requirements.map(function (r) {
+          return '<li class="badge-requirement' + (r.met ? ' is-met' : '') + '">' +
+            escapeHtmlClient(r.label) + ': ' + r.current + '/' + r.required + '</li>';
+        }).join('');
+
+        return (
+          '<div class="badge-card ' + (status.earned ? 'is-earned' : 'is-locked') + '">' +
+          '<div class="badge-card-name">' + escapeHtmlClient(status.name) + '</div>' +
+          '<img class="badge-card-image" src="' + status.spriteUri + '" alt="" />' +
+          '<ul class="badge-card-requirements">' + requirementsHtml + '</ul>' +
+          '<div class="badge-card-status">' + (status.earned ? 'Obtained' : 'Locked') + '</div>' +
+          '</div>'
+        );
+      }
+
+      // Rows only, not the generation tabs above them - a live update
+      // rebuilds just this wrapper, so it does not reset whichever
+      // generation tab the user already had open back to Gen 1.
+      function buildBadgeRowsHtml(statuses) {
+        var byGeneration = {};
+        statuses.forEach(function (status) {
+          var gen = status.generation;
+          if (!byGeneration[gen]) {
+            byGeneration[gen] = [];
+          }
+          byGeneration[gen].push(status);
+        });
+
+        return [1, 2, 3, 4].map(function (gen, index) {
+          var list = (byGeneration[gen] || []).slice().sort(function (a, b) {
+            return a.order - b.order;
+          });
+          var cards = list.map(buildBadgeCardHtml).join('');
+          return (
+            '<div class="badge-row" data-badge-gen-row="' + gen + '"' + (index === 0 ? '' : ' hidden') + '>' +
+            cards +
+            '</div>'
+          );
+        }).join('');
+      }
+
       // Mirrors the server-rendered back face in getWebviewContent - used
       // only for a card that reaches "discovered" mid-session, since a card
       // already in the initial HTML already has this from the server.
@@ -2132,6 +2744,52 @@ export class PokedexPanel {
 
         if (shinyCounter && typeof data.shinyDiscoveredCount === 'number') {
           shinyCounter.textContent = data.shinyDiscoveredCount + '/${totalCount}';
+        }
+
+        if (typeof data.rareCandyCount === 'number') {
+          if (candyCounterValue) {
+            candyCounterValue.textContent = String(data.rareCandyCount);
+          }
+          if (candyCounter) {
+            var usable = !!data.canUseRareCandy && data.rareCandyCount > 0;
+            candyCounter.disabled = !usable;
+            candyCounter.title = data.rareCandyCount === 0
+              ? 'No ' + RARE_CANDY_NAME + ' yet - hatching a Pokeball has a small chance to drop one'
+              : usable
+              ? RARE_CANDY_DESCRIPTION
+              : 'Your current pokemon cannot use a ' + RARE_CANDY_NAME + ' right now';
+          }
+
+          var bagCandyCount = document.querySelector('[data-item-count="rare-candy"]');
+          if (bagCandyCount) {
+            bagCandyCount.textContent = 'x' + data.rareCandyCount;
+          }
+          var bagCandyUseButton = document.querySelector('[data-use-item="rare-candy"]');
+          if (bagCandyUseButton) {
+            bagCandyUseButton.disabled = !usable;
+          }
+        }
+
+        if (Array.isArray(data.badges)) {
+          if (badgeCounter) {
+            var earnedCount = data.badges.filter(function (b) { return b.earned; }).length;
+            badgeCounter.textContent = earnedCount + '/' + data.badges.length;
+          }
+        }
+
+        if (Array.isArray(data.badges) && bagPanelBadges) {
+          var badgeRowWrapper = document.getElementById('badge-row-wrapper');
+          if (badgeRowWrapper) {
+            var selectedGenTab = bagPanelBadges.querySelector('.badge-gen-tab.is-selected');
+            var selectedGen = selectedGenTab ? selectedGenTab.dataset.badgeGen : '1';
+            badgeRowWrapper.innerHTML = buildBadgeRowsHtml(data.badges);
+            Array.prototype.forEach.call(
+              badgeRowWrapper.querySelectorAll('[data-badge-gen-row]'),
+              function (row) {
+                row.hidden = row.dataset.badgeGenRow !== selectedGen;
+              }
+            );
+          }
         }
 
         // A newly discovered species may now match the active filters.

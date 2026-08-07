@@ -1,6 +1,12 @@
 import * as vscode from 'vscode'
 import { Roster, RosterEntry, UserPokemon } from './types'
-import { PokemonColor, PokemonElementType, PokemonType } from '../common/types'
+import {
+  PokemonColor,
+  PokemonElementType,
+  PokemonGeneration,
+  PokemonRarity,
+  PokemonType,
+} from '../common/types'
 import { StateStore } from './state-store'
 import {
   EvolutionLine,
@@ -18,6 +24,8 @@ import {
   STARTER_POKEMON,
 } from '../common/pokemon-evolutions'
 import { POKEMON_DATA } from '../common/pokemon-data'
+import { ItemId } from '../common/items'
+import { BADGES, BadgeConfig, BadgeCondition } from '../common/badges'
 
 const DEFAULT_XP_FOR_POKEBALL = 500
 const DEFAULT_XP_FOR_FIRST_EVOLUTION = 1000
@@ -600,4 +608,260 @@ export class PokemonState {
     state.totalXP = (state.totalXP || 0) + amount
     store(context).save()
   }
+
+  // --- Generic item inventory -----------------------------------------
+  // Storage only: what an item actually does when used is its own
+  // dedicated code (see useRareCandy below), built on top of these.
+
+  static getItemCount(context: vscode.ExtensionContext, itemId: ItemId): number {
+    return store(context).getState().items[itemId] || 0
+  }
+
+  static addItem(
+    context: vscode.ExtensionContext,
+    itemId: ItemId,
+    amount = 1
+  ): void {
+    const state = store(context).getState()
+    state.items[itemId] = (state.items[itemId] || 0) + amount
+    store(context).save()
+  }
+
+  // False (does nothing) rather than throwing if the player has fewer than
+  // amount - every caller is expected to have already checked getItemCount.
+  static removeItem(
+    context: vscode.ExtensionContext,
+    itemId: ItemId,
+    amount = 1
+  ): boolean {
+    const state = store(context).getState()
+    const current = state.items[itemId] || 0
+    if (current < amount) {
+      return false
+    }
+    state.items[itemId] = current - amount
+    store(context).save()
+    return true
+  }
+
+  // --- Rare Candy --------------------------------------------------------
+
+  // A candy can only speed up growth already under way, never conjure it
+  // from nothing: no effect on a still-unhatched Pokeball (level 0,
+  // "eclosionar" is not what it is for) and none on a read-only Pokedex
+  // snapshot, which must not grow at all regardless of how the growth is
+  // triggered.
+  static canUseRareCandy(pokemon: UserPokemon | undefined): boolean {
+    if (!pokemon || pokemon.level === 0 || !pokemon.canGainXP) {
+      return false
+    }
+    return PokemonState.hasFurtherEvolution(pokemon)
+  }
+
+  // Skips straight to the next stage by topping the current one up to its
+  // XP requirement first, so the rest of the transition - discoverPokemon,
+  // rememberActivePokemon, the already-owned freeze - runs through the same
+  // evolvePokemon path a naturally-earned evolution does, rather than
+  // duplicating it.
+  static useRareCandy(
+    context: vscode.ExtensionContext,
+    pokemon: UserPokemon
+  ): boolean {
+    if (
+      PokemonState.getItemCount(context, 'rare-candy') <= 0 ||
+      !PokemonState.canUseRareCandy(pokemon)
+    ) {
+      return false
+    }
+
+    pokemon.xp = PokemonState.getRequiredXP(pokemon)
+    const evolved = PokemonState.evolvePokemon(context, pokemon)
+    if (!evolved) {
+      return false
+    }
+
+    PokemonState.removeItem(context, 'rare-candy', 1)
+    PokemonState.recordItemUsed(context, 'rare-candy', 1)
+    return true
+  }
+
+  // --- Item usage (lifetime, for badge conditions) ------------------------
+
+  static getItemUsedCount(context: vscode.ExtensionContext, itemId: ItemId): number {
+    return store(context).getState().itemUsageCount[itemId] || 0
+  }
+
+  private static recordItemUsed(
+    context: vscode.ExtensionContext,
+    itemId: ItemId,
+    amount = 1
+  ): void {
+    const state = store(context).getState()
+    state.itemUsageCount[itemId] = (state.itemUsageCount[itemId] || 0) + amount
+    store(context).save()
+  }
+
+  // --- Badges --------------------------------------------------------------
+
+  // Per generation: how many of its species (species and formes both count,
+  // as everywhere else in the Pokedex) the player has discovered, broken
+  // down by rarity tier, plus how many of those are shiny. Recomputed from
+  // the pokedex/shinyPokedex on every call rather than cached - 553 species
+  // is cheap to scan and this only runs on the few actions that could
+  // possibly change a badge's status, not on every keystroke.
+  private static getGenerationProgress(
+    context: vscode.ExtensionContext
+  ): Record<number, BadgeGenerationProgress> {
+    const discovered = new Set(PokemonState.getPokedex(context))
+    const shinyDiscovered = new Set(PokemonState.getShinyPokedex(context))
+
+    const progress: Record<number, BadgeGenerationProgress> = {}
+    for (const gen of [
+      PokemonGeneration.Gen1,
+      PokemonGeneration.Gen2,
+      PokemonGeneration.Gen3,
+      PokemonGeneration.Gen4,
+    ]) {
+      progress[gen] = {
+        discovered: 0,
+        total: 0,
+        shinyDiscovered: 0,
+        fossilDiscovered: 0,
+        subLegendaryDiscovered: 0,
+        legendaryDiscovered: 0,
+        mythicalDiscovered: 0,
+      }
+    }
+
+    for (const [type, data] of Object.entries(POKEMON_DATA)) {
+      const genProgress = progress[data.generation]
+      if (!genProgress) {
+        continue
+      }
+
+      genProgress.total++
+      if (discovered.has(type)) {
+        genProgress.discovered++
+        if (data.rarity === PokemonRarity.fossil) {
+          genProgress.fossilDiscovered++
+        } else if (data.rarity === PokemonRarity.subLegendary) {
+          genProgress.subLegendaryDiscovered++
+        } else if (data.rarity === PokemonRarity.legendary) {
+          genProgress.legendaryDiscovered++
+        } else if (data.rarity === PokemonRarity.mythical) {
+          genProgress.mythicalDiscovered++
+        }
+      }
+      if (shinyDiscovered.has(type)) {
+        genProgress.shinyDiscovered++
+      }
+    }
+
+    return progress
+  }
+
+  private static evaluateBadgeCondition(
+    condition: BadgeCondition,
+    progress: BadgeGenerationProgress,
+    rareCandyUsed: number
+  ): BadgeRequirementStatus[] {
+    const requirements: BadgeRequirementStatus[] = []
+    const push = (label: string, current: number, required: number | undefined) => {
+      if (required === undefined) {
+        return
+      }
+      requirements.push({ label, current, required, met: current >= required })
+    }
+
+    push('Species discovered', progress.discovered, condition.minDiscovered)
+    push('Shiny discovered', progress.shinyDiscovered, condition.minShinyDiscovered)
+    push('Fossils discovered', progress.fossilDiscovered, condition.minFossilDiscovered)
+    push(
+      'Sub-legendaries discovered',
+      progress.subLegendaryDiscovered,
+      condition.minSubLegendaryDiscovered
+    )
+    push('Legendaries discovered', progress.legendaryDiscovered, condition.minLegendaryDiscovered)
+    push('Mythicals discovered', progress.mythicalDiscovered, condition.minMythicalDiscovered)
+    push('Rare Candies used', rareCandyUsed, condition.minRareCandyUsed)
+
+    return requirements
+  }
+
+  // Every badge, evaluated fresh against current progress - not just the
+  // earned ones, so the Pokechidex can show a locked badge's remaining
+  // requirements too.
+  static getBadgeStatuses(context: vscode.ExtensionContext): BadgeStatus[] {
+    const progressByGen = PokemonState.getGenerationProgress(context)
+    const earnedIds = new Set(store(context).getState().badges)
+    const rareCandyUsed = PokemonState.getItemUsedCount(context, 'rare-candy')
+
+    return BADGES.map((badge) => {
+      const progress = progressByGen[badge.generation]
+      const requirements = PokemonState.evaluateBadgeCondition(
+        badge.condition,
+        progress,
+        rareCandyUsed
+      )
+      return {
+        badge,
+        earned: earnedIds.has(badge.id),
+        requirements,
+      }
+    })
+  }
+
+  static getEarnedBadges(context: vscode.ExtensionContext): string[] {
+    return store(context).getState().badges
+  }
+
+  // Called after anything that could newly satisfy a badge - a new
+  // discovery, a new shiny, a rare candy use - and also once at activation
+  // so an existing install picks up any badge its past progress already
+  // qualifies for, not just ones earned going forward. Returns whichever
+  // badges were newly earned by this call, if any, so the caller can
+  // announce them.
+  static refreshBadges(context: vscode.ExtensionContext): BadgeConfig[] {
+    const state = store(context).getState()
+    const earned = new Set(state.badges)
+    const statuses = PokemonState.getBadgeStatuses(context)
+    const newlyEarned: BadgeConfig[] = []
+
+    for (const status of statuses) {
+      if (!earned.has(status.badge.id) && status.requirements.every((r) => r.met)) {
+        state.badges.push(status.badge.id)
+        earned.add(status.badge.id)
+        newlyEarned.push(status.badge)
+      }
+    }
+
+    if (newlyEarned.length > 0) {
+      store(context).save()
+    }
+
+    return newlyEarned
+  }
+}
+
+export interface BadgeGenerationProgress {
+  discovered: number
+  total: number
+  shinyDiscovered: number
+  fossilDiscovered: number
+  subLegendaryDiscovered: number
+  legendaryDiscovered: number
+  mythicalDiscovered: number
+}
+
+export interface BadgeRequirementStatus {
+  label: string
+  current: number
+  required: number
+  met: boolean
+}
+
+export interface BadgeStatus {
+  badge: BadgeConfig
+  earned: boolean
+  requirements: BadgeRequirementStatus[]
 }

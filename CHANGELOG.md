@@ -7,6 +7,10 @@ All notable changes to the Pokechi extension are documented here.
 ### Added
 
 - **Pokémon cries**: every species now has a sound. Click yours in the panel or Explorer view, or a card in the Pokechidex, to hear it. Picking one from the Pokechidex plays it too, with a sound-wave ripple alongside it — turn that off with the new `pokechi.playCrySounds` setting if you would rather it stay quiet.
+- **Card info and attacks**: every discovered card in the Pokechidex now flips over. An info button shows its Pokédex description and base stats; a sword button shows four representative attacks — sourced from the game matching its generation (FireRed, HeartGold, Emerald or Platinum) and ranked so a species' real signature moves surface first, each with its type, power and a short description.
+- **Type filter** in the Pokechidex: a dropdown lists every type with its own checkbox, narrowing the grid to species matching any of the ones checked.
+- **Rare Candy**: hatching a Pokéball has a small chance to drop one. Spend it from the Pokechidex header, or the new Bag section, to instantly evolve your current Pokémon and skip the XP grind for that stage — it only works on a Pokémon that has already hatched and is not already fully evolved.
+- **Badges**: 32 achievement medals, 8 per generation, for milestones like discovering a set share of a generation's species, catching your first shiny or fossil, and meeting its rarer Pokémon. Track progress toward each one, and everything already earned, in the new collapsible Bag section below the Pokechidex header.
 
 ### Fixed
 
