@@ -16,7 +16,7 @@
 <td align="center"><img src="https://raw.githubusercontent.com/diegoponce/vs-pokechi/master/media/gen1/bulbasaur/default_walk_8fps.gif" width="56" /><br><sub>Bulbasaur</sub></td>
 <td align="center"><img src="https://raw.githubusercontent.com/diegoponce/vs-pokechi/master/media/gen1/charmander/default_walk_8fps.gif" width="56" /><br><sub>Salamèche</sub></td>
 <td align="center"><img src="https://raw.githubusercontent.com/diegoponce/vs-pokechi/master/media/gen1/squirtle/default_walk_8fps.gif" width="56" /><br><sub>꼬부기</sub></td>
-<td align="center"><img src="https://raw.githubusercontent.com/diegoponce/vs-pokechi/master/media/gen1/pikachu/default_walk_8fps.gif" width="56" /><br><sub>皮卡丘</sub></td>
+<td align="center"><img src="https://raw.githubusercontent.com/diegoponce/vs-pokechi/master/media/gen1/pikachu/default_walk_8fps.gif" width="58" /><br><sub>皮卡丘</sub></td>
 <td align="center"><img src="https://raw.githubusercontent.com/diegoponce/vs-pokechi/master/media/gen2/cyndaquil/default_walk_8fps.gif" width="56" /><br><sub>ヒノアラシ</sub></td>
 <td align="center"><img src="https://raw.githubusercontent.com/diegoponce/vs-pokechi/master/media/gen2/totodile/default_walk_8fps.gif" width="56" /><br><sub>Totodile</sub></td>
 <td align="center"><img src="https://raw.githubusercontent.com/diegoponce/vs-pokechi/master/media/gen3/treecko/default_walk_8fps.gif" width="56" /><br><sub>Arcko</sub></td>
@@ -151,4 +151,4 @@ Built on top of:
 - [codachi](https://github.com/blairjordan/codachi) by [blairjordan](https://github.com/blairjordan), MIT licensed. Pokechi is a derivative work of Codachi and retains its copyright notice, as the MIT License requires. See [LICENSE](LICENSE).
 - [vscode-pokemon](https://github.com/jakobhoeg/vscode-pokemon) by [jakobhoeg](https://github.com/jakobhoeg)
 
-The Pokechidex, and the shiny, rarity and typing systems, were contributed by [@ApuTHC](https://github.com/ApuTHC).
+The Pokechidex, and the shiny, rarity and typing systems, were contributed by [@ApuTHC](https://github.com/ApuTHC), along with cries, card info and attacks, items and badges, and the 8-language translation system.
