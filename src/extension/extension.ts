@@ -12,10 +12,10 @@ import {
   getSoundWaveMarkup,
   getSoundWaveCssRules,
 } from '../common/icons'
-import { TYPE_BADGES, getTypeBadgeCssRules } from '../common/type-badges'
+import { TypeBadgeInfo, getTypeBadgeCssRules, getLocalizedTypeBadges } from '../common/type-badges'
 import { getRarityBorderCssRules } from '../common/rarity-colors'
 import { POKEMON_DATA } from '../common/pokemon-data'
-import { ITEMS } from '../common/items'
+import { Strings, getStrings } from '../common/i18n'
 import { XPTracker, setUpdateCallbacks } from './xp-tracker'
 
 interface PokemonSelectionFromPokedex {
@@ -25,13 +25,16 @@ interface PokemonSelectionFromPokedex {
 
 let _isViewSwitching = false
 
-function renderTypeBadgesMarkup(types: PokemonElementType[] | undefined): string {
+function renderTypeBadgesMarkup(
+  types: PokemonElementType[] | undefined,
+  typeBadges: Record<PokemonElementType, TypeBadgeInfo>
+): string {
   if (!types || types.length === 0) {
     return ''
   }
   return types
     .map((type) => {
-      const badge = TYPE_BADGES[type]
+      const badge = typeBadges[type]
       return badge ? `<span class="type-badge type-${type}">${badge.abbr}</span>` : ''
     })
     .join('')
@@ -41,6 +44,16 @@ function getConfigurationPosition(): Position {
   return vscode.workspace
     .getConfiguration('pokechi')
     .get<Position>('position', 'panel')
+}
+
+// Read fresh on every call rather than cached, same reasoning as
+// getConfigurationPosition - cheap, and lets a mid-session language change
+// take effect on the very next notification instead of needing a reload.
+function t(): Strings {
+  const language = vscode.workspace
+    .getConfiguration('pokechi')
+    .get<string>('language', 'en')
+  return getStrings(language)
 }
 
 async function updateExtensionPositionContext() {
@@ -125,6 +138,7 @@ class PokechiContentProvider {
 
     const nonce = generateNonce()
     const pokemon = PokemonState.getPokemon(this._context)
+    const localizedTypeBadges = getLocalizedTypeBadges(t().typeAbbreviations)
 
     const isExplorerView =
       getConfigurationPosition() === 'explorer' &&
@@ -337,7 +351,7 @@ class PokechiContentProvider {
             <span id="pokemon-name-text">${pokemon && pokemon.level > 0 ? pokemon.name : ''}</span>
             <span id="pokemon-shiny-star">${SPARKLE_ICON}</span>
           </span>
-          <span class="type-badges" id="pokemon-type-badges">${pokemon && pokemon.level > 0 ? renderTypeBadgesMarkup(pokemon.types) : ''}</span>
+          <span class="type-badges" id="pokemon-type-badges">${pokemon && pokemon.level > 0 ? renderTypeBadgesMarkup(pokemon.types, localizedTypeBadges) : ''}</span>
         </div>
         <div class="xp-text">
           <span class="xp-text-value">XP: <span id="current-xp">0</span><span id="xp-required-wrap"> / <span id="required-xp">${requiredXP}</span></span><span class="xp-max" id="xp-max">MAX</span></span>
@@ -388,7 +402,7 @@ class PokechiContentProvider {
         // getRequiredXPForLevel in pokemon-state.ts.
         const XP_THRESHOLDS = ${xpThresholds};
 
-        const TYPE_BADGES = ${JSON.stringify(TYPE_BADGES)};
+        const TYPE_BADGES = ${JSON.stringify(localizedTypeBadges)};
         const POKEMON_RARITY = ${pokemonRarity};
         const RARITY_CLASSES = ['rarity-sub-legendary', 'rarity-legendary', 'rarity-mythical', 'rarity-fossil'];
 
@@ -593,7 +607,7 @@ class PokemonPanel extends PokechiContentProvider {
 
     const pokemon = PokemonState.getPokemon(this._context)
     if (pokemon) {
-      this.panel.title = pokemon.level === 0 ? 'Your Pokemon' : pokemon.name
+      this.panel.title = pokemon.level === 0 ? t().yourPokemonTitle : pokemon.name
     }
 
     this.panel.onDidDispose(
@@ -669,7 +683,7 @@ class PokemonPanel extends PokechiContentProvider {
 
         // Update the panel title
         if (this.panel) {
-          this.panel.title = pokemon.level === 0 ? 'Your Pokemon' : pokemon.name
+          this.panel.title = pokemon.level === 0 ? t().yourPokemonTitle : pokemon.name
         }
 
         this.panel.webview.postMessage({
@@ -776,6 +790,41 @@ function refreshPokedex() {
   PokechiState.pokedex?.refresh()
 }
 
+// Shared by useMasterBall/usePremierBall (see extension.ts below): both
+// replace whatever pokemon was active with a freshly built, unhatched
+// Pokeball, the same presentation spawnNewPokemon gives a regular catch -
+// full webview reset (so the required XP bar starts back at 0) plus a
+// spawn-pokemon message for the transition-in animation. Opens the panel
+// first if the position is 'panel' but it is not on screen yet, same as
+// spawnNewPokemon has to.
+function presentNewActivePokemon(pokemon: UserPokemon) {
+  const position = getConfigurationPosition()
+
+  function present() {
+    if (position === 'panel' && PokechiState.panel?.panel) {
+      PokechiState.panel.updateContent()
+      PokechiState.panel.panel.title = t().yourPokemonTitle
+      PokechiState.panel.panel.webview.postMessage({
+        command: 'spawn-pokemon',
+        data: { userPokemon: pokemon },
+      })
+    } else if (position === 'explorer' && PokechiState.explorerView?._view) {
+      PokechiState.explorerView.updateContent()
+      PokechiState.explorerView._view.webview.postMessage({
+        command: 'spawn-pokemon',
+        data: { userPokemon: pokemon },
+      })
+    }
+  }
+
+  if (position === 'panel' && !PokechiState.panel?.panel) {
+    vscode.commands.executeCommand('pokechi.showPanel').then(present)
+    return
+  }
+
+  present()
+}
+
 // The scale lives on the pokemon rather than being read from settings on every
 // render, so it has to be pushed to whichever view is showing.
 function applyScaleFactor(context: vscode.ExtensionContext, scale: number) {
@@ -813,7 +862,7 @@ function adoptSharedState(context: vscode.ExtensionContext) {
 
   if (pokemon && PokechiState.panel?.panel) {
     PokechiState.panel.panel.title =
-      pokemon.level === 0 ? 'Your Pokemon' : pokemon.name
+      pokemon.level === 0 ? t().yourPokemonTitle : pokemon.name
   }
 
   refreshPokedex()
@@ -848,7 +897,7 @@ export function activate(context: vscode.ExtensionContext) {
   if (retroactiveBadges.length > 0) {
     const names = retroactiveBadges.map((badge) => badge.name).join(', ')
     vscode.window.showInformationMessage(
-      `🏅 Your existing progress already earned you ${retroactiveBadges.length === 1 ? 'a badge' : 'badges'}: ${names}!`
+      t().retroactiveBadgeEarned(names, retroactiveBadges.length > 1)
     )
   }
 
@@ -922,7 +971,7 @@ export function activate(context: vscode.ExtensionContext) {
 
         if (!pokemon) {
           vscode.window.showWarningMessage(
-            `Could not bring out ${selection.pokemonType}.`
+            t().couldNotBringOut(selection.pokemonType)
           )
           return
         }
@@ -939,11 +988,11 @@ export function activate(context: vscode.ExtensionContext) {
             PokemonState.isPokemonShinyDiscovered(context, stage)
           )
 
-          let message = `${pokemon.name} is shown at max here.`
+          let message = t().pokedexSnapshotMessage(pokemon.name)
           if (!lineFullyDiscovered) {
-            message += ' Catch it again to keep raising that line.'
+            message += t().pokedexSnapshotCatchAgain
           } else if (!lineFullyShiny) {
-            message += ' Catch it shiny to keep raising that line.'
+            message += t().pokedexSnapshotCatchShiny
           }
 
           vscode.window.showInformationMessage(message)
@@ -985,11 +1034,11 @@ export function activate(context: vscode.ExtensionContext) {
       // proceeds), which is a jarring surprise from one stray click on the
       // header button, so it is confirmed first rather than undoable after.
       const confirmed = await vscode.window.showWarningMessage(
-        'Catch a new Pokemon? The one currently out will be tucked away - its progress is saved and you can bring it back from the Pokechidex.',
+        t().catchNewPokemonConfirm,
         { modal: true },
-        'Catch a New Pokemon'
+        t().catchNewPokemonButton
       )
-      if (confirmed !== 'Catch a New Pokemon') {
+      if (confirmed !== t().catchNewPokemonButton) {
         return
       }
 
@@ -1026,7 +1075,7 @@ export function activate(context: vscode.ExtensionContext) {
         refreshPokedex()
 
         if (position === 'panel' && PokechiState.panel?.panel) {
-          PokechiState.panel.panel.title = 'Your Pokemon'
+          PokechiState.panel.panel.title = t().yourPokemonTitle
           PokechiState.panel.panel.webview.postMessage({
             command: 'spawn-pokemon',
             data: { userPokemon: pokemon },
@@ -1055,13 +1104,13 @@ export function activate(context: vscode.ExtensionContext) {
         return
       }
 
-      const itemName = ITEMS['rare-candy'].name
+      const itemName = t().itemNames['rare-candy']
       const confirmed = await vscode.window.showWarningMessage(
-        `Use a ${itemName} to instantly evolve ${pokemon.name}? This uses up one ${itemName}.`,
+        t().useRareCandyConfirm(pokemon.name, itemName),
         { modal: true },
-        `Use ${itemName}`
+        t().useItemButton(itemName)
       )
-      if (confirmed !== `Use ${itemName}`) {
+      if (confirmed !== t().useItemButton(itemName)) {
         return
       }
 
@@ -1077,13 +1126,13 @@ export function activate(context: vscode.ExtensionContext) {
       const cry = POKEMON_DATA[pokemon.type]?.cry ?? ''
       vscode.window.showInformationMessage(
         isShiny
-          ? `✨ Your shiny ${previousName} evolved into ${pokemon.name}! ${cry}`
-          : `${previousName} evolved into ${pokemon.name}! ${cry}`
+          ? t().rareCandyEvolvedMessageShiny(previousName, pokemon.name, cry)
+          : t().rareCandyEvolvedMessage(previousName, pokemon.name, cry)
       )
 
       const newlyEarnedBadges = PokemonState.refreshBadges(context)
       newlyEarnedBadges.forEach((badge) => {
-        vscode.window.showInformationMessage(`🏅 ${badge.name} earned!`)
+        vscode.window.showInformationMessage(t().badgeEarned(badge.name))
       })
 
       if (getConfigurationPosition() === 'panel') {
@@ -1093,7 +1142,7 @@ export function activate(context: vscode.ExtensionContext) {
       }
       if (PokechiState.panel?.panel) {
         PokechiState.panel.panel.title =
-          pokemon.level === 0 ? 'Your Pokemon' : pokemon.name
+          pokemon.level === 0 ? t().yourPokemonTitle : pokemon.name
       }
 
       refreshPokedex()
@@ -1109,13 +1158,13 @@ export function activate(context: vscode.ExtensionContext) {
         return
       }
 
-      const itemName = ITEMS['master-ball'].name
+      const itemName = t().itemNames['master-ball']
       const confirmed = await vscode.window.showWarningMessage(
-        `Use a ${itemName}? It will reveal a random sub-legendary, legendary or mythical Pokémon from any generation. This uses up one ${itemName}.`,
+        t().useMasterBallConfirm(itemName),
         { modal: true },
-        `Use ${itemName}`
+        t().useItemButton(itemName)
       )
-      if (confirmed !== `Use ${itemName}`) {
+      if (confirmed !== t().useItemButton(itemName)) {
         return
       }
 
@@ -1126,18 +1175,14 @@ export function activate(context: vscode.ExtensionContext) {
 
       PokemonState.flush(context)
 
-      const rewardName = POKEMON_DATA[reward.type]?.name ?? reward.type
+      const rewardName = POKEMON_DATA[reward.revealedType]?.name ?? reward.revealedType
       vscode.window.showInformationMessage(
         reward.isShiny
-          ? `🎉✨ Your ${itemName} revealed a shiny ${rewardName}!`
-          : `🎉 Your ${itemName} revealed ${rewardName}!`
+          ? t().masterBallRevealedMessageShiny(itemName, rewardName)
+          : t().masterBallRevealedMessage(itemName, rewardName)
       )
 
-      const newlyEarnedBadges = PokemonState.refreshBadges(context)
-      newlyEarnedBadges.forEach((badge) => {
-        vscode.window.showInformationMessage(`🏅 ${badge.name} earned!`)
-      })
-
+      presentNewActivePokemon(reward.pokemon)
       refreshPokedex()
     })
   )
@@ -1151,13 +1196,13 @@ export function activate(context: vscode.ExtensionContext) {
         return
       }
 
-      const itemName = ITEMS['premier-ball'].name
+      const itemName = t().itemNames['premier-ball']
       const confirmed = await vscode.window.showWarningMessage(
-        `Use a ${itemName}? It will reveal a random Pokémon as shiny, from any generation or rarity. This uses up one ${itemName}.`,
+        t().usePremierBallConfirm(itemName),
         { modal: true },
-        `Use ${itemName}`
+        t().useItemButton(itemName)
       )
-      if (confirmed !== `Use ${itemName}`) {
+      if (confirmed !== t().useItemButton(itemName)) {
         return
       }
 
@@ -1168,14 +1213,10 @@ export function activate(context: vscode.ExtensionContext) {
 
       PokemonState.flush(context)
 
-      const rewardName = POKEMON_DATA[reward]?.name ?? reward
-      vscode.window.showInformationMessage(`🎉✨ Your ${itemName} revealed a shiny ${rewardName}!`)
+      const rewardName = POKEMON_DATA[reward.revealedType]?.name ?? reward.revealedType
+      vscode.window.showInformationMessage(t().premierBallRevealedMessage(itemName, rewardName))
 
-      const newlyEarnedBadges = PokemonState.refreshBadges(context)
-      newlyEarnedBadges.forEach((badge) => {
-        vscode.window.showInformationMessage(`🏅 ${badge.name} earned!`)
-      })
-
+      presentNewActivePokemon(reward.pokemon)
       refreshPokedex()
     })
   )
@@ -1199,11 +1240,11 @@ export function activate(context: vscode.ExtensionContext) {
 
         vscode.window
           .showInformationMessage(
-            'Pokechi mode changed to explorer. Look for Pokechi in the Explorer view!',
-            'Show Explorer'
+            t().explorerModeChanged,
+            t().explorerModeShowButton
           )
           .then((selection) => {
-            if (selection === 'Show Explorer') {
+            if (selection === t().explorerModeShowButton) {
               vscode.commands.executeCommand('workbench.view.explorer')
             }
           })

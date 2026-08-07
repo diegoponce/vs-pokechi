@@ -4,9 +4,19 @@ import { UserPokemon } from './types'
 import { PokemonColor } from '../common/types'
 import { POKEMON_DATA } from '../common/pokemon-data'
 import { ITEMS } from '../common/items'
+import { getStrings } from '../common/i18n'
 
 const XP_TEXT = 1
 const XP_SAVE = 2
+
+// Read fresh on every call rather than cached, same reasoning as everywhere
+// else this setting is read - cheap, and lets a mid-session language change
+// take effect on the very next notification instead of needing a reload.
+function t() {
+  return getStrings(
+    vscode.workspace.getConfiguration('pokechi').get<string>('language', 'en')
+  )
+}
 
 const THROTTLE_MS = 100
 let lastTextEventTime = 0
@@ -117,28 +127,27 @@ export class XPTracker {
           // (src/common/items.ts) is enough to have it start earning here -
           // nothing in this file has to know it exists.
           const hatchCount = PokemonState.incrementHatchCount(this.context)
+          const strings = t()
           const droppedItemNames: string[] = []
           for (const item of Object.values(ITEMS)) {
             const wonByChance = item.hatchDropChance && Math.random() < item.hatchDropChance
             const wonByMilestone = item.hatchMilestone && hatchCount % item.hatchMilestone === 0
             if (wonByChance || wonByMilestone) {
               PokemonState.addItem(this.context, item.id, 1)
-              droppedItemNames.push(item.name)
+              droppedItemNames.push(strings.itemNames[item.id] ?? item.name)
             }
           }
-          const dropNote = droppedItemNames.length
-            ? ' 🎁 ' + droppedItemNames.map((name) => `${name} dropped!`).join(' ')
-            : ''
+          const dropNote = strings.itemDroppedNote(droppedItemNames)
           vscode.window.showInformationMessage(
             isShiny
-              ? `✨ A shiny ${pokemonName} hatched from the Pokéball! ${cry}${dropNote}`
-              : `${pokemonName} hatched from the Pokéball! ${cry}${dropNote}`
+              ? strings.hatchMessageShiny(pokemonName, cry, dropNote)
+              : strings.hatchMessage(pokemonName, cry, dropNote)
           )
         } else {
           vscode.window.showInformationMessage(
             isShiny
-              ? `✨ Your shiny ${pokemonName} evolved! ${cry}`
-              : `${pokemonName} evolved! ${cry}`
+              ? t().evolveMessageShiny(pokemonName, cry)
+              : t().evolveMessage(pokemonName, cry)
           )
         }
 
@@ -147,12 +156,12 @@ export class XPTracker {
         // place that needs to check for a newly-earned badge.
         const newlyEarnedBadges = PokemonState.refreshBadges(this.context)
         newlyEarnedBadges.forEach((badge) => {
-          vscode.window.showInformationMessage(`🏅 ${badge.name} earned!`)
+          vscode.window.showInformationMessage(t().badgeEarned(badge.name))
         })
 
         // Update views and panel title
         if (updatePanelTitleCallback) {
-          updatePanelTitleCallback(pokemon.level === 0 ? 'Your Pokemon' : pokemon.name)
+          updatePanelTitleCallback(pokemon.level === 0 ? t().yourPokemonTitle : pokemon.name)
         }
         if (updateViewsCallback) {
           updateViewsCallback(pokemon, false)

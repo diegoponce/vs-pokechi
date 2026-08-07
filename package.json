@@ -99,6 +99,20 @@
             "default": true,
             "description": "Play a cry automatically when a pokemon is picked from the Pokechidex. Clicking a pokemon directly, or a Pokechidex card's play button, always plays its cry regardless of this setting.",
             "scope": "window"
+          },
+          "pokechi.language": {
+            "type": "string",
+            "enum": [
+              "en",
+              "es"
+            ],
+            "default": "en",
+            "description": "Language for Pokechi's notifications (hatching, evolving, items, badges). More languages are on the way - anything not yet translated falls back to English.",
+            "enumItemLabels": [
+              "English",
+              "Español"
+            ],
+            "scope": "window"
           }
         }
       }

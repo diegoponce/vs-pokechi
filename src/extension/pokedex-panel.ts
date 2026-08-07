@@ -5,6 +5,7 @@ import { generateNonce } from './nonce'
 import { PokemonColor, PokemonElementType, PokemonGeneration, PokemonType } from '../common/types'
 import { POKEMON_DATA } from '../common/pokemon-data'
 import { POKEMON_INFO_DATA, PokemonInfoEntry } from '../common/pokemon-info-data'
+import { POKEMON_INFO_DATA_ES } from '../common/pokemon-info-data.es'
 import { ITEMS } from '../common/items'
 import {
   SPARKLE_ICON,
@@ -16,15 +17,28 @@ import {
   getSoundWaveMarkup,
   getSoundWaveCssRules,
 } from '../common/icons'
-import { TYPE_BADGES, getTypeBadgeCssRules } from '../common/type-badges'
+import { TYPE_BADGES, TypeBadgeInfo, getTypeBadgeCssRules, getLocalizedTypeBadges } from '../common/type-badges'
+import { Strings, getStrings, Language } from '../common/i18n'
 
-function renderTypeBadges(types: PokemonElementType[] | undefined): string {
+function getLanguage(): Language {
+  const value = vscode.workspace.getConfiguration('pokechi').get<string>('language', 'en')
+  return value === 'es' ? 'es' : 'en'
+}
+
+function getInfoData(language: Language): { [key: string]: PokemonInfoEntry } {
+  return language === 'es' ? POKEMON_INFO_DATA_ES : POKEMON_INFO_DATA
+}
+
+function renderTypeBadges(
+  types: PokemonElementType[] | undefined,
+  typeBadges: Record<PokemonElementType, TypeBadgeInfo>
+): string {
   if (!types || types.length === 0) {
     return ''
   }
   return types
     .map((type) => {
-      const badge = TYPE_BADGES[type]
+      const badge = typeBadges[type]
       if (!badge) {
         return ''
       }
@@ -37,10 +51,10 @@ function renderTypeBadges(types: PokemonElementType[] | undefined): string {
 // markup as everywhere else a type shows up) and its own checkbox on the
 // right, rather than a native <select>, which cannot render anything but
 // plain text per option.
-function renderTypeFilterOptions(): string {
+function renderTypeFilterOptions(typeBadges: Record<PokemonElementType, TypeBadgeInfo>): string {
   return Object.keys(TYPE_BADGES)
     .map((type) => {
-      const badge = TYPE_BADGES[type as PokemonElementType]
+      const badge = typeBadges[type as PokemonElementType]
       return `
         <label class="type-filter-option">
           <span class="type-badge type-${type}">${badge.abbr}</span>
@@ -63,27 +77,30 @@ function renderItemCardHtml(
   spriteUri: string,
   item: ItemConfig,
   count: number,
-  usable: boolean
+  usable: boolean,
+  strings: Strings
 ): string {
+  const name = strings.itemNames[item.id] ?? item.name
+  const description = strings.itemDescriptions[item.id] ?? item.description
   return `
     <div class="item-card">
-      <div class="item-card-name">${escapeHtml(item.name)}</div>
+      <div class="item-card-name">${escapeHtml(name)}</div>
       <img class="item-card-icon" src="${spriteUri}" alt="" />
       <div class="item-card-count" data-item-count="${item.id}">x${count}</div>
       <div class="item-card-actions">
-        <p class="item-card-description">${escapeHtml(item.description)}</p>
+        <p class="item-card-description">${escapeHtml(description)}</p>
         <button
           type="button"
           class="item-card-use-button"
           data-use-item="${item.id}"
           ${usable ? '' : 'disabled'}
-        >Use</button>
+        >${escapeHtml(strings.itemUseButton)}</button>
       </div>
     </div>
   `
 }
 
-function renderBadgeCardHtml(spriteUri: string, status: BadgeStatus): string {
+function renderBadgeCardHtml(spriteUri: string, status: BadgeStatus, strings: Strings): string {
   const requirementsHtml = status.requirements
     .map(
       (r) => `
@@ -99,7 +116,7 @@ function renderBadgeCardHtml(spriteUri: string, status: BadgeStatus): string {
       <div class="badge-card-name">${escapeHtml(status.badge.name)}</div>
       <img class="badge-card-image" src="${spriteUri}" alt="" />
       <ul class="badge-card-requirements">${requirementsHtml}</ul>
-      <div class="badge-card-status">${status.earned ? 'Obtained' : 'Locked'}</div>
+      <div class="badge-card-status">${escapeHtml(status.earned ? strings.badgeStatusObtained : strings.badgeStatusLocked)}</div>
     </div>
   `
 }
@@ -118,7 +135,8 @@ const BAG_GENERATIONS = [
 // 8 badges stay a single line regardless of how narrow the panel is.
 function renderBadgesPanelHtml(
   resolveSpriteUri: (spritePath: string) => string,
-  statuses: BadgeStatus[]
+  statuses: BadgeStatus[],
+  strings: Strings
 ): string {
   const byGeneration = new Map<PokemonGeneration, BadgeStatus[]>()
   for (const status of statuses) {
@@ -135,14 +153,14 @@ function renderBadgesPanelHtml(
         data-badge-gen="${gen}"
         role="tab"
         aria-selected="${index === 0 ? 'true' : 'false'}"
-      >${getGenerationLabel(gen)}</button>
+      >${getGenerationLabel(gen, strings)}</button>
     `
   ).join('')
 
   const rowsHtml = BAG_GENERATIONS.map((gen, index) => {
     const list = (byGeneration.get(gen) ?? []).sort((a, b) => a.badge.order - b.badge.order)
     const cards = list
-      .map((status) => renderBadgeCardHtml(resolveSpriteUri(status.badge.spritePath), status))
+      .map((status) => renderBadgeCardHtml(resolveSpriteUri(status.badge.spritePath), status, strings))
       .join('')
     return `
       <div class="badge-row" data-badge-gen-row="${gen}" ${index === 0 ? '' : 'hidden'}>${cards}</div>
@@ -187,8 +205,8 @@ function padPokemonId(id: number): string {
   return text.length >= 3 ? text : `000${text}`.slice(-3)
 }
 
-function getGenerationLabel(generation: PokemonGeneration): string {
-  return `Gen ${generation}`
+function getGenerationLabel(generation: PokemonGeneration, strings: Strings): string {
+  return strings.badgeGenerationLabel(generation)
 }
 
 function getSpritePath(
@@ -257,14 +275,17 @@ function renderInfoPanelHtml(info: PokemonInfoEntry): string {
 
 // The moves side of a flipped card: up to 4 representative attacks, each with
 // its power (or "-" for a status move with none) and a one-line description.
-function renderMovesPanelHtml(info: PokemonInfoEntry): string {
+function renderMovesPanelHtml(
+  info: PokemonInfoEntry,
+  typeBadges: Record<PokemonElementType, TypeBadgeInfo>
+): string {
   const movesHtml = info.moves
     .map(
       (move) => `
         <li class="back-move">
           <div class="back-move-header">
             <span class="back-move-name-group">
-              ${renderTypeBadges([move.type])}
+              ${renderTypeBadges([move.type], typeBadges)}
               <span class="back-move-name">${escapeHtml(move.name)}</span>
             </span>
             <span class="back-move-power">${move.power === null ? '-' : move.power}</span>
@@ -291,31 +312,37 @@ function renderMovesPanelHtml(info: PokemonInfoEntry): string {
 // over (they are positioned outside this element, at the wrapper level, so
 // they land visually on top of it) - only the flipped side needs this, since
 // the front already keeps its own name clear of that corner.
-function renderCardBackHtml(type: PokemonType, name: string): string {
-  const info = POKEMON_INFO_DATA[type]
+function renderCardBackHtml(
+  type: PokemonType,
+  name: string,
+  infoData: { [key: string]: PokemonInfoEntry },
+  typeBadges: Record<PokemonElementType, TypeBadgeInfo>
+): string {
+  const info = infoData[type]
   if (!info) {
     return ''
   }
   return `
     <div class="card-face card-face-back">
       ${renderInfoPanelHtml(info)}
-      ${renderMovesPanelHtml(info)}
+      ${renderMovesPanelHtml(info, typeBadges)}
       <div class="back-footer-name">${escapeHtml(name)}</div>
     </div>
   `
 }
 
-function renderFaceToggleButton(target: 'info' | 'moves', name: string): string {
+function renderFaceToggleButton(target: 'info' | 'moves', name: string, strings: Strings): string {
   const icon = target === 'info' ? INFO_ICON : ATTACK_ICON
-  const label = target === 'info' ? 'Info' : 'Moves'
+  const label = target === 'info' ? strings.infoTitle : strings.movesTitle
+  const ariaLabel = target === 'info' ? strings.showInfoLabel(name) : strings.showMovesLabel(name)
   return `
     <button
       type="button"
       class="face-toggle face-toggle-${target}"
       data-flip-target="${target}"
-      aria-label="Show ${label.toLowerCase()} for ${escapeHtml(name)}"
+      aria-label="${escapeHtml(ariaLabel)}"
       aria-pressed="false"
-      title="${label}"
+      title="${escapeHtml(label)}"
     >${icon}</button>
   `
 }
@@ -324,8 +351,8 @@ function renderFaceToggleButton(target: 'info' | 'moves', name: string): string 
 // same bottom corners in both the front and flipped states - the front never
 // had anything at that edge for them to cover, so only the flipped side
 // (renderCardBackHtml below) needs to make room for them.
-function renderFaceTogglesHtml(name: string): string {
-  return renderFaceToggleButton('info', name) + renderFaceToggleButton('moves', name)
+function renderFaceTogglesHtml(name: string, strings: Strings): string {
+  return renderFaceToggleButton('info', name, strings) + renderFaceToggleButton('moves', name, strings)
 }
 
 const ABBREVIATION_UNITS = ['', 'K', 'M', 'G', 'T', 'P']
@@ -496,9 +523,9 @@ export class PokedexPanel {
       .toString()
   }
 
-  private setTitle(discoveredCount: number): void {
+  private setTitle(discoveredCount: number, strings: Strings): void {
     if (this.panel) {
-      this.panel.title = `Pokechidex (${discoveredCount}/${POKEDEX_ENTRIES.length})`
+      this.panel.title = strings.pokedexPanelTitle(discoveredCount, POKEDEX_ENTRIES.length)
     }
   }
 
@@ -525,8 +552,9 @@ export class PokedexPanel {
     const snapshot = this.getSnapshot()
     this.lastSnapshot = JSON.stringify(snapshot)
     this.lastTotalXP = PokemonState.getTotalXP(this.context)
-    this.setTitle(snapshot.discovered.length)
-    this.panel.webview.html = this.getWebviewContent(this.panel.webview, snapshot)
+    const strings = getStrings(getLanguage())
+    this.setTitle(snapshot.discovered.length, strings)
+    this.panel.webview.html = this.getWebviewContent(this.panel.webview, snapshot, strings)
   }
 
   // Cheap update used while the user codes. Sends only what changed, so typing
@@ -553,7 +581,10 @@ export class PokedexPanel {
     this.lastSnapshot = serialized
 
     const webview = this.panel.webview
-    this.setTitle(snapshot.discovered.length)
+    const language = getLanguage()
+    const strings = getStrings(language)
+    const infoData = getInfoData(language)
+    this.setTitle(snapshot.discovered.length, strings)
     const shinySet = new Set(snapshot.shinyDiscovered)
 
     this.panel.webview.postMessage({
@@ -569,7 +600,7 @@ export class PokedexPanel {
         canUseMasterBall: snapshot.canUseMasterBall,
         premierBallCount: snapshot.premierBallCount,
         canUsePremierBall: snapshot.canUsePremierBall,
-        badges: PokemonState.getBadgeStatuses(this.context).map((status) => ({
+        badges: PokemonState.getBadgeStatuses(this.context, strings).map((status) => ({
           name: status.badge.name,
           generation: status.badge.generation,
           order: status.badge.order,
@@ -596,7 +627,7 @@ export class PokedexPanel {
                 : undefined,
               rarity: POKEMON_DATA[type]?.rarity,
               types: POKEMON_DATA[type]?.types,
-              info: POKEMON_INFO_DATA[type],
+              info: infoData[type],
             }
           }),
       },
@@ -605,9 +636,36 @@ export class PokedexPanel {
 
   private getWebviewContent(
     webview: vscode.Webview,
-    snapshot: PokedexSnapshot
+    snapshot: PokedexSnapshot,
+    strings: Strings
   ): string {
     const nonce = generateNonce()
+    const language = getLanguage()
+    const infoData = getInfoData(language)
+    const localizedTypeBadges = getLocalizedTypeBadges(strings.typeAbbreviations)
+    // Strings' per-species/per-item template functions cannot survive
+    // JSON.stringify (client-side updates need them too, for a card that
+    // becomes discovered mid-session via postMessage rather than a fresh
+    // getWebviewContent render) - so each is called once with a private-use
+    // placeholder character standing in for its argument, and the client
+    // splices the real value back in via a plain string split/join.
+    const NAME_TOKEN = String.fromCharCode(0xe000)
+    const clientStrings = {
+      badgeStatusObtained: strings.badgeStatusObtained,
+      badgeStatusLocked: strings.badgeStatusLocked,
+      infoTitle: strings.infoTitle,
+      movesTitle: strings.movesTitle,
+      toggleShinyTitle: strings.toggleShinyTitle,
+      playCryTitle: strings.playCryTitle,
+      nameToken: NAME_TOKEN,
+      cardShowLabelTemplate: strings.cardShowLabel(NAME_TOKEN),
+      toggleShinyLabelTemplate: strings.toggleShinyLabel(NAME_TOKEN),
+      playCryLabelTemplate: strings.playCryLabel(NAME_TOKEN),
+      showInfoLabelTemplate: strings.showInfoLabel(NAME_TOKEN),
+      showMovesLabelTemplate: strings.showMovesLabel(NAME_TOKEN),
+      candyCounterNoneYetTemplate: strings.candyCounterNoneYet(NAME_TOKEN),
+      candyCounterNotUsableNowTemplate: strings.candyCounterNotUsableNow(NAME_TOKEN),
+    }
     const pokedex = new Set(snapshot.discovered)
     const shinyPokedex = new Set(snapshot.shinyDiscovered)
     const lockedSpriteUri = this.getSpriteUri(webview, 'pokeball.gif')
@@ -616,6 +674,7 @@ export class PokedexPanel {
     const totalCount = POKEDEX_ENTRIES.length
     const totalXPText = formatAbbreviatedNumber(PokemonState.getTotalXP(this.context))
     const rareCandyItem = ITEMS['rare-candy']
+    const rareCandyName = strings.itemNames['rare-candy'] ?? rareCandyItem.name
     const candySpriteUri = this.getSpriteUri(webview, rareCandyItem.spritePath)
     const rareCandyCount = snapshot.rareCandyCount
     const rareCandyUsable = snapshot.canUseRareCandy && rareCandyCount > 0
@@ -630,18 +689,19 @@ export class PokedexPanel {
     const itemsPanelHtml = `
       <div class="item-row-wrapper">
         <div class="item-row">
-          ${renderItemCardHtml(candySpriteUri, rareCandyItem, rareCandyCount, rareCandyUsable)}
-          ${renderItemCardHtml(masterBallSpriteUri, masterBallItem, masterBallCount, masterBallUsable)}
-          ${renderItemCardHtml(premierBallSpriteUri, premierBallItem, premierBallCount, premierBallUsable)}
+          ${renderItemCardHtml(candySpriteUri, rareCandyItem, rareCandyCount, rareCandyUsable, strings)}
+          ${renderItemCardHtml(masterBallSpriteUri, masterBallItem, masterBallCount, masterBallUsable, strings)}
+          ${renderItemCardHtml(premierBallSpriteUri, premierBallItem, premierBallCount, premierBallUsable, strings)}
         </div>
       </div>
     `
-    const badgeStatuses = PokemonState.getBadgeStatuses(this.context)
+    const badgeStatuses = PokemonState.getBadgeStatuses(this.context, strings)
     const earnedBadgeCount = badgeStatuses.filter((status) => status.earned).length
     const totalBadgeCount = badgeStatuses.length
     const badgesPanelHtml = renderBadgesPanelHtml(
       (spritePath) => this.getSpriteUri(webview, spritePath),
-      badgeStatuses
+      badgeStatuses,
+      strings
     )
     // Picking a card counts as "picked from the Pokechidex" for this
     // setting, same as the automatic reveal it triggers elsewhere - unlike
@@ -669,8 +729,8 @@ export class PokedexPanel {
       const initialSpriteUri = showsShinyByDefault ? shinySpriteUri : defaultSpriteUri
       const name = discovered ? escapeHtml(entry.name) : '???'
       const label = discovered
-        ? `Show ${escapeHtml(entry.name)}${isActive ? ', currently active' : ''}`
-        : 'Undiscovered pokemon'
+        ? escapeHtml(isActive ? strings.cardShowLabelActive(entry.name) : strings.cardShowLabel(entry.name))
+        : escapeHtml(strings.cardUndiscoveredLabel)
       const cry = POKEMON_DATA[entry.type] ? POKEMON_DATA[entry.type].cry : ''
       const tooltip = discovered && cry ? ` title="${escapeHtml(cry)}"` : ''
       // Never set for a locked card: the border must not spoil how rare an
@@ -681,7 +741,7 @@ export class PokedexPanel {
       // always rendered, empty, so a locked card keeps the same card height
       // without leaking what types the species is.
       const typeBadgesHtml = discovered
-        ? renderTypeBadges(POKEMON_DATA[entry.type]?.types)
+        ? renderTypeBadges(POKEMON_DATA[entry.type]?.types, localizedTypeBadges)
         : ''
       // Same "never for a locked card" rule: the type filter treats a blank
       // data-types as "always matches" rather than "matches nothing", so
@@ -700,9 +760,9 @@ export class PokedexPanel {
             data-shiny-toggle
             data-default-sprite="${defaultSpriteUri}"
             data-shiny-sprite="${shinySpriteUri}"
-            aria-label="Toggle shiny sprite for ${escapeHtml(entry.name)}"
+            aria-label="${escapeHtml(strings.toggleShinyLabel(entry.name))}"
             aria-pressed="${showsShinyByDefault ? 'true' : 'false'}"
-            title="Toggle shiny sprite"
+            title="${escapeHtml(strings.toggleShinyTitle)}"
           >${SPARKLE_ICON}</button>
         `
         : ''
@@ -713,8 +773,8 @@ export class PokedexPanel {
             class="play-cry-button"
             data-play-cry
             data-cry-src="${cryUri}"
-            aria-label="Play ${escapeHtml(entry.name)}'s cry"
-            title="Play cry"
+            aria-label="${escapeHtml(strings.playCryLabel(entry.name))}"
+            title="${escapeHtml(strings.playCryTitle)}"
           >${SOUND_ICON}</button>
         `
         : ''
@@ -722,8 +782,10 @@ export class PokedexPanel {
         shinyToggle || playCryButton
           ? `<div class="card-controls">${playCryButton}${shinyToggle}</div>`
           : ''
-      const cardBack = discovered ? renderCardBackHtml(entry.type, entry.name) : ''
-      const faceToggles = discovered ? renderFaceTogglesHtml(entry.name) : ''
+      const cardBack = discovered
+        ? renderCardBackHtml(entry.type, entry.name, infoData, localizedTypeBadges)
+        : ''
+      const faceToggles = discovered ? renderFaceTogglesHtml(entry.name, strings) : ''
 
       return `
         <div class="pokemon-card-wrapper">
@@ -744,8 +806,8 @@ export class PokedexPanel {
               >
                 <div class="card-top">
                   <span class="pokemon-id">#${padPokemonId(entry.id)}</span>
-                  <span class="generation-chip">${getGenerationLabel(entry.generation)}</span>
-                  <span class="active-badge">Active</span>
+                  <span class="generation-chip">${getGenerationLabel(entry.generation, strings)}</span>
+                  <span class="active-badge">${escapeHtml(strings.activeBadge)}</span>
                 </div>
                 <div class="sprite-frame">
                   <img
@@ -773,12 +835,12 @@ export class PokedexPanel {
     }).join('')
 
     return `<!DOCTYPE html>
-<html lang="en">
+<html lang="${language}">
 <head>
   <meta charset="UTF-8">
   <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${webview.cspSource} 'nonce-${nonce}'; img-src ${webview.cspSource}; font-src ${webview.cspSource}; media-src ${webview.cspSource}; connect-src ${webview.cspSource}; script-src 'nonce-${nonce}';">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Pokechidex</title>
+  <title>${escapeHtml(strings.pokechidexTitle)}</title>
   <style nonce="${nonce}">
     :root {
       --card-bg: var(--vscode-editorWidget-background, var(--vscode-editor-background));
@@ -1838,25 +1900,25 @@ export class PokedexPanel {
   <main class="pokedex-shell">
     <header class="header">
       <div class="title-block">
-        <h1>Pokechidex</h1>
-        <p class="subtitle">Species you have met from a Pok&eacute;ball or an evolution. Pick one to bring it out &mdash; each line keeps its own XP, so nothing is lost when you switch. Picking one plays its cry, which you can turn off with the <code>pokechi.playCrySounds</code> setting. Open the Bag below to track your items and badges.</p>
+        <h1>${escapeHtml(strings.pokechidexTitle)}</h1>
+        <p class="subtitle">${strings.pokechidexSubtitle}</p>
       </div>
       <div class="counters">
         <div class="counter">
           <span class="counter-value" id="counter-value">${discoveredCount}/${totalCount}</span>
-          <span class="counter-label">Discovered</span>
+          <span class="counter-label">${escapeHtml(strings.counterDiscovered)}</span>
         </div>
         <div class="counter">
           <span class="counter-value" id="shiny-counter-value">${shinyDiscoveredCount}/${totalCount}</span>
-          <span class="counter-label">Shiny</span>
+          <span class="counter-label">${escapeHtml(strings.counterShiny)}</span>
         </div>
         <div class="counter">
           <span class="counter-value" id="badge-counter-value">${earnedBadgeCount}/${totalBadgeCount}</span>
-          <span class="counter-label">Badges</span>
+          <span class="counter-label">${escapeHtml(strings.counterBadges)}</span>
         </div>
         <div class="counter">
           <span class="counter-value" id="total-xp-value">${totalXPText}</span>
-          <span class="counter-label">Total XP</span>
+          <span class="counter-label">${escapeHtml(strings.counterTotalXP)}</span>
         </div>
         <button
           type="button"
@@ -1865,15 +1927,15 @@ export class PokedexPanel {
           ${rareCandyUsable ? '' : 'disabled'}
           title="${
             rareCandyCount === 0
-              ? `No ${rareCandyItem.name} yet - hatching a Pokeball has a small chance to drop one`
+              ? escapeHtml(strings.candyCounterNoneYet(rareCandyName))
               : rareCandyUsable
-              ? escapeHtml(rareCandyItem.description)
-              : `Your current pokemon cannot use a ${rareCandyItem.name} right now`
+              ? escapeHtml(strings.itemDescriptions['rare-candy'] ?? rareCandyItem.description)
+              : escapeHtml(strings.candyCounterNotUsableNow(rareCandyName))
           }"
         >
           <img class="counter-candy-icon" src="${candySpriteUri}" alt="" />
           <span class="counter-value" id="candy-counter-value">${rareCandyCount}</span>
-          <span class="counter-label">${escapeHtml(rareCandyItem.name)}</span>
+          <span class="counter-label">${escapeHtml(rareCandyName)}</span>
         </button>
       </div>
     </header>
@@ -1887,12 +1949,12 @@ export class PokedexPanel {
         aria-controls="bag-content"
       >
         <span class="bag-chevron">&#9656;</span>
-        Bag
+        ${escapeHtml(strings.bagLabel)}
       </button>
       <div class="bag-content" id="bag-content" hidden>
         <div class="bag-tabs" role="tablist">
-          <button type="button" class="bag-tab is-selected" data-bag-tab="items" role="tab" aria-selected="true">Items</button>
-          <button type="button" class="bag-tab" data-bag-tab="badges" role="tab" aria-selected="false">Badges</button>
+          <button type="button" class="bag-tab is-selected" data-bag-tab="items" role="tab" aria-selected="true">${escapeHtml(strings.bagTabItems)}</button>
+          <button type="button" class="bag-tab" data-bag-tab="badges" role="tab" aria-selected="false">${escapeHtml(strings.bagTabBadges)}</button>
         </div>
         <div class="bag-panel bag-panel-items" data-bag-tabpanel="items" id="bag-panel-items">
           ${itemsPanelHtml}
@@ -1908,16 +1970,16 @@ export class PokedexPanel {
         id="search"
         class="search"
         type="search"
-        placeholder="Search by name or number"
-        aria-label="Search the Pokechidex"
+        placeholder="${escapeHtml(strings.searchPlaceholder)}"
+        aria-label="${escapeHtml(strings.searchAriaLabel)}"
         autocomplete="off"
       />
-      <div class="filters" role="group" aria-label="Pokedex filters">
-        <button type="button" class="filter-chip is-selected" data-generation="all">All</button>
-        <button type="button" class="filter-chip" data-generation="1">Gen 1</button>
-        <button type="button" class="filter-chip" data-generation="2">Gen 2</button>
-        <button type="button" class="filter-chip" data-generation="3">Gen 3</button>
-        <button type="button" class="filter-chip" data-generation="4">Gen 4</button>
+      <div class="filters" role="group" aria-label="${escapeHtml(strings.filtersAriaLabel)}">
+        <button type="button" class="filter-chip is-selected" data-generation="all">${escapeHtml(strings.filterAll)}</button>
+        <button type="button" class="filter-chip" data-generation="1">${escapeHtml(strings.badgeGenerationLabel(1))}</button>
+        <button type="button" class="filter-chip" data-generation="2">${escapeHtml(strings.badgeGenerationLabel(2))}</button>
+        <button type="button" class="filter-chip" data-generation="3">${escapeHtml(strings.badgeGenerationLabel(3))}</button>
+        <button type="button" class="filter-chip" data-generation="4">${escapeHtml(strings.badgeGenerationLabel(4))}</button>
         <div class="type-filter">
           <button
             type="button"
@@ -1926,27 +1988,27 @@ export class PokedexPanel {
             aria-haspopup="true"
             aria-expanded="false"
           >
-            Type<span class="type-filter-count" id="type-filter-count" hidden></span>
+            ${escapeHtml(strings.typeFilterLabel)}<span class="type-filter-count" id="type-filter-count" hidden></span>
           </button>
-          <div class="type-filter-menu" id="type-filter-menu" role="group" aria-label="Filter by type" hidden>
-            ${renderTypeFilterOptions()}
-            <button type="button" class="type-filter-clear" id="type-filter-clear">Clear</button>
+          <div class="type-filter-menu" id="type-filter-menu" role="group" aria-label="${escapeHtml(strings.typeFilterAriaLabel)}" hidden>
+            ${renderTypeFilterOptions(localizedTypeBadges)}
+            <button type="button" class="type-filter-clear" id="type-filter-clear">${escapeHtml(strings.typeFilterClear)}</button>
           </div>
         </div>
         <label class="filter-toggle">
           <input type="checkbox" id="only-discovered" />
-          Discovered only
+          ${escapeHtml(strings.filterDiscoveredOnly)}
         </label>
         <label class="filter-toggle">
           <input type="checkbox" id="only-shiny" />
-          Shiny unlocked
+          ${escapeHtml(strings.filterShinyUnlocked)}
         </label>
       </div>
     </div>
 
-    <p class="empty-state" id="empty-state" hidden>Nothing matches that search.</p>
+    <p class="empty-state" id="empty-state" hidden>${escapeHtml(strings.emptyState)}</p>
 
-    <section class="grid" aria-label="Pokechidex grid">
+    <section class="grid" aria-label="${escapeHtml(strings.gridAriaLabel)}">
       ${cards}
     </section>
   </main>
@@ -1959,10 +2021,15 @@ export class PokedexPanel {
         return;
       }
 
-      var TYPE_BADGES = ${JSON.stringify(TYPE_BADGES)};
+      var TYPE_BADGES = ${JSON.stringify(localizedTypeBadges)};
+      var STRINGS = ${JSON.stringify(clientStrings)};
       var playCrySoundsEnabled = ${JSON.stringify(playCrySoundsEnabled)};
-      var RARE_CANDY_NAME = ${JSON.stringify(rareCandyItem.name)};
-      var RARE_CANDY_DESCRIPTION = ${JSON.stringify(rareCandyItem.description)};
+      var RARE_CANDY_NAME = ${JSON.stringify(rareCandyName)};
+      var RARE_CANDY_DESCRIPTION = ${JSON.stringify(strings.itemDescriptions['rare-candy'] ?? rareCandyItem.description)};
+
+      function fillTemplate(template, value) {
+        return template.split(STRINGS.nameToken).join(value);
+      }
 
       var grid = document.querySelector('.grid');
       var counter = document.getElementById('counter-value');
@@ -2480,8 +2547,8 @@ export class PokedexPanel {
         button.className = 'play-cry-button';
         button.setAttribute('data-play-cry', '');
         button.setAttribute('data-cry-src', entry.cryUri);
-        button.setAttribute('aria-label', 'Play ' + entry.name + "'s cry");
-        button.title = 'Play cry';
+        button.setAttribute('aria-label', fillTemplate(STRINGS.playCryLabelTemplate, entry.name));
+        button.title = STRINGS.playCryTitle;
         button.innerHTML = '${SOUND_ICON}';
         controls.insertBefore(button, controls.firstChild);
       }
@@ -2510,9 +2577,9 @@ export class PokedexPanel {
         toggle.type = 'button';
         toggle.className = 'shiny-toggle';
         toggle.setAttribute('data-shiny-toggle', '');
-        toggle.setAttribute('aria-label', 'Toggle shiny sprite for ' + entry.name);
+        toggle.setAttribute('aria-label', fillTemplate(STRINGS.toggleShinyLabelTemplate, entry.name));
         toggle.setAttribute('aria-pressed', 'false');
-        toggle.title = 'Toggle shiny sprite';
+        toggle.title = STRINGS.toggleShinyTitle;
         toggle.innerHTML = '${SPARKLE_ICON}';
         controls.appendChild(toggle);
       }
@@ -2546,7 +2613,7 @@ export class PokedexPanel {
           '<div class="badge-card-name">' + escapeHtmlClient(status.name) + '</div>' +
           '<img class="badge-card-image" src="' + status.spriteUri + '" alt="" />' +
           '<ul class="badge-card-requirements">' + requirementsHtml + '</ul>' +
-          '<div class="badge-card-status">' + (status.earned ? 'Obtained' : 'Locked') + '</div>' +
+          '<div class="badge-card-status">' + (status.earned ? STRINGS.badgeStatusObtained : STRINGS.badgeStatusLocked) + '</div>' +
           '</div>'
         );
       }
@@ -2636,18 +2703,18 @@ export class PokedexPanel {
         infoButton.type = 'button';
         infoButton.className = 'face-toggle face-toggle-info';
         infoButton.setAttribute('data-flip-target', 'info');
-        infoButton.setAttribute('aria-label', 'Show info for ' + entry.name);
+        infoButton.setAttribute('aria-label', fillTemplate(STRINGS.showInfoLabelTemplate, entry.name));
         infoButton.setAttribute('aria-pressed', 'false');
-        infoButton.title = 'Info';
+        infoButton.title = STRINGS.infoTitle;
         infoButton.innerHTML = '${INFO_ICON}';
 
         var movesButton = document.createElement('button');
         movesButton.type = 'button';
         movesButton.className = 'face-toggle face-toggle-moves';
         movesButton.setAttribute('data-flip-target', 'moves');
-        movesButton.setAttribute('aria-label', 'Show moves for ' + entry.name);
+        movesButton.setAttribute('aria-label', fillTemplate(STRINGS.showMovesLabelTemplate, entry.name));
         movesButton.setAttribute('aria-pressed', 'false');
-        movesButton.title = 'Moves';
+        movesButton.title = STRINGS.movesTitle;
         movesButton.innerHTML = '${ATTACK_ICON}';
 
         wrapper.appendChild(infoButton);
@@ -2660,7 +2727,7 @@ export class PokedexPanel {
         card.disabled = false;
         card.dataset.pokemonType = entry.type;
         card.dataset.types = entry.types ? entry.types.join(' ') : '';
-        card.setAttribute('aria-label', 'Show ' + entry.name);
+        card.setAttribute('aria-label', fillTemplate(STRINGS.cardShowLabelTemplate, entry.name));
 
         var sprite = card.querySelector('.sprite');
         if (sprite && entry.spriteUri) {
@@ -2824,10 +2891,10 @@ export class PokedexPanel {
             var usable = !!data.canUseRareCandy && data.rareCandyCount > 0;
             candyCounter.disabled = !usable;
             candyCounter.title = data.rareCandyCount === 0
-              ? 'No ' + RARE_CANDY_NAME + ' yet - hatching a Pokeball has a small chance to drop one'
+              ? fillTemplate(STRINGS.candyCounterNoneYetTemplate, RARE_CANDY_NAME)
               : usable
               ? RARE_CANDY_DESCRIPTION
-              : 'Your current pokemon cannot use a ' + RARE_CANDY_NAME + ' right now';
+              : fillTemplate(STRINGS.candyCounterNotUsableNowTemplate, RARE_CANDY_NAME);
           }
 
           var bagCandyCount = document.querySelector('[data-item-count="rare-candy"]');

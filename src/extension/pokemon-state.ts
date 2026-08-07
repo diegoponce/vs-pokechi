@@ -26,6 +26,7 @@ import {
 import { POKEMON_DATA } from '../common/pokemon-data'
 import { ItemId } from '../common/items'
 import { BADGES, BadgeConfig, BadgeCondition } from '../common/badges'
+import { Strings, getStrings } from '../common/i18n'
 
 const DEFAULT_XP_FOR_POKEBALL = 500
 const DEFAULT_XP_FOR_FIRST_EVOLUTION = 1000
@@ -442,17 +443,21 @@ export class PokemonState {
     return pokemon
   }
 
-  // Shared by createNewPokemon and createStarterPokemon: everything past
-  // "which base species" is identical for both.
+  // Shared by createNewPokemon, createStarterPokemon, useMasterBall and
+  // usePremierBall: everything past "which base species, which color" is
+  // identical for all four. forcedColor lets a Master/Premier Ball honor its
+  // own odds (or guarantee) instead of the usual random roll every other
+  // catch gets.
   private static buildFreshPokeball(
     context: vscode.ExtensionContext,
-    basePokemon: PokemonType
+    basePokemon: PokemonType,
+    forcedColor?: PokemonColor
   ): UserPokemon {
     const scaleFactor = vscode.workspace
       .getConfiguration()
       .get('pokechi.scaleFactor', 1.0)
 
-    const color = getRandomPokemonColor()
+    const color = forcedColor ?? getRandomPokemonColor()
     // A branching base (Eevee, Oddish, ...) has more than one possible line;
     // this rolls which one this specific catch commits to. Non-branching
     // bases only ever have one, so this is a no-op for them.
@@ -754,13 +759,18 @@ export class PokemonState {
     return PokemonState.pickMasterBallReward(context) !== undefined
   }
 
-  // Unlike a candy, this never touches the active pokemon - it just adds a
-  // species straight to the pokedex, the same way meeting it through play
-  // would. Returns what was revealed so the caller can announce it, or
-  // undefined if there was nothing left to give (or nothing to spend).
+  // Same as a candy in one sense (it never leaves the roster) but not in
+  // another - it does replace the active pokemon, the same way "Catch a new
+  // Pokemon" does (rememberActivePokemon banks whatever was out first). What
+  // it guarantees is the species, not an instant unlock: it opens as a
+  // fresh, unhatched Pokeball of that line's base, so it still has to be
+  // raised to actually show up in the Pokechidex. Returns the new active
+  // pokemon plus the exact species promised (for the announcement, since the
+  // ball may start the player several stages before it), or undefined if
+  // there was nothing left to give (or nothing to spend).
   static useMasterBall(
     context: vscode.ExtensionContext
-  ): { type: PokemonType; isShiny: boolean } | undefined {
+  ): { pokemon: UserPokemon; revealedType: PokemonType; isShiny: boolean } | undefined {
     if (PokemonState.getItemCount(context, 'master-ball') <= 0) {
       return undefined
     }
@@ -773,10 +783,12 @@ export class PokemonState {
     // Same odds as any other reveal - a Master Ball skips the catch itself,
     // not the usual chance of what comes out of it.
     const color = getRandomPokemonColor()
-    PokemonState.discoverPokemon(context, reward, color)
+    const base = getEvolutionLineContaining(reward)?.base ?? reward
+    PokemonState.rememberActivePokemon(context)
+    const pokemon = PokemonState.buildFreshPokeball(context, base, color)
     PokemonState.removeItem(context, 'master-ball', 1)
     PokemonState.recordItemUsed(context, 'master-ball', 1)
-    return { type: reward, isShiny: color === PokemonColor.shiny }
+    return { pokemon, revealedType: reward, isShiny: color === PokemonColor.shiny }
   }
 
   // --- Premier Ball ----------------------------------------------------------
@@ -803,7 +815,13 @@ export class PokemonState {
     return PokemonState.pickPremierBallReward(context) !== undefined
   }
 
-  static usePremierBall(context: vscode.ExtensionContext): PokemonType | undefined {
+  // Same "guarantees the species, not an instant unlock" treatment as
+  // useMasterBall above - opens as a fresh, unhatched Pokeball of the
+  // promised species' line base, always shiny, replacing whatever was
+  // active (progress banked first, same as any other new catch).
+  static usePremierBall(
+    context: vscode.ExtensionContext
+  ): { pokemon: UserPokemon; revealedType: PokemonType } | undefined {
     if (PokemonState.getItemCount(context, 'premier-ball') <= 0) {
       return undefined
     }
@@ -813,10 +831,12 @@ export class PokemonState {
       return undefined
     }
 
-    PokemonState.discoverPokemon(context, reward, PokemonColor.shiny)
+    const base = getEvolutionLineContaining(reward)?.base ?? reward
+    PokemonState.rememberActivePokemon(context)
+    const pokemon = PokemonState.buildFreshPokeball(context, base, PokemonColor.shiny)
     PokemonState.removeItem(context, 'premier-ball', 1)
     PokemonState.recordItemUsed(context, 'premier-ball', 1)
-    return reward
+    return { pokemon, revealedType: reward }
   }
 
   // --- Item usage (lifetime, for badge conditions) ------------------------
@@ -897,7 +917,8 @@ export class PokemonState {
   private static evaluateBadgeCondition(
     condition: BadgeCondition,
     progress: BadgeGenerationProgress,
-    rareCandyUsed: number
+    rareCandyUsed: number,
+    strings: Strings
   ): BadgeRequirementStatus[] {
     const requirements: BadgeRequirementStatus[] = []
     const push = (label: string, current: number, required: number | undefined) => {
@@ -907,25 +928,33 @@ export class PokemonState {
       requirements.push({ label, current, required, met: current >= required })
     }
 
-    push('Species discovered', progress.discovered, condition.minDiscovered)
-    push('Shiny discovered', progress.shinyDiscovered, condition.minShinyDiscovered)
-    push('Fossils discovered', progress.fossilDiscovered, condition.minFossilDiscovered)
+    push(strings.requirementSpeciesDiscovered, progress.discovered, condition.minDiscovered)
+    push(strings.requirementShinyDiscovered, progress.shinyDiscovered, condition.minShinyDiscovered)
+    push(strings.requirementFossilsDiscovered, progress.fossilDiscovered, condition.minFossilDiscovered)
     push(
-      'Sub-legendaries discovered',
+      strings.requirementSubLegendariesDiscovered,
       progress.subLegendaryDiscovered,
       condition.minSubLegendaryDiscovered
     )
-    push('Legendaries discovered', progress.legendaryDiscovered, condition.minLegendaryDiscovered)
-    push('Mythicals discovered', progress.mythicalDiscovered, condition.minMythicalDiscovered)
-    push('Rare Candies used', rareCandyUsed, condition.minRareCandyUsed)
+    push(
+      strings.requirementLegendariesDiscovered,
+      progress.legendaryDiscovered,
+      condition.minLegendaryDiscovered
+    )
+    push(strings.requirementMythicalsDiscovered, progress.mythicalDiscovered, condition.minMythicalDiscovered)
+    push(strings.requirementRareCandiesUsed, rareCandyUsed, condition.minRareCandyUsed)
 
     return requirements
   }
 
   // Every badge, evaluated fresh against current progress - not just the
   // earned ones, so the Pokechidex can show a locked badge's remaining
-  // requirements too.
-  static getBadgeStatuses(context: vscode.ExtensionContext): BadgeStatus[] {
+  // requirements too. strings defaults to English since refreshBadges below
+  // only ever reads the boolean met flags, never the display labels.
+  static getBadgeStatuses(
+    context: vscode.ExtensionContext,
+    strings: Strings = getStrings('en')
+  ): BadgeStatus[] {
     const progressByGen = PokemonState.getGenerationProgress(context)
     const earnedIds = new Set(store(context).getState().badges)
     const rareCandyUsed = PokemonState.getItemUsedCount(context, 'rare-candy')
@@ -935,7 +964,8 @@ export class PokemonState {
       const requirements = PokemonState.evaluateBadgeCondition(
         badge.condition,
         progress,
-        rareCandyUsed
+        rareCandyUsed,
+        strings
       )
       return {
         badge,

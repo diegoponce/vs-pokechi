@@ -29,6 +29,25 @@ export const TYPE_BADGES: Record<PokemonElementType, TypeBadgeInfo> = {
   [PokemonElementType.steel]: { abbr: 'STE', color: '#B8B8D0', textColor: '#1b1b1b' },
 }
 
+// Same shape as TYPE_BADGES, but with abbr swapped for the running
+// language's own - color/textColor stay the same regardless of language,
+// they are not text. Kept as a function here rather than storing translated
+// abbreviations on TYPE_BADGES itself, so the color chart stays the one
+// single source of visual truth and a language only ever supplies the text
+// half.
+export function getLocalizedTypeBadges(
+  typeAbbreviations: { [type: string]: string }
+): Record<PokemonElementType, TypeBadgeInfo> {
+  const localized = {} as Record<PokemonElementType, TypeBadgeInfo>
+  for (const [type, badge] of Object.entries(TYPE_BADGES)) {
+    localized[type as PokemonElementType] = {
+      ...badge,
+      abbr: typeAbbreviations[type] ?? badge.abbr,
+    }
+  }
+  return localized
+}
+
 // A CSS rule per type (".type-badge.type-fire { background: ...; color: ...; }"),
 // meant to be embedded inside a <style nonce="..."> block. Colors can't be
 // applied through a style="" attribute under this extension's webview CSPs
