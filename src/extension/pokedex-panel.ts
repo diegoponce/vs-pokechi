@@ -31,6 +31,24 @@ function renderTypeBadges(types: PokemonElementType[] | undefined): string {
     .join('')
 }
 
+// One row per type in the type-filter dropdown - a badge on the left (same
+// markup as everywhere else a type shows up) and its own checkbox on the
+// right, rather than a native <select>, which cannot render anything but
+// plain text per option.
+function renderTypeFilterOptions(): string {
+  return Object.keys(TYPE_BADGES)
+    .map((type) => {
+      const badge = TYPE_BADGES[type as PokemonElementType]
+      return `
+        <label class="type-filter-option">
+          <span class="type-badge type-${type}">${badge.abbr}</span>
+          <input type="checkbox" data-type-option value="${type}" />
+        </label>
+      `
+    })
+    .join('')
+}
+
 interface PokedexEntry {
   type: PokemonType
   id: number
@@ -480,6 +498,11 @@ export class PokedexPanel {
       const typeBadgesHtml = discovered
         ? renderTypeBadges(POKEMON_DATA[entry.type]?.types)
         : ''
+      // Same "never for a locked card" rule: the type filter treats a blank
+      // data-types as "always matches" rather than "matches nothing", so
+      // this never has to hide a card the search/generation filters would
+      // otherwise still show.
+      const typesAttr = discovered ? (POKEMON_DATA[entry.type]?.types ?? []).join(' ') : ''
       const cryUri = discovered ? this.getSpriteUri(webview, getCryPath(entry.type)) : ''
 
       // Both live outside the card button: interactive elements cannot nest,
@@ -529,6 +552,7 @@ export class PokedexPanel {
                 data-name="${discovered ? escapeHtml(entry.name.toLowerCase()) : ''}"
                 data-number="${padPokemonId(entry.id)}"
                 data-has-shiny="${isShiny ? '1' : '0'}"
+                data-types="${typesAttr}"
                 ${discovered ? `data-pokemon-type="${entry.type}"` : 'disabled'}
                 aria-pressed="${isActive ? 'true' : 'false'}"
                 aria-label="${label}"${tooltip}
@@ -736,6 +760,76 @@ export class PokedexPanel {
       color: var(--muted);
       cursor: pointer;
       user-select: none;
+    }
+
+    .type-filter {
+      position: relative;
+    }
+
+    .type-filter-count {
+      margin-left: 4px;
+      font-weight: 700;
+    }
+
+    /* A display value here would otherwise override the browser's default
+       [hidden] { display: none } - same reason the card-flip back panels
+       need the analogous :not([hidden]) split - so the menu stays visible
+       and un-clickable-shut regardless of the hidden attribute JS toggles. */
+    .type-filter-menu {
+      display: none;
+      position: absolute;
+      top: calc(100% + 4px);
+      left: 0;
+      z-index: 10;
+      grid-template-columns: repeat(2, minmax(90px, 1fr));
+      gap: 2px 10px;
+      padding: 8px;
+      border-radius: 6px;
+      border: 1px solid var(--vscode-widget-border, var(--card-border));
+      background: var(--vscode-editorWidget-background, var(--card-bg));
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+    }
+
+    .type-filter-menu:not([hidden]) {
+      display: grid;
+    }
+
+    .type-filter-option {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 3px 2px;
+      border-radius: 4px;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .type-filter-option:hover {
+      background: var(--vscode-list-hoverBackground);
+    }
+
+    .type-filter-option input:focus-visible {
+      outline: 1px solid var(--accent);
+      outline-offset: 1px;
+    }
+
+    .type-filter-clear {
+      grid-column: 1 / -1;
+      margin-top: 4px;
+      padding: 4px 0;
+      border: none;
+      border-top: 1px solid var(--vscode-widget-border, var(--card-border));
+      border-radius: 0;
+      background: transparent;
+      color: var(--muted);
+      font: inherit;
+      font-size: 11px;
+      cursor: pointer;
+    }
+
+    .type-filter-clear:hover {
+      color: var(--vscode-foreground);
     }
 
     .empty-state {
@@ -1285,12 +1379,27 @@ export class PokedexPanel {
         aria-label="Search the Pokechidex"
         autocomplete="off"
       />
-      <div class="filters" role="group" aria-label="Filter by generation">
+      <div class="filters" role="group" aria-label="Pokedex filters">
         <button type="button" class="filter-chip is-selected" data-generation="all">All</button>
         <button type="button" class="filter-chip" data-generation="1">Gen 1</button>
         <button type="button" class="filter-chip" data-generation="2">Gen 2</button>
         <button type="button" class="filter-chip" data-generation="3">Gen 3</button>
         <button type="button" class="filter-chip" data-generation="4">Gen 4</button>
+        <div class="type-filter">
+          <button
+            type="button"
+            class="filter-chip type-filter-toggle"
+            id="type-filter-toggle"
+            aria-haspopup="true"
+            aria-expanded="false"
+          >
+            Type<span class="type-filter-count" id="type-filter-count" hidden></span>
+          </button>
+          <div class="type-filter-menu" id="type-filter-menu" role="group" aria-label="Filter by type" hidden>
+            ${renderTypeFilterOptions()}
+            <button type="button" class="type-filter-clear" id="type-filter-clear">Clear</button>
+          </div>
+        </div>
         <label class="filter-toggle">
           <input type="checkbox" id="only-discovered" />
           Discovered only
@@ -1328,7 +1437,12 @@ export class PokedexPanel {
       var emptyState = document.getElementById('empty-state');
       var onlyDiscovered = document.getElementById('only-discovered');
       var onlyShiny = document.getElementById('only-shiny');
+      var typeFilterToggle = document.getElementById('type-filter-toggle');
+      var typeFilterMenu = document.getElementById('type-filter-menu');
+      var typeFilterCount = document.getElementById('type-filter-count');
+      var typeFilterClear = document.getElementById('type-filter-clear');
       var generation = 'all';
+      var selectedTypes = {};
 
       function applyFilters() {
         if (!grid) {
@@ -1338,6 +1452,7 @@ export class PokedexPanel {
         var term = (search && search.value ? search.value : '').trim().toLowerCase();
         var wrappers = grid.querySelectorAll('.pokemon-card-wrapper');
         var visible = 0;
+        var hasSelectedTypes = Object.keys(selectedTypes).some(function (t) { return selectedTypes[t]; });
 
         Array.prototype.forEach.call(wrappers, function (wrapper) {
           var card = wrapper.querySelector('.pokemon-card');
@@ -1357,8 +1472,17 @@ export class PokedexPanel {
             !term ||
             (card.dataset.name && card.dataset.name.indexOf(term) >= 0) ||
             (card.dataset.number && card.dataset.number.indexOf(term) >= 0);
+          // Same reasoning as the search term: an undiscovered card has no
+          // data-types either, so the type filter only ever narrows down
+          // what is already discovered instead of hiding a locked card and
+          // giving away whether it happens to match.
+          var cardTypes = card.dataset.types ? card.dataset.types.split(' ') : [];
+          var matchesTypes =
+            !hasSelectedTypes ||
+            !cardTypes.length ||
+            cardTypes.some(function (t) { return selectedTypes[t]; });
 
-          var show = matchesGeneration && matchesDiscovered && matchesShiny && matchesTerm;
+          var show = matchesGeneration && matchesDiscovered && matchesShiny && matchesTerm && matchesTypes;
           wrapper.hidden = !show;
           if (show) {
             visible++;
@@ -1383,12 +1507,12 @@ export class PokedexPanel {
       }
 
       Array.prototype.forEach.call(
-        document.querySelectorAll('.filter-chip'),
+        document.querySelectorAll('.filter-chip[data-generation]'),
         function (chip) {
           chip.addEventListener('click', function () {
             generation = chip.dataset.generation;
             Array.prototype.forEach.call(
-              document.querySelectorAll('.filter-chip'),
+              document.querySelectorAll('.filter-chip[data-generation]'),
               function (other) {
                 other.classList.toggle('is-selected', other === chip);
               }
@@ -1397,6 +1521,78 @@ export class PokedexPanel {
           });
         }
       );
+
+      function updateTypeFilterButton() {
+        var selected = Object.keys(selectedTypes).filter(function (t) { return selectedTypes[t]; });
+        if (typeFilterToggle) {
+          typeFilterToggle.classList.toggle('is-selected', selected.length > 0);
+        }
+        if (typeFilterCount) {
+          typeFilterCount.hidden = selected.length === 0;
+          typeFilterCount.textContent = selected.length ? ' (' + selected.length + ')' : '';
+        }
+      }
+
+      function setTypeFilterOpen(open) {
+        if (!typeFilterMenu || !typeFilterToggle) {
+          return;
+        }
+        typeFilterMenu.hidden = !open;
+        typeFilterToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+      }
+
+      if (typeFilterToggle) {
+        typeFilterToggle.addEventListener('click', function (event) {
+          event.stopPropagation();
+          setTypeFilterOpen(typeFilterMenu && typeFilterMenu.hidden);
+        });
+      }
+
+      if (typeFilterMenu) {
+        // Each option is a <label> wrapping its own checkbox, so a click
+        // anywhere in the row - not just the tiny checkbox itself - already
+        // toggles it natively. This only needs to stop the click from
+        // bubbling to the document listener below and closing the menu.
+        typeFilterMenu.addEventListener('click', function (event) {
+          event.stopPropagation();
+        });
+
+        Array.prototype.forEach.call(
+          typeFilterMenu.querySelectorAll('[data-type-option]'),
+          function (checkbox) {
+            checkbox.addEventListener('change', function () {
+              selectedTypes[checkbox.value] = checkbox.checked;
+              updateTypeFilterButton();
+              applyFilters();
+            });
+          }
+        );
+      }
+
+      if (typeFilterClear) {
+        typeFilterClear.addEventListener('click', function (event) {
+          event.stopPropagation();
+          selectedTypes = {};
+          Array.prototype.forEach.call(
+            typeFilterMenu.querySelectorAll('[data-type-option]'),
+            function (checkbox) { checkbox.checked = false; }
+          );
+          updateTypeFilterButton();
+          applyFilters();
+        });
+      }
+
+      document.addEventListener('click', function (event) {
+        if (typeFilterMenu && !typeFilterMenu.hidden && !event.target.closest('.type-filter')) {
+          setTypeFilterOpen(false);
+        }
+      });
+
+      document.addEventListener('keydown', function (event) {
+        if (event.key === 'Escape') {
+          setTypeFilterOpen(false);
+        }
+      });
 
       // Same reasoning as the main panel/Explorer view: a fresh
       // HTMLAudioElement re-checks the browser's autoplay gesture policy on
@@ -1781,6 +1977,7 @@ export class PokedexPanel {
         card.classList.add('discovered');
         card.disabled = false;
         card.dataset.pokemonType = entry.type;
+        card.dataset.types = entry.types ? entry.types.join(' ') : '';
         card.setAttribute('aria-label', 'Show ' + entry.name);
 
         var sprite = card.querySelector('.sprite');
@@ -1852,10 +2049,16 @@ export class PokedexPanel {
             !term ||
             (target.dataset.name && target.dataset.name.indexOf(term) >= 0) ||
             (target.dataset.number && target.dataset.number.indexOf(term) >= 0);
+          var targetHasSelectedTypes = Object.keys(selectedTypes).some(function (t) { return selectedTypes[t]; });
+          var targetTypes = target.dataset.types ? target.dataset.types.split(' ') : [];
+          var matchesTypes =
+            !targetHasSelectedTypes ||
+            !targetTypes.length ||
+            targetTypes.some(function (t) { return selectedTypes[t]; });
 
-          if (!(matchesGeneration && matchesDiscovered && matchesShiny && matchesTerm)) {
+          if (!(matchesGeneration && matchesDiscovered && matchesShiny && matchesTerm && matchesTypes)) {
             generation = 'all';
-            Array.prototype.forEach.call(document.querySelectorAll('.filter-chip'), function (chip) {
+            Array.prototype.forEach.call(document.querySelectorAll('.filter-chip[data-generation]'), function (chip) {
               chip.classList.toggle('is-selected', chip.dataset.generation === 'all');
             });
             if (search) {
@@ -1867,6 +2070,14 @@ export class PokedexPanel {
             if (onlyShiny) {
               onlyShiny.checked = false;
             }
+            selectedTypes = {};
+            if (typeFilterMenu) {
+              Array.prototype.forEach.call(
+                typeFilterMenu.querySelectorAll('[data-type-option]'),
+                function (checkbox) { checkbox.checked = false; }
+              );
+            }
+            updateTypeFilterButton();
             applyFilters();
           }
 
