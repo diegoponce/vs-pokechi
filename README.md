@@ -11,18 +11,21 @@
 [![Open VSX downloads](https://img.shields.io/open-vsx/dt/d9once/pokechi?label=downloads)](https://open-vsx.org/extension/d9once/pokechi)
 [![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
-<img src="https://raw.githubusercontent.com/diegoponce/vs-pokechi/master/media/gen1/bulbasaur/default_walk_8fps.gif" width="56" />
-<img src="https://raw.githubusercontent.com/diegoponce/vs-pokechi/master/media/gen1/charmander/default_walk_8fps.gif" width="56" />
-<img src="https://raw.githubusercontent.com/diegoponce/vs-pokechi/master/media/gen1/squirtle/default_walk_8fps.gif" width="56" />
-<img src="https://raw.githubusercontent.com/diegoponce/vs-pokechi/master/media/gen1/pikachu/default_walk_8fps.gif" width="56" />
-<img src="https://raw.githubusercontent.com/diegoponce/vs-pokechi/master/media/gen2/cyndaquil/default_walk_8fps.gif" width="56" />
-<img src="https://raw.githubusercontent.com/diegoponce/vs-pokechi/master/media/gen2/totodile/default_walk_8fps.gif" width="56" />
-<img src="https://raw.githubusercontent.com/diegoponce/vs-pokechi/master/media/gen3/treecko/default_walk_8fps.gif" width="56" />
-<img src="https://raw.githubusercontent.com/diegoponce/vs-pokechi/master/media/gen3/mudkip/default_walk_8fps.gif" width="56" />
-<img src="https://raw.githubusercontent.com/diegoponce/vs-pokechi/master/media/gen1/eevee/default_walk_8fps.gif" width="56" />
-<img src="https://raw.githubusercontent.com/diegoponce/vs-pokechi/master/media/gen1/gengar/default_walk_8fps.gif" width="56" />
-<img src="https://raw.githubusercontent.com/diegoponce/vs-pokechi/master/media/gen1/dragonite/default_walk_8fps.gif" width="56" />
-<img src="https://raw.githubusercontent.com/diegoponce/vs-pokechi/master/media/gen1/snorlax/default_walk_8fps.gif" width="56" />
+<!-- Same twelve, each captioned in a different one of the 8 languages Pokechi now speaks - a small preview of the i18n feature further down. -->
+<table><tr>
+<td align="center"><img src="https://raw.githubusercontent.com/diegoponce/vs-pokechi/master/media/gen1/bulbasaur/default_walk_8fps.gif" width="56" /><br><sub>Bulbasaur</sub></td>
+<td align="center"><img src="https://raw.githubusercontent.com/diegoponce/vs-pokechi/master/media/gen1/charmander/default_walk_8fps.gif" width="56" /><br><sub>Salamèche</sub></td>
+<td align="center"><img src="https://raw.githubusercontent.com/diegoponce/vs-pokechi/master/media/gen1/squirtle/default_walk_8fps.gif" width="56" /><br><sub>꼬부기</sub></td>
+<td align="center"><img src="https://raw.githubusercontent.com/diegoponce/vs-pokechi/master/media/gen1/pikachu/default_walk_8fps.gif" width="56" /><br><sub>皮卡丘</sub></td>
+<td align="center"><img src="https://raw.githubusercontent.com/diegoponce/vs-pokechi/master/media/gen2/cyndaquil/default_walk_8fps.gif" width="56" /><br><sub>ヒノアラシ</sub></td>
+<td align="center"><img src="https://raw.githubusercontent.com/diegoponce/vs-pokechi/master/media/gen2/totodile/default_walk_8fps.gif" width="56" /><br><sub>Totodile</sub></td>
+<td align="center"><img src="https://raw.githubusercontent.com/diegoponce/vs-pokechi/master/media/gen3/treecko/default_walk_8fps.gif" width="56" /><br><sub>Arcko</sub></td>
+<td align="center"><img src="https://raw.githubusercontent.com/diegoponce/vs-pokechi/master/media/gen3/mudkip/default_walk_8fps.gif" width="56" /><br><sub>물짱이</sub></td>
+<td align="center"><img src="https://raw.githubusercontent.com/diegoponce/vs-pokechi/master/media/gen1/eevee/default_walk_8fps.gif" width="56" /><br><sub>伊布</sub></td>
+<td align="center"><img src="https://raw.githubusercontent.com/diegoponce/vs-pokechi/master/media/gen1/gengar/default_walk_8fps.gif" width="56" /><br><sub>ゲンガー</sub></td>
+<td align="center"><img src="https://raw.githubusercontent.com/diegoponce/vs-pokechi/master/media/gen1/dragonite/default_walk_8fps.gif" width="56" /><br><sub>Dragonite</sub></td>
+<td align="center"><img src="https://raw.githubusercontent.com/diegoponce/vs-pokechi/master/media/gen1/snorlax/default_walk_8fps.gif" width="56" /><br><sub>Ronflex</sub></td>
+</tr></table>
 
 </div>
 
@@ -47,7 +50,8 @@ Install it and a Pokéball shows up in your editor. Keep coding and it hatches, 
 | <img src="https://raw.githubusercontent.com/diegoponce/vs-pokechi/master/media/gen4/chatot/default_walk_8fps.gif" width="48" /> | **Every species has a cry.** Click yours to hear it, or a card in the Pokechidex. Picking one from the Pokechidex plays it too — turn that off with `pokechi.playCrySounds` if you would rather it stay quiet. |
 | <img src="https://raw.githubusercontent.com/diegoponce/vs-pokechi/master/media/gen1/alakazam/default_walk_8fps.gif" width="48" /> | **Every card flips over.** An info button shows its Pokédex description and base stats; an attacks button shows four representative moves, ranked so a species' real signature moves surface first. |
 | <img src="https://raw.githubusercontent.com/diegoponce/vs-pokechi/master/media/objects/rare-candy.png" width="48" /> | **Rare Candy and badges.** Hatching has a small chance to drop a candy — spend it to instantly evolve your current Pokémon. 32 badges track your progress through each generation, both in the Pokechidex's new Bag section. |
-| <img src="https://raw.githubusercontent.com/diegoponce/vs-pokechi/master/media/objects/master-ball.png" width="48" /> | **Master Ball and Premier Ball.** A Master Ball, also a small chance on hatch, reveals a random sub-legendary, legendary or mythical from any generation. A Premier Ball, earned every 10 Pokéballs you hatch, reveals a guaranteed shiny of any species. |
+| <img src="https://raw.githubusercontent.com/diegoponce/vs-pokechi/master/media/objects/master-ball.png" width="48" /> | **Master Ball and Premier Ball.** A Master Ball, also a small chance on hatch, reveals which sub-legendary, legendary or mythical you will get from any generation — Premier Ball does the same but guaranteed shiny, from any species. Either way it still opens as a fresh Pokéball you have to hatch and raise, same as any other catch. |
+| <img src="https://raw.githubusercontent.com/diegoponce/vs-pokechi/master/media/gen1/pikachu/default_walk_8fps.gif" width="48" /> | **8 languages.** Set `pokechi.language` to English, Español, Português, Français, Italiano, 한국어, 中文 or 日本語. Covers every notification, the whole Pokechidex, and each species' info and attacks text — sourced from the game's own localized data, not machine-translated. Anything not yet translated for a language falls back to English. |
 | <img src="https://raw.githubusercontent.com/diegoponce/vs-pokechi/master/media/gen1/snorlax/default_walk_8fps.gif" width="48" /> | **Follows you between windows.** Your progress is shared, so a second window picks up where the first left off. |
 
 ## The Pokechidex
@@ -108,6 +112,7 @@ Pokechi lives in a panel by default, or docked in the Explorer sidebar if you wo
 | `pokechi.position` | `panel` | Where your Pokémon lives: `panel` or `explorer` |
 | `pokechi.scaleFactor` | `1.0` | How big it is, from `0.5` to `1.5` |
 | `pokechi.playCrySounds` | `true` | Play a cry automatically when you pick a Pokémon from the Pokechidex |
+| `pokechi.language` | `en` | Language for notifications and the Pokechidex: `en`, `es`, `pt`, `fr`, `it`, `ko`, `zh` or `ja` |
 
 ## How XP works
 

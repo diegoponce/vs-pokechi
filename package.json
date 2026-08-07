@@ -104,13 +104,25 @@
             "type": "string",
             "enum": [
               "en",
-              "es"
+              "es",
+              "pt",
+              "fr",
+              "it",
+              "ko",
+              "zh",
+              "ja"
             ],
             "default": "en",
-            "description": "Language for Pokechi's notifications (hatching, evolving, items, badges). More languages are on the way - anything not yet translated falls back to English.",
+            "description": "Language for Pokechi's notifications and the Pokechidex webview. Anything not yet translated falls back to English.",
             "enumItemLabels": [
               "English",
-              "Español"
+              "Español",
+              "Português",
+              "Français",
+              "Italiano",
+              "한국어",
+              "中文",
+              "日本語"
             ],
             "scope": "window"
           }

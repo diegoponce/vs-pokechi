@@ -6,6 +6,11 @@ import { PokemonColor, PokemonElementType, PokemonGeneration, PokemonType } from
 import { POKEMON_DATA } from '../common/pokemon-data'
 import { POKEMON_INFO_DATA, PokemonInfoEntry } from '../common/pokemon-info-data'
 import { POKEMON_INFO_DATA_ES } from '../common/pokemon-info-data.es'
+import { POKEMON_INFO_DATA_FR } from '../common/pokemon-info-data.fr'
+import { POKEMON_INFO_DATA_IT } from '../common/pokemon-info-data.it'
+import { POKEMON_INFO_DATA_KO } from '../common/pokemon-info-data.ko'
+import { POKEMON_INFO_DATA_ZH } from '../common/pokemon-info-data.zh'
+import { POKEMON_INFO_DATA_JA } from '../common/pokemon-info-data.ja'
 import { ITEMS } from '../common/items'
 import {
   SPARKLE_ICON,
@@ -18,15 +23,32 @@ import {
   getSoundWaveCssRules,
 } from '../common/icons'
 import { TYPE_BADGES, TypeBadgeInfo, getTypeBadgeCssRules, getLocalizedTypeBadges } from '../common/type-badges'
-import { Strings, getStrings, Language } from '../common/i18n'
+import { Strings, getStrings, Language, isSupportedLanguage } from '../common/i18n'
 
 function getLanguage(): Language {
   const value = vscode.workspace.getConfiguration('pokechi').get<string>('language', 'en')
-  return value === 'es' ? 'es' : 'en'
+  return isSupportedLanguage(value) ? value : 'en'
+}
+
+// PokeAPI has no Brazilian Portuguese data at all for species flavor text or
+// move names/descriptions (only item/type names even have pt-br entries,
+// and even those turned out to be missing when checked - see pt.ts) - so
+// Portuguese falls back to the English info dataset here specifically,
+// same tolerance the rest of this file already extends to any language
+// without its own dictionary.
+const INFO_DATA_BY_LANGUAGE: Record<Language, { [key: string]: PokemonInfoEntry }> = {
+  en: POKEMON_INFO_DATA,
+  es: POKEMON_INFO_DATA_ES,
+  pt: POKEMON_INFO_DATA,
+  fr: POKEMON_INFO_DATA_FR,
+  it: POKEMON_INFO_DATA_IT,
+  ko: POKEMON_INFO_DATA_KO,
+  zh: POKEMON_INFO_DATA_ZH,
+  ja: POKEMON_INFO_DATA_JA,
 }
 
 function getInfoData(language: Language): { [key: string]: PokemonInfoEntry } {
-  return language === 'es' ? POKEMON_INFO_DATA_ES : POKEMON_INFO_DATA
+  return INFO_DATA_BY_LANGUAGE[language]
 }
 
 function renderTypeBadges(
