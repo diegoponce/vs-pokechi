@@ -28,6 +28,11 @@ export interface PokechiState {
   // Lifetime XP ever granted, regardless of resets on evolution or of which
   // line earned it. A vanity counter, not gameplay state.
   totalXP: number
+  // Lifetime count of Pokeballs opened (hatches), regardless of species or
+  // whether that hatch grew normally or froze read-only for an
+  // already-owned line - what Premier Ball's every-10th-hatch reward counts
+  // against.
+  hatchCount: number
   items: ItemInventory
   itemUsageCount: ItemUsageCount
   // Ids of badges (src/common/badges.ts) already earned. Once in this list,
@@ -43,6 +48,7 @@ function emptyState(): PokechiState {
     shinyPokedex: [],
     roster: {},
     totalXP: 0,
+    hatchCount: 0,
     items: {},
     itemUsageCount: {},
     badges: [],
@@ -61,6 +67,7 @@ export function normalizeState(parsed: Partial<PokechiState>): PokechiState {
     roster:
       parsed.roster && typeof parsed.roster === 'object' ? parsed.roster : {},
     totalXP: typeof parsed.totalXP === 'number' ? parsed.totalXP : 0,
+    hatchCount: typeof parsed.hatchCount === 'number' ? parsed.hatchCount : 0,
     items: normalizeItems(parsed),
     itemUsageCount:
       parsed.itemUsageCount && typeof parsed.itemUsageCount === 'object'
@@ -94,6 +101,7 @@ function durableSignature(state: PokechiState): string {
     shinyPokedex: state.shinyPokedex.slice().sort(),
     roster: state.roster,
     totalXP: state.totalXP,
+    hatchCount: state.hatchCount,
     items: state.items,
     itemUsageCount: state.itemUsageCount,
     badges: state.badges.slice().sort(),
@@ -157,6 +165,10 @@ export function mergeStates(local: PokechiState, remote: PokechiState): PokechiS
   // one that has seen the most of the combined history.
   const totalXP = Math.max(local.totalXP || 0, remote.totalXP || 0)
 
+  // Same reasoning as totalXP - only ever grows, so the higher figure is
+  // the one that has seen more of the combined history.
+  const hatchCount = Math.max(local.hatchCount || 0, remote.hatchCount || 0)
+
   // Unlike totalXP an item count can go down (spent), so per-item Math.max
   // is only a good guess, not a guarantee - a window that just spent one
   // right before this merge can see it come back if the other window has
@@ -195,6 +207,7 @@ export function mergeStates(local: PokechiState, remote: PokechiState): PokechiS
     shinyPokedex,
     roster,
     totalXP,
+    hatchCount,
     items,
     itemUsageCount,
     badges,
@@ -305,6 +318,7 @@ export class StateStore {
       shinyPokedex: [],
       roster: roster && typeof roster === 'object' ? roster : {},
       totalXP: 0,
+      hatchCount: 0,
       items: {},
       itemUsageCount: {},
       badges: [],

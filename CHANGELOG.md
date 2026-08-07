@@ -10,7 +10,9 @@ All notable changes to the Pokechi extension are documented here.
 - **Card info and attacks**: every discovered card in the Pokechidex now flips over. An info button shows its Pokédex description and base stats; a sword button shows four representative attacks — sourced from the game matching its generation (FireRed, HeartGold, Emerald or Platinum) and ranked so a species' real signature moves surface first, each with its type, power and a short description.
 - **Type filter** in the Pokechidex: a dropdown lists every type with its own checkbox, narrowing the grid to species matching any of the ones checked.
 - **Rare Candy**: hatching a Pokéball has a small chance to drop one. Spend it from the Pokechidex header, or the new Bag section, to instantly evolve your current Pokémon and skip the XP grind for that stage — it only works on a Pokémon that has already hatched and is not already fully evolved.
-- **Badges**: 32 achievement medals, 8 per generation, for milestones like discovering a set share of a generation's species, catching your first shiny or fossil, and meeting its rarer Pokémon. Track progress toward each one, and everything already earned, in the new collapsible Bag section below the Pokechidex header.
+- **Master Ball**: hatching also has a small, independent chance to drop one. Spend it to instantly reveal a random sub-legendary, legendary or mythical Pokémon from any generation — 60/30/10 odds across the three tiers — with the same 5% chance of it being shiny as any other reveal.
+- **Premier Ball**: awarded automatically every 10th Pokéball you hatch, no luck involved. Spend it to reveal a random Pokémon, from any generation or rarity, guaranteed shiny.
+- **Badges**: 32 achievement medals, 8 per generation, for milestones like discovering a set share of a generation's species, catching your first shiny or fossil, and meeting its rarer Pokémon. Track progress toward each one, and everything already earned, in the new collapsible Bag section below the Pokechidex header — its own counter sits alongside Discovered, Shiny and Total XP.
 
 ### Fixed
 

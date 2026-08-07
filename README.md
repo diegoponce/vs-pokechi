@@ -47,6 +47,7 @@ Install it and a Pokéball shows up in your editor. Keep coding and it hatches, 
 | <img src="https://raw.githubusercontent.com/diegoponce/vs-pokechi/master/media/gen4/chatot/default_walk_8fps.gif" width="48" /> | **Every species has a cry.** Click yours to hear it, or a card in the Pokechidex. Picking one from the Pokechidex plays it too — turn that off with `pokechi.playCrySounds` if you would rather it stay quiet. |
 | <img src="https://raw.githubusercontent.com/diegoponce/vs-pokechi/master/media/gen1/alakazam/default_walk_8fps.gif" width="48" /> | **Every card flips over.** An info button shows its Pokédex description and base stats; an attacks button shows four representative moves, ranked so a species' real signature moves surface first. |
 | <img src="https://raw.githubusercontent.com/diegoponce/vs-pokechi/master/media/objects/rare-candy.png" width="48" /> | **Rare Candy and badges.** Hatching has a small chance to drop a candy — spend it to instantly evolve your current Pokémon. 32 badges track your progress through each generation, both in the Pokechidex's new Bag section. |
+| <img src="https://raw.githubusercontent.com/diegoponce/vs-pokechi/master/media/objects/master-ball.png" width="48" /> | **Master Ball and Premier Ball.** A Master Ball, also a small chance on hatch, reveals a random sub-legendary, legendary or mythical from any generation. A Premier Ball, earned every 10 Pokéballs you hatch, reveals a guaranteed shiny of any species. |
 | <img src="https://raw.githubusercontent.com/diegoponce/vs-pokechi/master/media/gen1/snorlax/default_walk_8fps.gif" width="48" /> | **Follows you between windows.** Your progress is shared, so a second window picks up where the first left off. |
 
 ## The Pokechidex
@@ -69,7 +70,15 @@ Every discovered card flips over. An info button on one corner shows its Pokéde
 
 ### The Bag
 
-A collapsible section below the header, with two tabs. **Items** holds Rare Candy — hatching a Pokéball has a small chance to drop one, and spending it instantly evolves your current Pokémon, skipping the XP grind for that stage (it only works on one that has already hatched and is not already fully evolved). **Badges** tracks 32 achievement medals, 8 per generation, for milestones like discovering a share of that generation's species, catching your first shiny or fossil, and meeting its rarer Pokémon — each card shows what is left to earn it.
+A collapsible section below the header, with two tabs. **Items** holds:
+
+| Item | How you get it | What it does |
+| --- | --- | --- |
+| Rare Candy | Small chance on every hatch | Instantly evolves your current Pokémon, skipping the XP grind for that stage — only works on one that has already hatched and is not already fully evolved |
+| Master Ball | Small, independent chance on every hatch | Reveals a random sub-legendary, legendary or mythical Pokémon from any generation (60/30/10 odds across the three), with the usual 5% shiny chance |
+| Premier Ball | Automatically every 10th Pokéball you hatch | Reveals a random Pokémon, from any generation or rarity, guaranteed shiny |
+
+**Badges** tracks 32 achievement medals, 8 per generation, for milestones like discovering a share of that generation's species, catching your first shiny or fossil, and meeting its rarer Pokémon — each card shows what is left to earn it, grouped into a tab per generation.
 
 ## Getting started
 

@@ -112,12 +112,16 @@ export class XPTracker {
         const isShiny = pokemon.color === PokemonColor.shiny
         if (previousLevel === 0) {
           // Every item with hatchDropChance gets its own independent roll,
-          // so adding one to the registry (src/common/items.ts) is enough
-          // to have it start dropping here - nothing in this file has to
-          // know it exists.
+          // and every item with hatchMilestone is checked against the new
+          // lifetime hatch total, so adding either to the registry
+          // (src/common/items.ts) is enough to have it start earning here -
+          // nothing in this file has to know it exists.
+          const hatchCount = PokemonState.incrementHatchCount(this.context)
           const droppedItemNames: string[] = []
           for (const item of Object.values(ITEMS)) {
-            if (item.hatchDropChance && Math.random() < item.hatchDropChance) {
+            const wonByChance = item.hatchDropChance && Math.random() < item.hatchDropChance
+            const wonByMilestone = item.hatchMilestone && hatchCount % item.hatchMilestone === 0
+            if (wonByChance || wonByMilestone) {
               PokemonState.addItem(this.context, item.id, 1)
               droppedItemNames.push(item.name)
             }

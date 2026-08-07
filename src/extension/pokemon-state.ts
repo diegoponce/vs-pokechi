@@ -609,6 +609,21 @@ export class PokemonState {
     store(context).save()
   }
 
+  static getHatchCount(context: vscode.ExtensionContext): number {
+    return store(context).getState().hatchCount || 0
+  }
+
+  // Called once per hatch (Pokeball -> level 1) by the XP tracker, before
+  // it checks any item's hatchMilestone against the new total - so an item
+  // due exactly on this hatch (the 10th, 20th, ...) sees the count that
+  // already includes it.
+  static incrementHatchCount(context: vscode.ExtensionContext): number {
+    const state = store(context).getState()
+    state.hatchCount = (state.hatchCount || 0) + 1
+    store(context).save()
+    return state.hatchCount
+  }
+
   // --- Generic item inventory -----------------------------------------
   // Storage only: what an item actually does when used is its own
   // dedicated code (see useRareCandy below), built on top of these.
@@ -683,6 +698,125 @@ export class PokemonState {
     PokemonState.removeItem(context, 'rare-candy', 1)
     PokemonState.recordItemUsed(context, 'rare-candy', 1)
     return true
+  }
+
+  // --- Master Ball ---------------------------------------------------------
+
+  // 60% sub-legendary, 30% legendary, 10% mythical - unrelated to any
+  // generation's own rarity odds, since this always draws from every
+  // generation at once.
+  private static readonly MASTER_BALL_TIER_ODDS: Array<[PokemonRarity, number]> = [
+    [PokemonRarity.subLegendary, 0.6],
+    [PokemonRarity.legendary, 0.3],
+    [PokemonRarity.mythical, 0.1],
+  ]
+
+  private static rollMasterBallTier(): PokemonRarity {
+    let roll = Math.random()
+    for (const [rarity, weight] of PokemonState.MASTER_BALL_TIER_ODDS) {
+      if (roll < weight) {
+        return rarity
+      }
+      roll -= weight
+    }
+    // Only reachable through floating-point rounding at the very top of the
+    // range - the weights above already sum to 1.
+    return PokemonRarity.mythical
+  }
+
+  // Picks what a Master Ball would reveal without spending it or touching
+  // state, so canUseMasterBall can ask "is there anything left to give"
+  // without duplicating this search. Rolls a tier, then a random species
+  // within it that is not already discovered; falls back to the other two
+  // tiers (still undiscovered-only) if the rolled one has nothing left, and
+  // only comes up empty once every sub-legendary, legendary and mythical
+  // species across all four generations is already caught.
+  private static pickMasterBallReward(
+    context: vscode.ExtensionContext
+  ): PokemonType | undefined {
+    const discovered = new Set(PokemonState.getPokedex(context))
+    const allTiers = PokemonState.MASTER_BALL_TIER_ODDS.map(([rarity]) => rarity)
+    const rolledTier = PokemonState.rollMasterBallTier()
+    const orderedTiers = [rolledTier, ...allTiers.filter((tier) => tier !== rolledTier)]
+
+    for (const tier of orderedTiers) {
+      const candidates = Object.entries(POKEMON_DATA)
+        .filter(([type, data]) => data.rarity === tier && !discovered.has(type))
+        .map(([type]) => type as PokemonType)
+      if (candidates.length > 0) {
+        return candidates[Math.floor(Math.random() * candidates.length)]
+      }
+    }
+    return undefined
+  }
+
+  static canUseMasterBall(context: vscode.ExtensionContext): boolean {
+    return PokemonState.pickMasterBallReward(context) !== undefined
+  }
+
+  // Unlike a candy, this never touches the active pokemon - it just adds a
+  // species straight to the pokedex, the same way meeting it through play
+  // would. Returns what was revealed so the caller can announce it, or
+  // undefined if there was nothing left to give (or nothing to spend).
+  static useMasterBall(
+    context: vscode.ExtensionContext
+  ): { type: PokemonType; isShiny: boolean } | undefined {
+    if (PokemonState.getItemCount(context, 'master-ball') <= 0) {
+      return undefined
+    }
+
+    const reward = PokemonState.pickMasterBallReward(context)
+    if (!reward) {
+      return undefined
+    }
+
+    // Same odds as any other reveal - a Master Ball skips the catch itself,
+    // not the usual chance of what comes out of it.
+    const color = getRandomPokemonColor()
+    PokemonState.discoverPokemon(context, reward, color)
+    PokemonState.removeItem(context, 'master-ball', 1)
+    PokemonState.recordItemUsed(context, 'master-ball', 1)
+    return { type: reward, isShiny: color === PokemonColor.shiny }
+  }
+
+  // --- Premier Ball ----------------------------------------------------------
+
+  // No tier restriction (any of the 553, any generation) and always
+  // shiny - the point is a guaranteed shiny, so this specifically avoids a
+  // species whose shiny is already unlocked, even if the species itself is
+  // already caught in its default color. Only comes up empty once every
+  // single species' shiny is already unlocked.
+  private static pickPremierBallReward(
+    context: vscode.ExtensionContext
+  ): PokemonType | undefined {
+    const shinyDiscovered = new Set(PokemonState.getShinyPokedex(context))
+    const candidates = Object.keys(POKEMON_DATA).filter(
+      (type) => !shinyDiscovered.has(type)
+    ) as PokemonType[]
+    if (candidates.length === 0) {
+      return undefined
+    }
+    return candidates[Math.floor(Math.random() * candidates.length)]
+  }
+
+  static canUsePremierBall(context: vscode.ExtensionContext): boolean {
+    return PokemonState.pickPremierBallReward(context) !== undefined
+  }
+
+  static usePremierBall(context: vscode.ExtensionContext): PokemonType | undefined {
+    if (PokemonState.getItemCount(context, 'premier-ball') <= 0) {
+      return undefined
+    }
+
+    const reward = PokemonState.pickPremierBallReward(context)
+    if (!reward) {
+      return undefined
+    }
+
+    PokemonState.discoverPokemon(context, reward, PokemonColor.shiny)
+    PokemonState.removeItem(context, 'premier-ball', 1)
+    PokemonState.recordItemUsed(context, 'premier-ball', 1)
+    return reward
   }
 
   // --- Item usage (lifetime, for badge conditions) ------------------------

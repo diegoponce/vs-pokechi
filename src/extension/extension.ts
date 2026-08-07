@@ -1101,6 +1101,86 @@ export function activate(context: vscode.ExtensionContext) {
   )
 
   context.subscriptions.push(
+    vscode.commands.registerCommand('pokechi.useMasterBall', async () => {
+      if (
+        PokemonState.getItemCount(context, 'master-ball') <= 0 ||
+        !PokemonState.canUseMasterBall(context)
+      ) {
+        return
+      }
+
+      const itemName = ITEMS['master-ball'].name
+      const confirmed = await vscode.window.showWarningMessage(
+        `Use a ${itemName}? It will reveal a random sub-legendary, legendary or mythical Pokémon from any generation. This uses up one ${itemName}.`,
+        { modal: true },
+        `Use ${itemName}`
+      )
+      if (confirmed !== `Use ${itemName}`) {
+        return
+      }
+
+      const reward = PokemonState.useMasterBall(context)
+      if (!reward) {
+        return
+      }
+
+      PokemonState.flush(context)
+
+      const rewardName = POKEMON_DATA[reward.type]?.name ?? reward.type
+      vscode.window.showInformationMessage(
+        reward.isShiny
+          ? `🎉✨ Your ${itemName} revealed a shiny ${rewardName}!`
+          : `🎉 Your ${itemName} revealed ${rewardName}!`
+      )
+
+      const newlyEarnedBadges = PokemonState.refreshBadges(context)
+      newlyEarnedBadges.forEach((badge) => {
+        vscode.window.showInformationMessage(`🏅 ${badge.name} earned!`)
+      })
+
+      refreshPokedex()
+    })
+  )
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand('pokechi.usePremierBall', async () => {
+      if (
+        PokemonState.getItemCount(context, 'premier-ball') <= 0 ||
+        !PokemonState.canUsePremierBall(context)
+      ) {
+        return
+      }
+
+      const itemName = ITEMS['premier-ball'].name
+      const confirmed = await vscode.window.showWarningMessage(
+        `Use a ${itemName}? It will reveal a random Pokémon as shiny, from any generation or rarity. This uses up one ${itemName}.`,
+        { modal: true },
+        `Use ${itemName}`
+      )
+      if (confirmed !== `Use ${itemName}`) {
+        return
+      }
+
+      const reward = PokemonState.usePremierBall(context)
+      if (!reward) {
+        return
+      }
+
+      PokemonState.flush(context)
+
+      const rewardName = POKEMON_DATA[reward]?.name ?? reward
+      vscode.window.showInformationMessage(`🎉✨ Your ${itemName} revealed a shiny ${rewardName}!`)
+
+      const newlyEarnedBadges = PokemonState.refreshBadges(context)
+      newlyEarnedBadges.forEach((badge) => {
+        vscode.window.showInformationMessage(`🏅 ${badge.name} earned!`)
+      })
+
+      refreshPokedex()
+    })
+  )
+
+  context.subscriptions.push(
     vscode.commands.registerCommand('pokechi.openExplorer', async () => {
       const position = getConfigurationPosition()
 

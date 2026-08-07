@@ -55,26 +55,30 @@ function renderTypeFilterOptions(): string {
 // project convention treats the same as any other interpolated text: run it
 // through escapeHtml even though nothing in either registry currently
 // contains markup-sensitive characters.
-function renderItemRowHtml(
+// A card rather than the old full-width row - items sit in a single
+// horizontally-scrolling row now, the same treatment as a badge generation,
+// so the description (too long for a narrow card) becomes its title
+// instead of inline text.
+function renderItemCardHtml(
   spriteUri: string,
   item: ItemConfig,
   count: number,
   usable: boolean
 ): string {
   return `
-    <div class="item-row">
-      <img class="item-row-icon" src="${spriteUri}" alt="" />
-      <div class="item-row-info">
-        <div class="item-row-name">${escapeHtml(item.name)}</div>
-        <div class="item-row-description">${escapeHtml(item.description)}</div>
+    <div class="item-card">
+      <div class="item-card-name">${escapeHtml(item.name)}</div>
+      <img class="item-card-icon" src="${spriteUri}" alt="" />
+      <div class="item-card-count" data-item-count="${item.id}">x${count}</div>
+      <div class="item-card-actions">
+        <p class="item-card-description">${escapeHtml(item.description)}</p>
+        <button
+          type="button"
+          class="item-card-use-button"
+          data-use-item="${item.id}"
+          ${usable ? '' : 'disabled'}
+        >Use</button>
       </div>
-      <div class="item-row-count" data-item-count="${item.id}">x${count}</div>
-      <button
-        type="button"
-        class="item-row-use-button"
-        data-use-item="${item.id}"
-        ${usable ? '' : 'disabled'}
-      >Use</button>
     </div>
   `
 }
@@ -366,6 +370,16 @@ interface PokedexSnapshot {
   // independent of whether there is actually a candy to spend on it, which
   // the button combines this with client-side.
   canUseRareCandy: boolean
+  masterBallCount: number
+  // Whether there is anything left a Master Ball could reveal - every
+  // sub-legendary, legendary and mythical species across all four
+  // generations already discovered means there is nothing left to give,
+  // independent of whether there is actually a ball to spend.
+  canUseMasterBall: boolean
+  premierBallCount: number
+  // Whether there is any species left whose shiny is not yet unlocked -
+  // independent of whether there is actually a ball to spend.
+  canUsePremierBall: boolean
   // Just the ids, sorted, purely so a newly-earned badge shows up as a
   // snapshot change even on the rare tick where nothing else here also
   // happens to change - the actual badge data sent to the webview is built
@@ -430,6 +444,12 @@ export class PokedexPanel {
           case 'use-rare-candy':
             void vscode.commands.executeCommand('pokechi.useRareCandy')
             break
+          case 'use-master-ball':
+            void vscode.commands.executeCommand('pokechi.useMasterBall')
+            break
+          case 'use-premier-ball':
+            void vscode.commands.executeCommand('pokechi.usePremierBall')
+            break
         }
       })
     )
@@ -460,6 +480,10 @@ export class PokedexPanel {
         activePokemon && activePokemon.level > 0 ? activePokemon.color : undefined,
       rareCandyCount: PokemonState.getItemCount(this.context, 'rare-candy'),
       canUseRareCandy: PokemonState.canUseRareCandy(activePokemon),
+      masterBallCount: PokemonState.getItemCount(this.context, 'master-ball'),
+      canUseMasterBall: PokemonState.canUseMasterBall(this.context),
+      premierBallCount: PokemonState.getItemCount(this.context, 'premier-ball'),
+      canUsePremierBall: PokemonState.canUsePremierBall(this.context),
       earnedBadgeIds: PokemonState.getEarnedBadges(this.context).slice().sort(),
     }
   }
@@ -541,6 +565,10 @@ export class PokedexPanel {
         shinyDiscoveredCount: snapshot.shinyDiscovered.length,
         rareCandyCount: snapshot.rareCandyCount,
         canUseRareCandy: snapshot.canUseRareCandy,
+        masterBallCount: snapshot.masterBallCount,
+        canUseMasterBall: snapshot.canUseMasterBall,
+        premierBallCount: snapshot.premierBallCount,
+        canUsePremierBall: snapshot.canUsePremierBall,
         badges: PokemonState.getBadgeStatuses(this.context).map((status) => ({
           name: status.badge.name,
           generation: status.badge.generation,
@@ -591,12 +619,23 @@ export class PokedexPanel {
     const candySpriteUri = this.getSpriteUri(webview, rareCandyItem.spritePath)
     const rareCandyCount = snapshot.rareCandyCount
     const rareCandyUsable = snapshot.canUseRareCandy && rareCandyCount > 0
-    const itemsPanelHtml = renderItemRowHtml(
-      candySpriteUri,
-      rareCandyItem,
-      rareCandyCount,
-      rareCandyUsable
-    )
+    const masterBallItem = ITEMS['master-ball']
+    const masterBallSpriteUri = this.getSpriteUri(webview, masterBallItem.spritePath)
+    const masterBallCount = snapshot.masterBallCount
+    const masterBallUsable = snapshot.canUseMasterBall && masterBallCount > 0
+    const premierBallItem = ITEMS['premier-ball']
+    const premierBallSpriteUri = this.getSpriteUri(webview, premierBallItem.spritePath)
+    const premierBallCount = snapshot.premierBallCount
+    const premierBallUsable = snapshot.canUsePremierBall && premierBallCount > 0
+    const itemsPanelHtml = `
+      <div class="item-row-wrapper">
+        <div class="item-row">
+          ${renderItemCardHtml(candySpriteUri, rareCandyItem, rareCandyCount, rareCandyUsable)}
+          ${renderItemCardHtml(masterBallSpriteUri, masterBallItem, masterBallCount, masterBallUsable)}
+          ${renderItemCardHtml(premierBallSpriteUri, premierBallItem, premierBallCount, premierBallUsable)}
+        </div>
+      </div>
+    `
     const badgeStatuses = PokemonState.getBadgeStatuses(this.context)
     const earnedBadgeCount = badgeStatuses.filter((status) => status.earned).length
     const totalBadgeCount = badgeStatuses.length
@@ -949,48 +988,62 @@ export class PokedexPanel {
       display: none;
     }
 
+    /* Same treatment as a badge generation's row: one line, scrolling
+       sideways instead of wrapping, rather than a list of full-width rows. */
+    .item-row-wrapper {
+      overflow-x: auto;
+    }
+
     .item-row {
       display: flex;
+      flex-wrap: nowrap;
+      gap: 8px;
+      padding-bottom: 4px;
+    }
+
+    .item-card {
+      flex: 0 0 160px;
+      display: flex;
+      flex-direction: column;
       align-items: center;
-      gap: 10px;
+      gap: 4px;
       padding: 8px;
       border-radius: 6px;
+      border: 1px solid var(--card-border);
       background: var(--vscode-editorWidget-background, var(--card-bg));
+      text-align: center;
     }
 
-    .item-row-icon {
-      width: 28px;
-      height: 28px;
-      object-fit: contain;
-      image-rendering: pixelated;
-      flex: 0 0 auto;
-    }
-
-    .item-row-info {
-      flex: 1 1 auto;
-      min-width: 0;
-    }
-
-    .item-row-name {
-      font-size: 12px;
+    .item-card-name {
+      font-size: 10.5px;
       font-weight: 600;
     }
 
-    .item-row-description {
-      font-size: 11px;
-      color: var(--muted);
+    .item-card-icon {
+      width: 32px;
+      height: 32px;
+      object-fit: contain;
+      image-rendering: pixelated;
     }
 
-    .item-row-count {
-      flex: 0 0 auto;
-      font-size: 12px;
+    .item-card-count {
+      font-size: 11px;
       font-weight: 600;
       font-family: var(--vscode-editor-font-family, monospace);
     }
 
-    .item-row-use-button {
-      flex: 0 0 auto;
-      padding: 4px 12px;
+    .item-card-actions {
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .item-card-use-button {
+      width: 100%;
+      padding: 4px 0;
       border: 1px solid var(--vscode-widget-border, transparent);
       border-radius: 4px;
       background: var(--vscode-button-background);
@@ -1000,13 +1053,20 @@ export class PokedexPanel {
       cursor: pointer;
     }
 
-    .item-row-use-button:not(:disabled):hover {
+    .item-card-use-button:not(:disabled):hover {
       background: var(--vscode-button-hoverBackground, var(--vscode-button-background));
     }
 
-    .item-row-use-button:disabled {
+    .item-card-use-button:disabled {
       cursor: default;
       opacity: 0.5;
+    }
+
+    .item-card-description {
+      margin: 0;
+      font-size: 9.5px;
+      line-height: 1.3;
+      color: var(--muted);
     }
 
     .badge-gen-tabs {
@@ -2148,15 +2208,25 @@ export class PokedexPanel {
           );
         });
       }
+      // Each item's own use command - the item id itself is not sent as
+      // data, so the extension side never has to trust which one the
+      // webview claims was clicked.
+      var ITEM_USE_COMMANDS = {
+        'rare-candy': 'use-rare-candy',
+        'master-ball': 'use-master-ball',
+        'premier-ball': 'use-premier-ball'
+      };
+
       if (bagPanelItems) {
         bagPanelItems.addEventListener('click', function (event) {
           var useButton = event.target.closest('[data-use-item]');
           if (!useButton || useButton.disabled) {
             return;
           }
-          // Only one item exists so far - every use button maps to the same
-          // command regardless of which one was clicked.
-          vscode.postMessage({ command: 'use-rare-candy' });
+          var command = ITEM_USE_COMMANDS[useButton.dataset.useItem];
+          if (command) {
+            vscode.postMessage({ command: command });
+          }
         });
       }
 
@@ -2767,6 +2837,30 @@ export class PokedexPanel {
           var bagCandyUseButton = document.querySelector('[data-use-item="rare-candy"]');
           if (bagCandyUseButton) {
             bagCandyUseButton.disabled = !usable;
+          }
+        }
+
+        if (typeof data.masterBallCount === 'number') {
+          var masterBallUsableNow = !!data.canUseMasterBall && data.masterBallCount > 0;
+          var bagBallCount = document.querySelector('[data-item-count="master-ball"]');
+          if (bagBallCount) {
+            bagBallCount.textContent = 'x' + data.masterBallCount;
+          }
+          var bagBallUseButton = document.querySelector('[data-use-item="master-ball"]');
+          if (bagBallUseButton) {
+            bagBallUseButton.disabled = !masterBallUsableNow;
+          }
+        }
+
+        if (typeof data.premierBallCount === 'number') {
+          var premierBallUsableNow = !!data.canUsePremierBall && data.premierBallCount > 0;
+          var bagPremierCount = document.querySelector('[data-item-count="premier-ball"]');
+          if (bagPremierCount) {
+            bagPremierCount.textContent = 'x' + data.premierBallCount;
+          }
+          var bagPremierUseButton = document.querySelector('[data-use-item="premier-ball"]');
+          if (bagPremierUseButton) {
+            bagPremierUseButton.disabled = !premierBallUsableNow;
           }
         }
 
