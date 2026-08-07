@@ -12,6 +12,15 @@ export const LOCATE_ICON =
 export const SOUND_ICON =
   '<svg viewBox="0 0 16 16" width="11" height="11" fill="currentColor" aria-hidden="true"><path d="M9 2.4v11.2a.5.5 0 0 1-.82.38L4.6 10.8H2a1 1 0 0 1-1-1V6.2a1 1 0 0 1 1-1h2.6l3.58-3.18A.5.5 0 0 1 9 2.4z"/><path d="M11.3 5.3a3.5 3.5 0 0 1 0 5.4.6.6 0 1 1-.76-.92 2.3 2.3 0 0 0 0-3.56.6.6 0 1 1 .76-.92z"/></svg>'
 
+// A lowercase "i" in a circle, used by the "show info" button that flips a
+// Pokedex card to its description/stats side.
+export const INFO_ICON =
+  '<svg viewBox="0 0 16 16" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1.3" aria-hidden="true"><circle cx="8" cy="8" r="6.3"/><circle cx="8" cy="5.1" r="0.9" fill="currentColor" stroke="none"/><path d="M8 7.6v4.5" stroke-linecap="round"/></svg>'
+
+// Crossed swords, used by the "show moves" button that flips a Pokedex card
+// to its representative-attacks side.
+export const ATTACK_ICON = '<span aria-hidden="true">&#9876;</span>'
+
 // Scattered around a center point, roughly in a ring - not a perfect circle,
 // so the burst reads as a scatter of sparkles rather than a mechanical spin.
 const SPARKLE_BURST_OFFSETS: Array<[number, number]> = [

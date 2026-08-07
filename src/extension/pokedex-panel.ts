@@ -3,9 +3,12 @@ import { PokemonState } from './pokemon-state'
 import { generateNonce } from './nonce'
 import { PokemonColor, PokemonElementType, PokemonGeneration, PokemonType } from '../common/types'
 import { POKEMON_DATA } from '../common/pokemon-data'
+import { POKEMON_INFO_DATA, PokemonInfoEntry } from '../common/pokemon-info-data'
 import {
   SPARKLE_ICON,
   SOUND_ICON,
+  INFO_ICON,
+  ATTACK_ICON,
   getSparkleBurstMarkup,
   getSparkleBurstCssRules,
   getSoundWaveMarkup,
@@ -102,6 +105,103 @@ function getCryPath(type: PokemonType): string {
   }
 
   return `${generation}/${type}/cry.mp3`
+}
+
+const STAT_LABELS: Array<[keyof PokemonInfoEntry['stats'], string]> = [
+  ['hp', 'HP'],
+  ['attack', 'ATK'],
+  ['defense', 'DEF'],
+  ['specialAttack', 'SPA'],
+  ['specialDefense', 'SPD'],
+  ['speed', 'SPE'],
+]
+
+// The info side of a flipped card: flavor text plus a compact base-stats grid.
+function renderInfoPanelHtml(info: PokemonInfoEntry): string {
+  const statsHtml = STAT_LABELS.map(
+    ([key, label]) =>
+      `<li><span class="back-stat-label">${label}</span><span class="back-stat-value">${info.stats[key]}</span></li>`
+  ).join('')
+
+  return `
+    <div class="back-panel back-panel-info" data-back-panel="info">
+      <p class="back-flavor">${escapeHtml(info.flavorText)}</p>
+      <ul class="back-stats">${statsHtml}</ul>
+    </div>
+  `
+}
+
+// The moves side of a flipped card: up to 4 representative attacks, each with
+// its power (or "-" for a status move with none) and a one-line description.
+function renderMovesPanelHtml(info: PokemonInfoEntry): string {
+  const movesHtml = info.moves
+    .map(
+      (move) => `
+        <li class="back-move">
+          <div class="back-move-header">
+            <span class="back-move-name-group">
+              ${renderTypeBadges([move.type])}
+              <span class="back-move-name">${escapeHtml(move.name)}</span>
+            </span>
+            <span class="back-move-power">${move.power === null ? '-' : move.power}</span>
+          </div>
+          <p class="back-move-description">${escapeHtml(move.description)}</p>
+        </li>
+      `
+    )
+    .join('')
+
+  return `
+    <div class="back-panel back-panel-moves" data-back-panel="moves" hidden>
+      <ul class="back-moves">${movesHtml}</ul>
+    </div>
+  `
+}
+
+// Both faces are rendered up front rather than fetched on flip: this is
+// static per species, the same as every other card fact, and keeping it out
+// of a locked card's DOM entirely is what keeps a locked card from spoiling
+// anything about a species the user has not met yet.
+//
+// back-footer-name reserves the same bottom strip the two toggle buttons sit
+// over (they are positioned outside this element, at the wrapper level, so
+// they land visually on top of it) - only the flipped side needs this, since
+// the front already keeps its own name clear of that corner.
+function renderCardBackHtml(type: PokemonType, name: string): string {
+  const info = POKEMON_INFO_DATA[type]
+  if (!info) {
+    return ''
+  }
+  return `
+    <div class="card-face card-face-back">
+      ${renderInfoPanelHtml(info)}
+      ${renderMovesPanelHtml(info)}
+      <div class="back-footer-name">${escapeHtml(name)}</div>
+    </div>
+  `
+}
+
+function renderFaceToggleButton(target: 'info' | 'moves', name: string): string {
+  const icon = target === 'info' ? INFO_ICON : ATTACK_ICON
+  const label = target === 'info' ? 'Info' : 'Moves'
+  return `
+    <button
+      type="button"
+      class="face-toggle face-toggle-${target}"
+      data-flip-target="${target}"
+      aria-label="Show ${label.toLowerCase()} for ${escapeHtml(name)}"
+      aria-pressed="false"
+      title="${label}"
+    >${icon}</button>
+  `
+}
+
+// Sit outside card-flip (so neither rotates with the card) and stay at the
+// same bottom corners in both the front and flipped states - the front never
+// had anything at that edge for them to cover, so only the flipped side
+// (renderCardBackHtml below) needs to make room for them.
+function renderFaceTogglesHtml(name: string): string {
+  return renderFaceToggleButton('info', name) + renderFaceToggleButton('moves', name)
 }
 
 const ABBREVIATION_UNITS = ['', 'K', 'M', 'G', 'T', 'P']
@@ -321,6 +421,7 @@ export class PokedexPanel {
                 : undefined,
               rarity: POKEMON_DATA[type]?.rarity,
               types: POKEMON_DATA[type]?.types,
+              info: POKEMON_INFO_DATA[type],
             }
           }),
       },
@@ -413,43 +514,51 @@ export class PokedexPanel {
         shinyToggle || playCryButton
           ? `<div class="card-controls">${playCryButton}${shinyToggle}</div>`
           : ''
+      const cardBack = discovered ? renderCardBackHtml(entry.type, entry.name) : ''
+      const faceToggles = discovered ? renderFaceTogglesHtml(entry.name) : ''
 
       return `
         <div class="pokemon-card-wrapper">
-          <button
-            type="button"
-            class="pokemon-card ${discovered ? 'discovered' : 'locked'}${isActive ? ' active' : ''}${rarityClass}"
-            data-index="${index}"
-            data-generation="${entry.generation}"
-            data-name="${discovered ? escapeHtml(entry.name.toLowerCase()) : ''}"
-            data-number="${padPokemonId(entry.id)}"
-            data-has-shiny="${isShiny ? '1' : '0'}"
-            ${discovered ? `data-pokemon-type="${entry.type}"` : 'disabled'}
-            aria-pressed="${isActive ? 'true' : 'false'}"
-            aria-label="${label}"${tooltip}
-          >
-            <div class="card-top">
-              <span class="pokemon-id">#${padPokemonId(entry.id)}</span>
-              <span class="generation-chip">${getGenerationLabel(entry.generation)}</span>
-              <span class="active-badge">Active</span>
+          <div class="card-flip">
+            <div class="card-flip-inner">
+              <button
+                type="button"
+                class="pokemon-card ${discovered ? 'discovered' : 'locked'}${isActive ? ' active' : ''}${rarityClass}"
+                data-index="${index}"
+                data-generation="${entry.generation}"
+                data-name="${discovered ? escapeHtml(entry.name.toLowerCase()) : ''}"
+                data-number="${padPokemonId(entry.id)}"
+                data-has-shiny="${isShiny ? '1' : '0'}"
+                ${discovered ? `data-pokemon-type="${entry.type}"` : 'disabled'}
+                aria-pressed="${isActive ? 'true' : 'false'}"
+                aria-label="${label}"${tooltip}
+              >
+                <div class="card-top">
+                  <span class="pokemon-id">#${padPokemonId(entry.id)}</span>
+                  <span class="generation-chip">${getGenerationLabel(entry.generation)}</span>
+                  <span class="active-badge">Active</span>
+                </div>
+                <div class="sprite-frame">
+                  <img
+                    class="sprite"
+                    src="${initialSpriteUri}"
+                    data-default-sprite="${defaultSpriteUri}"
+                    data-shiny-sprite="${shinySpriteUri}"
+                    data-showing-shiny="${showsShinyByDefault ? '1' : '0'}"
+                    alt=""
+                    loading="lazy"
+                  />
+                  <div class="sparkle-burst">${getSparkleBurstMarkup()}</div>
+                  <div class="sound-wave-burst">${getSoundWaveMarkup()}</div>
+                </div>
+                <div class="pokemon-name">${name}</div>
+                <div class="type-badges">${typeBadgesHtml}</div>
+              </button>
+              ${cardBack}
             </div>
-            <div class="sprite-frame">
-              <img
-                class="sprite"
-                src="${initialSpriteUri}"
-                data-default-sprite="${defaultSpriteUri}"
-                data-shiny-sprite="${shinySpriteUri}"
-                data-showing-shiny="${showsShinyByDefault ? '1' : '0'}"
-                alt=""
-                loading="lazy"
-              />
-              <div class="sparkle-burst">${getSparkleBurstMarkup()}</div>
-              <div class="sound-wave-burst">${getSoundWaveMarkup()}</div>
-            </div>
-            <div class="pokemon-name">${name}</div>
-            <div class="type-badges">${typeBadgesHtml}</div>
-          </button>
+          </div>
           ${cardControls}
+          ${faceToggles}
         </div>
       `
     }).join('')
@@ -652,6 +761,181 @@ export class PokedexPanel {
       position: relative;
     }
 
+    /* perspective on the outer element rather than card-flip-inner is what
+       gives the rotation actual depth instead of squashing flat sideways. */
+    .card-flip {
+      position: relative;
+      perspective: 1200px;
+    }
+
+    .card-flip-inner {
+      position: relative;
+      transform-style: preserve-3d;
+      transition: transform 0.5s ease;
+    }
+
+    .card-flip.is-flipped .card-flip-inner {
+      transform: rotateY(180deg);
+    }
+
+    /* The play-cry/shiny-toggle row sits outside card-flip (so it never
+       rotates with the card), which means it has to be hidden by hand once
+       flipped instead of just disappearing along with the front face. */
+    .card-flip.is-flipped ~ .card-controls {
+      display: none;
+    }
+
+    /* padding-bottom reserves the strip the two toggle buttons sit over
+       (they are positioned outside this element, at the wrapper level, and
+       land on top of it) - that is what keeps the scrollable panels below
+       from ever running text underneath them. */
+    .card-face-back {
+      position: absolute;
+      inset: 0;
+      backface-visibility: hidden;
+      transform: rotateY(180deg);
+      display: flex;
+      flex-direction: column;
+      border-radius: 8px;
+      border: 1px solid var(--card-border);
+      background: var(--card-bg);
+      padding: 10px 10px 26px;
+      box-sizing: border-box;
+      overflow: hidden;
+    }
+
+    .back-footer-name {
+      position: absolute;
+      left: 30px;
+      right: 30px;
+      bottom: 6px;
+      height: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      font-weight: 600;
+      text-align: center;
+      text-transform: capitalize;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    /* An author display value on .back-panel would otherwise override the
+       browser's default [hidden] { display: none }, which is what keeps
+       both panels from showing stacked on top of each other at once. */
+    .back-panel {
+      display: none;
+      flex-direction: column;
+      gap: 6px;
+      height: 100%;
+      overflow-y: auto;
+      /* Firefox; the ::-webkit-scrollbar rules below cover Chromium, which
+         is what VS Code's webview actually renders on every platform. */
+      scrollbar-width: thin;
+    }
+
+    .back-panel:not([hidden]) {
+      display: flex;
+    }
+
+    .back-panel::-webkit-scrollbar {
+      width: 4px;
+    }
+
+    .back-panel::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    .back-panel::-webkit-scrollbar-thumb {
+      background: var(--vscode-scrollbarSlider-background, rgba(128, 128, 128, 0.4));
+      border-radius: 999px;
+    }
+
+    .back-flavor {
+      margin: 0;
+      font-size: 11px;
+      line-height: 1.4;
+      color: var(--vscode-foreground);
+    }
+
+    .back-stats {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 3px 10px;
+    }
+
+    .back-stats li {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 10.5px;
+    }
+
+    .back-stat-label {
+      color: var(--muted);
+      letter-spacing: 0.04em;
+    }
+
+    .back-stat-value {
+      font-weight: 600;
+      font-family: var(--vscode-editor-font-family, monospace);
+    }
+
+    .back-moves {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .back-move-header {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 6px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+
+    .back-move-name-group {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      min-width: 0;
+    }
+
+    .back-move-name {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .back-move-power {
+      font-size: 10px;
+      font-weight: 400;
+      color: var(--muted);
+      font-family: var(--vscode-editor-font-family, monospace);
+      flex: 0 0 auto;
+    }
+
+    .back-move-description {
+      margin: 2px 0 0;
+      font-size: 10px;
+      line-height: 1.3;
+      color: var(--muted);
+    }
+
+    /* Doubles as the flip's front face - card-flip-inner has no other
+       in-flow child, so it takes this element's own height and inset: 0 on
+       .card-face-back above sizes correctly against it. backface-visibility
+       keeps it from showing through, mirrored, once rotated past 90deg. */
     .pokemon-card {
       position: relative;
       display: flex;
@@ -668,6 +952,7 @@ export class PokedexPanel {
       width: 100%;
       appearance: none;
       cursor: pointer;
+      backface-visibility: hidden;
       transition: background-color 120ms ease, border-color 120ms ease;
     }
 
@@ -686,7 +971,8 @@ export class PokedexPanel {
     }
 
     .play-cry-button,
-    .shiny-toggle {
+    .shiny-toggle,
+    .face-toggle {
       display: grid;
       place-items: center;
       width: 20px;
@@ -701,13 +987,15 @@ export class PokedexPanel {
     }
 
     .play-cry-button:hover,
-    .shiny-toggle:hover {
+    .shiny-toggle:hover,
+    .face-toggle:hover {
       background: var(--vscode-button-background);
       color: var(--vscode-button-foreground);
     }
 
     .play-cry-button:focus-visible,
-    .shiny-toggle:focus-visible {
+    .shiny-toggle:focus-visible,
+    .face-toggle:focus-visible {
       outline: 1px solid var(--accent);
       outline-offset: 2px;
     }
@@ -715,6 +1003,30 @@ export class PokedexPanel {
     .shiny-toggle.is-shiny-active {
       background: var(--vscode-button-background);
       color: var(--vscode-button-foreground);
+    }
+
+    .face-toggle[aria-pressed="true"] {
+      background: var(--vscode-button-background);
+      color: var(--vscode-button-foreground);
+    }
+
+    /* Sit outside card-flip, at the wrapper level, so they never rotate with
+       the card and stay one on each bottom corner in both the front and
+       flipped states - the flipped side reserves room for them via
+       .card-face-back's padding-bottom and .back-footer-name above. */
+    .face-toggle-info,
+    .face-toggle-moves {
+      position: absolute;
+      bottom: 6px;
+      z-index: 2;
+    }
+
+    .face-toggle-info {
+      left: 6px;
+    }
+
+    .face-toggle-moves {
+      right: 6px;
     }
 
     .pokemon-card.discovered:hover {
@@ -1138,6 +1450,13 @@ export class PokedexPanel {
             return;
           }
 
+          var faceToggle = event.target.closest('[data-flip-target]');
+          if (faceToggle) {
+            event.stopPropagation();
+            toggleCardFace(faceToggle);
+            return;
+          }
+
           var toggle = event.target.closest('[data-shiny-toggle]');
           if (toggle) {
             // The toggle sits next to the card button, not inside it, but
@@ -1174,6 +1493,43 @@ export class PokedexPanel {
             isShiny: !!sprite && sprite.dataset.showingShiny === '1'
           });
         });
+      }
+
+      // Clicking the currently-showing side's own button flips the card back
+      // to the front. Clicking the other one while already flipped just
+      // swaps which back panel is visible, no second flip needed - the card
+      // is already turned around.
+      function toggleCardFace(button) {
+        var wrapper = button.closest('.pokemon-card-wrapper');
+        var flip = wrapper && wrapper.querySelector('.card-flip');
+        if (!flip) {
+          return;
+        }
+
+        var target = button.dataset.flipTarget;
+        var isFlipped = flip.classList.contains('is-flipped');
+        var currentPanel = flip.querySelector('.back-panel:not([hidden])');
+        var currentTarget = currentPanel && currentPanel.dataset.backPanel;
+
+        if (isFlipped && currentTarget === target) {
+          flip.classList.remove('is-flipped');
+        } else {
+          var panels = flip.querySelectorAll('.back-panel');
+          Array.prototype.forEach.call(panels, function (panel) {
+            panel.hidden = panel.dataset.backPanel !== target;
+          });
+          flip.classList.add('is-flipped');
+        }
+
+        var stillFlipped = flip.classList.contains('is-flipped');
+        var activePanel = stillFlipped && flip.querySelector('.back-panel:not([hidden])');
+        var activeTarget = activePanel && activePanel.dataset.backPanel;
+        Array.prototype.forEach.call(
+          wrapper.querySelectorAll('[data-flip-target]'),
+          function (toggleButton) {
+            toggleButton.setAttribute('aria-pressed', toggleButton.dataset.flipTarget === activeTarget ? 'true' : 'false');
+          }
+        );
       }
 
       function toggleShinySprite(toggle) {
@@ -1329,6 +1685,97 @@ export class PokedexPanel {
         controls.appendChild(toggle);
       }
 
+      var BACK_STAT_LABELS = [
+        ['hp', 'HP'], ['attack', 'ATK'], ['defense', 'DEF'],
+        ['specialAttack', 'SPA'], ['specialDefense', 'SPD'], ['speed', 'SPE']
+      ];
+
+      function escapeHtmlClient(value) {
+        return String(value)
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&#39;');
+      }
+
+      // Mirrors the server-rendered back face in getWebviewContent - used
+      // only for a card that reaches "discovered" mid-session, since a card
+      // already in the initial HTML already has this from the server.
+      function buildCardFaceHtml(info, name) {
+        var statsHtml = BACK_STAT_LABELS.map(function (pair) {
+          return '<li><span class="back-stat-label">' + pair[1] + '</span><span class="back-stat-value">' + info.stats[pair[0]] + '</span></li>';
+        }).join('');
+        var movesHtml = info.moves.map(function (move) {
+          var badge = TYPE_BADGES[move.type];
+          var badgeHtml = badge ? '<span class="type-badge type-' + move.type + '">' + badge.abbr + '</span>' : '';
+          return (
+            '<li class="back-move"><div class="back-move-header">' +
+            '<span class="back-move-name-group">' + badgeHtml + '<span class="back-move-name">' + escapeHtmlClient(move.name) + '</span></span>' +
+            '<span class="back-move-power">' + (move.power === null ? '-' : move.power) + '</span>' +
+            '</div><p class="back-move-description">' + escapeHtmlClient(move.description) + '</p></li>'
+          );
+        }).join('');
+
+        return (
+          '<div class="card-face card-face-back">' +
+          '<div class="back-panel back-panel-info" data-back-panel="info">' +
+          '<p class="back-flavor">' + escapeHtmlClient(info.flavorText) + '</p>' +
+          '<ul class="back-stats">' + statsHtml + '</ul>' +
+          '</div>' +
+          '<div class="back-panel back-panel-moves" data-back-panel="moves" hidden>' +
+          '<ul class="back-moves">' + movesHtml + '</ul>' +
+          '</div>' +
+          '<div class="back-footer-name">' + escapeHtmlClient(name) + '</div>' +
+          '</div>'
+        );
+      }
+
+      // Adds the flipped-card back and its two corner toggle buttons the
+      // moment a card becomes discovered - same "unconditional once
+      // discovered" reasoning as the play-cry button, since every species
+      // has info and (almost always) a moveset. Both buttons sit outside
+      // card-flip, at the wrapper level, same as the server-rendered ones.
+      function ensureCardFace(card, entry) {
+        if (!entry.info) {
+          return;
+        }
+        var wrapper = card.closest('.pokemon-card-wrapper');
+        var inner = wrapper && wrapper.querySelector('.card-flip-inner');
+        if (!wrapper || !inner) {
+          return;
+        }
+
+        if (!inner.querySelector('.card-face-back')) {
+          inner.insertAdjacentHTML('beforeend', buildCardFaceHtml(entry.info, entry.name));
+        }
+
+        if (wrapper.querySelector('[data-flip-target]')) {
+          return;
+        }
+
+        var infoButton = document.createElement('button');
+        infoButton.type = 'button';
+        infoButton.className = 'face-toggle face-toggle-info';
+        infoButton.setAttribute('data-flip-target', 'info');
+        infoButton.setAttribute('aria-label', 'Show info for ' + entry.name);
+        infoButton.setAttribute('aria-pressed', 'false');
+        infoButton.title = 'Info';
+        infoButton.innerHTML = '${INFO_ICON}';
+
+        var movesButton = document.createElement('button');
+        movesButton.type = 'button';
+        movesButton.className = 'face-toggle face-toggle-moves';
+        movesButton.setAttribute('data-flip-target', 'moves');
+        movesButton.setAttribute('aria-label', 'Show moves for ' + entry.name);
+        movesButton.setAttribute('aria-pressed', 'false');
+        movesButton.title = 'Moves';
+        movesButton.innerHTML = '${ATTACK_ICON}';
+
+        wrapper.appendChild(infoButton);
+        wrapper.appendChild(movesButton);
+      }
+
       function unlock(card, entry) {
         card.classList.remove('locked');
         card.classList.add('discovered');
@@ -1368,6 +1815,7 @@ export class PokedexPanel {
 
         ensurePlayCryButton(card, entry);
         ensureShinyToggle(card, entry);
+        ensureCardFace(card, entry);
       }
 
       window.addEventListener('message', function (event) {
@@ -1449,6 +1897,7 @@ export class PokedexPanel {
           } else {
             ensurePlayCryButton(card, entry);
             ensureShinyToggle(card, entry);
+            ensureCardFace(card, entry);
           }
         });
 
