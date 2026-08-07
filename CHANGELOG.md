@@ -2,6 +2,16 @@
 
 All notable changes to the Pokechi extension are documented here.
 
+## [1.4.0]
+
+### Added
+
+- **Pokémon cries**: every species now has a sound. Click yours in the panel or Explorer view, or a card in the Pokechidex, to hear it. Picking one from the Pokechidex plays it too, with a sound-wave ripple alongside it — turn that off with the new `pokechi.playCrySounds` setting if you would rather it stay quiet.
+
+### Fixed
+
+- Holding Ctrl+S down could save the same file dozens of times a second, each one granting XP on its own. Saves now only grant XP once every 2 seconds.
+
 ## [1.3.0]
 
 ### Added

@@ -4,7 +4,14 @@ import { PokedexPanel } from './pokedex-panel'
 import { generateNonce } from './nonce'
 import { UserPokemon, Position } from './types'
 import { PokemonColor, PokemonElementType, PokemonType } from '../common/types'
-import { SPARKLE_ICON, LOCATE_ICON, getSparkleBurstMarkup, getSparkleBurstCssRules } from '../common/icons'
+import {
+  SPARKLE_ICON,
+  LOCATE_ICON,
+  getSparkleBurstMarkup,
+  getSparkleBurstCssRules,
+  getSoundWaveMarkup,
+  getSoundWaveCssRules,
+} from '../common/icons'
 import { TYPE_BADGES, getTypeBadgeCssRules } from '../common/type-badges'
 import { getRarityBorderCssRules } from '../common/rarity-colors'
 import { POKEMON_DATA } from '../common/pokemon-data'
@@ -198,7 +205,7 @@ class PokechiContentProvider {
         webview.cspSource
       } 'nonce-${nonce}'; img-src ${
       webview.cspSource
-    } https:; script-src 'nonce-${nonce}';">
+    } https:; media-src ${webview.cspSource}; connect-src ${webview.cspSource}; script-src 'nonce-${nonce}';">
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
       <link href="${stylesUri}" rel="stylesheet">
       <title>pokechi</title>
@@ -319,6 +326,7 @@ class PokechiContentProvider {
         }
         ${getTypeBadgeCssRules()}
         ${getSparkleBurstCssRules()}
+        ${getSoundWaveCssRules()}
       </style>
     </head>
     <body>
@@ -349,12 +357,10 @@ class PokechiContentProvider {
 
       <div id="container">
         <div id="movement-container">
-          <div id="transition-container">
-            <img id="transition" nonce="${nonce}" />
-          </div>
           <div id="pokemon-container">
             <img id="pokemon" nonce="${nonce}" />
             <div class="sparkle-burst" id="shiny-burst">${getSparkleBurstMarkup()}</div>
+            <div class="sound-wave-burst" id="sound-wave-burst">${getSoundWaveMarkup()}</div>
           </div>
         </div>
       </div>
@@ -362,7 +368,10 @@ class PokechiContentProvider {
       <script nonce="${nonce}" src="${scriptUri}"></script>
       <script nonce="${nonce}">
         window.isExplorerView = ${isExplorerView};
-        pokechiApp.app({ basePokemonUri: '${basePokemonUri}', userPokemon: ${pokemonData} });
+        pokechiApp.app({
+          basePokemonUri: '${basePokemonUri}',
+          userPokemon: ${pokemonData}
+        });
         
         function formatNumber(number) {
           if (number < 1000) {
@@ -929,6 +938,15 @@ export function activate(context: vscode.ExtensionContext) {
 
         const position = getConfigurationPosition()
 
+        // A full reload rather than a live update: the cry for this pick
+        // already played directly from the Pokedex card click, so it no
+        // longer needs to depend on this webview's own autoplay-unlock
+        // state the way it used to. A reload also means pokemonImg and the
+        // transition overlay both start their GIFs from a cold, freshly-
+        // parsed DOM at the same instant, rather than one already-playing
+        // image being joined mid-session by a freshly (re)assigned one -
+        // which is what caused the two to visibly drift out of sync ("double
+        // sprite") for as long as the reveal lasted.
         if (position === 'panel') {
           if (!PokechiState.panel?.panel) {
             await vscode.commands.executeCommand('pokechi.showPanel')

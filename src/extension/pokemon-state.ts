@@ -332,10 +332,13 @@ export class PokemonState {
       evolutionLine: entry.evolutionLine,
       state: 'walking',
       scale: scaleFactor,
-      // Resuming a line does not replay a hatch/evolve-style reveal, except
-      // for a shiny: bringing one out of the Pokedex is still worth the
-      // sparkle, unlike a plain recolor-free resume.
-      isTransitionIn: entry.color === PokemonColor.shiny,
+      // Every Pokedex pick is a deliberate reveal - the transition flash,
+      // its cry, and (for a shiny) the sparkle burst all ride this same
+      // flag, delivered through the webview's initial embedded state rather
+      // than a follow-up message, since a message posted right after the
+      // reload that always accompanies a pick can be dropped before the
+      // webview has finished loading.
+      isTransitionIn: true,
       leftPosition: 0,
       direction: 'right',
       color: entry.color,

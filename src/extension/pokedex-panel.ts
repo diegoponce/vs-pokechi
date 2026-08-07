@@ -3,7 +3,14 @@ import { PokemonState } from './pokemon-state'
 import { generateNonce } from './nonce'
 import { PokemonColor, PokemonElementType, PokemonGeneration, PokemonType } from '../common/types'
 import { POKEMON_DATA } from '../common/pokemon-data'
-import { SPARKLE_ICON, getSparkleBurstMarkup, getSparkleBurstCssRules } from '../common/icons'
+import {
+  SPARKLE_ICON,
+  SOUND_ICON,
+  getSparkleBurstMarkup,
+  getSparkleBurstCssRules,
+  getSoundWaveMarkup,
+  getSoundWaveCssRules,
+} from '../common/icons'
 import { TYPE_BADGES, getTypeBadgeCssRules } from '../common/type-badges'
 
 function renderTypeBadges(types: PokemonElementType[] | undefined): string {
@@ -77,6 +84,24 @@ function getSpritePath(
 
   const colorPrefix = color === PokemonColor.shiny ? 'shiny' : 'default'
   return `${generation}/${type}/${colorPrefix}_idle_8fps.gif`
+}
+
+function getCryPath(type: PokemonType): string {
+  const pokemonData = POKEMON_DATA[type]
+  if (!pokemonData) {
+    return ''
+  }
+
+  let generation = 'gen1'
+  if (pokemonData.generation === PokemonGeneration.Gen2) {
+    generation = 'gen2'
+  } else if (pokemonData.generation === PokemonGeneration.Gen3) {
+    generation = 'gen3'
+  } else if (pokemonData.generation === PokemonGeneration.Gen4) {
+    generation = 'gen4'
+  }
+
+  return `${generation}/${type}/cry.mp3`
 }
 
 const ABBREVIATION_UNITS = ['', 'K', 'M', 'G', 'T', 'P']
@@ -289,6 +314,7 @@ export class PokedexPanel {
                 webview,
                 getSpritePath(type, PokemonColor.default)
               ),
+              cryUri: this.getSpriteUri(webview, getCryPath(type)),
               isShiny,
               shinySpriteUri: isShiny
                 ? this.getSpriteUri(webview, getSpritePath(type, PokemonColor.shiny))
@@ -313,6 +339,13 @@ export class PokedexPanel {
     const shinyDiscoveredCount = shinyPokedex.size
     const totalCount = POKEDEX_ENTRIES.length
     const totalXPText = formatAbbreviatedNumber(PokemonState.getTotalXP(this.context))
+    // Picking a card counts as "picked from the Pokechidex" for this
+    // setting, same as the automatic reveal it triggers elsewhere - unlike
+    // the dedicated play button, which is an explicit "let me hear it" click
+    // and always plays regardless.
+    const playCrySoundsEnabled = vscode.workspace
+      .getConfiguration()
+      .get('pokechi.playCrySounds', true)
 
     const cards = POKEDEX_ENTRIES.map((entry, index) => {
       const discovered = pokedex.has(entry.type)
@@ -346,9 +379,10 @@ export class PokedexPanel {
       const typeBadgesHtml = discovered
         ? renderTypeBadges(POKEMON_DATA[entry.type]?.types)
         : ''
+      const cryUri = discovered ? this.getSpriteUri(webview, getCryPath(entry.type)) : ''
 
-      // The shiny toggle lives outside the card button: interactive elements
-      // cannot nest, and it must not trigger selecting the pokemon.
+      // Both live outside the card button: interactive elements cannot nest,
+      // and neither must trigger selecting the pokemon.
       const shinyToggle = isShiny
         ? `
           <button
@@ -363,6 +397,22 @@ export class PokedexPanel {
           >${SPARKLE_ICON}</button>
         `
         : ''
+      const playCryButton = discovered
+        ? `
+          <button
+            type="button"
+            class="play-cry-button"
+            data-play-cry
+            data-cry-src="${cryUri}"
+            aria-label="Play ${escapeHtml(entry.name)}'s cry"
+            title="Play cry"
+          >${SOUND_ICON}</button>
+        `
+        : ''
+      const cardControls =
+        shinyToggle || playCryButton
+          ? `<div class="card-controls">${playCryButton}${shinyToggle}</div>`
+          : ''
 
       return `
         <div class="pokemon-card-wrapper">
@@ -394,11 +444,12 @@ export class PokedexPanel {
                 loading="lazy"
               />
               <div class="sparkle-burst">${getSparkleBurstMarkup()}</div>
+              <div class="sound-wave-burst">${getSoundWaveMarkup()}</div>
             </div>
             <div class="pokemon-name">${name}</div>
             <div class="type-badges">${typeBadgesHtml}</div>
           </button>
-          ${shinyToggle}
+          ${cardControls}
         </div>
       `
     }).join('')
@@ -407,7 +458,7 @@ export class PokedexPanel {
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${webview.cspSource} 'nonce-${nonce}'; img-src ${webview.cspSource}; font-src ${webview.cspSource}; script-src 'nonce-${nonce}';">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${webview.cspSource} 'nonce-${nonce}'; img-src ${webview.cspSource}; font-src ${webview.cspSource}; media-src ${webview.cspSource}; connect-src ${webview.cspSource}; script-src 'nonce-${nonce}';">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Pokechidex</title>
   <style nonce="${nonce}">
@@ -469,13 +520,13 @@ export class PokedexPanel {
       color: var(--muted);
       font-size: 12px;
       margin: 0;
-      max-width: 62ch;
+      max-width: 100%;
       /* Clamped rather than left to wrap freely, so a narrow panel cannot
          grow the header past a couple of lines. */
-      display: -webkit-box;
-      -webkit-line-clamp: 2;
-      -webkit-box-orient: vertical;
-      overflow: hidden;
+      // display: -webkit-box;
+      // -webkit-line-clamp: 2;
+      // -webkit-box-orient: vertical;
+      // overflow: hidden;
     }
 
     .counters {
@@ -593,7 +644,7 @@ export class PokedexPanel {
 
     .grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(132px, 1fr));
+      grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
       gap: 10px;
     }
 
@@ -620,12 +671,22 @@ export class PokedexPanel {
       transition: background-color 120ms ease, border-color 120ms ease;
     }
 
-    .shiny-toggle {
+    /* Holds the play button and, once unlocked, the shiny toggle - centered
+       as a pair instead of each one separately claiming the card's midpoint,
+       which is what let only one of them ever be centered at a time. */
+    .card-controls {
       position: absolute;
       top: 6px;
       left: 50%;
       transform: translateX(-50%);
       z-index: 1;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .play-cry-button,
+    .shiny-toggle {
       display: grid;
       place-items: center;
       width: 20px;
@@ -639,11 +700,13 @@ export class PokedexPanel {
       appearance: none;
     }
 
+    .play-cry-button:hover,
     .shiny-toggle:hover {
       background: var(--vscode-button-background);
       color: var(--vscode-button-foreground);
     }
 
+    .play-cry-button:focus-visible,
     .shiny-toggle:focus-visible {
       outline: 1px solid var(--accent);
       outline-offset: 2px;
@@ -833,6 +896,7 @@ export class PokedexPanel {
 
     ${getTypeBadgeCssRules()}
     ${getSparkleBurstCssRules()}
+    ${getSoundWaveCssRules()}
 
     /* The badge takes the generation chip's slot rather than stacking under it:
        one chip per card, no overlap, and no reflow when a card becomes active.
@@ -882,7 +946,7 @@ export class PokedexPanel {
     <header class="header">
       <div class="title-block">
         <h1>Pokechidex</h1>
-        <p class="subtitle">Species you have met from a Pok&eacute;ball or an evolution. Pick one to bring it out &mdash; each line keeps its own XP, so nothing is lost when you switch.</p>
+        <p class="subtitle">Species you have met from a Pok&eacute;ball or an evolution. Pick one to bring it out &mdash; each line keeps its own XP, so nothing is lost when you switch. Picking one plays its cry, which you can turn off with the <code>pokechi.playCrySounds</code> setting.</p>
       </div>
       <div class="counters">
         <div class="counter">
@@ -942,6 +1006,7 @@ export class PokedexPanel {
       }
 
       var TYPE_BADGES = ${JSON.stringify(TYPE_BADGES)};
+      var playCrySoundsEnabled = ${JSON.stringify(playCrySoundsEnabled)};
 
       var grid = document.querySelector('.grid');
       var counter = document.getElementById('counter-value');
@@ -1021,8 +1086,58 @@ export class PokedexPanel {
         }
       );
 
+      // Same reasoning as the main panel/Explorer view: a fresh
+      // HTMLAudioElement re-checks the browser's autoplay gesture policy on
+      // every play() call, while a Web Audio AudioContext only needs a
+      // gesture once to start running, after which playing a buffer through
+      // it works the same regardless of what triggered it.
+      var audioContext;
+      var cryBufferCache = {};
+
+      function loadCryBuffer(crySrc, ctx) {
+        if (cryBufferCache[crySrc]) {
+          return Promise.resolve(cryBufferCache[crySrc]);
+        }
+        return fetch(crySrc)
+          .then(function (response) { return response.arrayBuffer(); })
+          .then(function (arrayBuffer) { return ctx.decodeAudioData(arrayBuffer); })
+          .then(function (buffer) {
+            cryBufferCache[crySrc] = buffer;
+            return buffer;
+          });
+      }
+
+      function playCrySrc(crySrc) {
+        if (!audioContext) {
+          audioContext = new AudioContext();
+        }
+        var ctx = audioContext;
+        Promise.resolve(ctx.state === 'suspended' ? ctx.resume() : undefined)
+          .then(function () { return loadCryBuffer(crySrc, ctx); })
+          .then(function (buffer) {
+            var source = ctx.createBufferSource();
+            source.buffer = buffer;
+            source.connect(ctx.destination);
+            source.start(0);
+          })
+          .catch(function (err) {
+            console.warn('[pokechi] could not play cry:', err);
+          });
+      }
+
       if (grid) {
         grid.addEventListener('click', function (event) {
+          var playButton = event.target.closest('[data-play-cry]');
+          if (playButton) {
+            event.stopPropagation();
+            var crySrc = playButton.dataset.crySrc;
+            if (crySrc) {
+              playCrySrc(crySrc);
+            }
+            playSoundWaveBurst(playButton.closest('.pokemon-card-wrapper'));
+            return;
+          }
+
           var toggle = event.target.closest('[data-shiny-toggle]');
           if (toggle) {
             // The toggle sits next to the card button, not inside it, but
@@ -1039,6 +1154,19 @@ export class PokedexPanel {
           }
 
           var sprite = card.querySelector('.sprite');
+
+          // Picking a card counts as being "picked from the Pokechidex" for
+          // pokechi.playCrySounds, unlike the dedicated play button (an
+          // explicit "let me hear it" click, which always plays). Playing it
+          // here rather than leaving it to whatever webview ends up showing
+          // the pokemon also means it does not depend on that separate
+          // frame's own, independent autoplay unlock state.
+          var cardWrapper = card.closest('.pokemon-card-wrapper');
+          var cardPlayButton = cardWrapper && cardWrapper.querySelector('[data-play-cry]');
+          if (playCrySoundsEnabled && cardPlayButton && cardPlayButton.dataset.crySrc) {
+            playCrySrc(cardPlayButton.dataset.crySrc);
+            playSoundWaveBurst(cardWrapper);
+          }
 
           vscode.postMessage({
             command: 'show-pokemon',
@@ -1092,6 +1220,23 @@ export class PokedexPanel {
         }, 1000);
       }
 
+      // Ripples a few rings out from the sprite whenever its cry plays.
+      function playSoundWaveBurst(wrapper) {
+        var burst = wrapper && wrapper.querySelector('.sound-wave-burst');
+        if (!burst) {
+          return;
+        }
+
+        burst.classList.remove('is-active');
+        void burst.offsetWidth;
+        burst.classList.add('is-active');
+
+        clearTimeout(burst._hideTimer);
+        burst._hideTimer = setTimeout(function () {
+          burst.classList.remove('is-active');
+        }, 1000);
+      }
+
       // Keeps a card's sprite/toggle in step with whatever is actually shown
       // on screen. Only used for the active card: browsing other cards'
       // sprites is a free cosmetic choice and must not be overridden.
@@ -1115,6 +1260,44 @@ export class PokedexPanel {
         }
       }
 
+      // Both card-controls helpers below share this: the row only exists on
+      // a card once something (the play button, the shiny toggle) needs it.
+      function ensureCardControls(wrapper) {
+        var controls = wrapper.querySelector('.card-controls');
+        if (!controls) {
+          controls = document.createElement('div');
+          controls.className = 'card-controls';
+          wrapper.appendChild(controls);
+        }
+        return controls;
+      }
+
+      // Adds the play button the moment a card becomes discovered - every
+      // discovered species has a cry, so unlike the shiny toggle this is
+      // unconditional.
+      function ensurePlayCryButton(card, entry) {
+        if (!entry.cryUri) {
+          return;
+        }
+        var wrapper = card.closest('.pokemon-card-wrapper');
+        if (!wrapper) {
+          return;
+        }
+        var controls = ensureCardControls(wrapper);
+        if (controls.querySelector('[data-play-cry]')) {
+          return;
+        }
+        var button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'play-cry-button';
+        button.setAttribute('data-play-cry', '');
+        button.setAttribute('data-cry-src', entry.cryUri);
+        button.setAttribute('aria-label', 'Play ' + entry.name + "'s cry");
+        button.title = 'Play cry';
+        button.innerHTML = '${SOUND_ICON}';
+        controls.insertBefore(button, controls.firstChild);
+      }
+
       // Adds the toggle next to a card that just became shiny-discovered.
       // Already-shiny cards (and non-shiny ones) are left untouched.
       function ensureShinyToggle(card, entry) {
@@ -1134,6 +1317,7 @@ export class PokedexPanel {
           return;
         }
 
+        var controls = ensureCardControls(wrapper);
         var toggle = document.createElement('button');
         toggle.type = 'button';
         toggle.className = 'shiny-toggle';
@@ -1142,7 +1326,7 @@ export class PokedexPanel {
         toggle.setAttribute('aria-pressed', 'false');
         toggle.title = 'Toggle shiny sprite';
         toggle.innerHTML = '${SPARKLE_ICON}';
-        wrapper.appendChild(toggle);
+        controls.appendChild(toggle);
       }
 
       function unlock(card, entry) {
@@ -1182,6 +1366,7 @@ export class PokedexPanel {
           }).join('');
         }
 
+        ensurePlayCryButton(card, entry);
         ensureShinyToggle(card, entry);
       }
 
@@ -1262,6 +1447,7 @@ export class PokedexPanel {
           if (card.classList.contains('locked')) {
             unlock(card, entry);
           } else {
+            ensurePlayCryButton(card, entry);
             ensureShinyToggle(card, entry);
           }
         });

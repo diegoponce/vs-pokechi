@@ -93,6 +93,12 @@
               "Panel",
               "Explorer"
             ]
+          },
+          "pokechi.playCrySounds": {
+            "type": "boolean",
+            "default": true,
+            "description": "Play a cry automatically when a pokemon is picked from the Pokechidex. Clicking a pokemon directly, or a Pokechidex card's play button, always plays its cry regardless of this setting.",
+            "scope": "window"
           }
         }
       }

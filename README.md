@@ -44,6 +44,7 @@ Install it and a Pokéball shows up in your editor. Keep coding and it hatches, 
 | <img src="https://raw.githubusercontent.com/diegoponce/vs-pokechi/master/media/gen2/unown_a/default_walk_8fps.gif" width="48" /> | **All 553 species**, across four generations, every Unown form included, each tagged with its classic (pre-Fairy) typing. |
 | <img src="https://raw.githubusercontent.com/diegoponce/vs-pokechi/master/media/gen4/leafeon/default_walk_8fps.gif" width="48" /> | **Branching evolutions.** Eevee, Oddish, Tyrogue and more can grow into any of several lines. Catch a path you already have and it comes out at max, no re-grinding — a new one hatches and grows as usual. |
 | <img src="https://raw.githubusercontent.com/diegoponce/vs-pokechi/master/media/gen1/eevee/default_walk_8fps.gif" width="48" /> | **Every line keeps its own XP.** Switch Pokémon from the Pokechidex whenever you like — nothing you have raised is lost. |
+| <img src="https://raw.githubusercontent.com/diegoponce/vs-pokechi/master/media/gen4/chatot/default_walk_8fps.gif" width="48" /> | **Every species has a cry.** Click yours to hear it, or a card in the Pokechidex. Picking one from the Pokechidex plays it too — turn that off with `pokechi.playCrySounds` if you would rather it stay quiet. |
 | <img src="https://raw.githubusercontent.com/diegoponce/vs-pokechi/master/media/gen1/snorlax/default_walk_8fps.gif" width="48" /> | **Follows you between windows.** Your progress is shared, so a second window picks up where the first left off. |
 
 ## The Pokechidex
@@ -54,7 +55,7 @@ Every species you have met, in one grid. Search by name or number, filter by gen
   <img src="https://raw.githubusercontent.com/diegoponce/vs-pokechi/master/media/docs/pokechidex_1.gif" width="800" alt="The Pokechidex" />
 </div>
 
-Click any species you have discovered to bring it out. Caught it shiny? Its card gets a sparkle toggle, and it comes out in whichever colour is showing. Lost track of your current Pokémon in the grid? The locate button on its XP bar jumps straight to its card and highlights it.
+Click any species you have discovered to bring it out. Caught it shiny? Its card gets a sparkle toggle, and it comes out in whichever colour is showing. Every card also has a play button for its cry, and picking one plays it too. Lost track of your current Pokémon in the grid? The locate button on its XP bar jumps straight to its card and highlights it.
 
 ## Getting started
 
@@ -83,6 +84,7 @@ Pokechi lives in a panel by default, or docked in the Explorer sidebar if you wo
 | --- | --- | --- |
 | `pokechi.position` | `panel` | Where your Pokémon lives: `panel` or `explorer` |
 | `pokechi.scaleFactor` | `1.0` | How big it is, from `0.5` to `1.5` |
+| `pokechi.playCrySounds` | `true` | Play a cry automatically when you pick a Pokémon from the Pokechidex |
 
 ## How XP works
 

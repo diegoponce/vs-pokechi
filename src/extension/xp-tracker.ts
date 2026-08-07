@@ -10,6 +10,12 @@ const XP_SAVE = 2
 const THROTTLE_MS = 100
 let lastTextEventTime = 0
 
+// Holding Ctrl+S down auto-repeats the save command many times a second,
+// each one otherwise granting XP_SAVE on its own - effectively unlimited XP
+// for as long as the key stays down.
+const SAVE_THROTTLE_MS = 2000
+let lastSaveEventTime = 0
+
 // Output channels, logs, diff views and settings editors all raise document
 // change events, and none of them are the user writing code.
 function isRealFile(document: vscode.TextDocument): boolean {
@@ -69,6 +75,13 @@ export class XPTracker {
         if (!isRealFile(document)) {
           return
         }
+
+        const now = Date.now()
+        if (now - lastSaveEventTime < SAVE_THROTTLE_MS) {
+          return
+        }
+        lastSaveEventTime = now
+
         this.addXP(XP_SAVE)
       })
     )
