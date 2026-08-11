@@ -5,9 +5,11 @@ import { PokemonColor } from '../common/types'
 import { POKEMON_DATA } from '../common/pokemon-data'
 import { ITEMS } from '../common/items'
 import { getStrings } from '../common/i18n'
+import { GitExtension, Repository } from './git-api-types'
 
 const XP_TEXT = 1
 const XP_SAVE = 2
+const XP_COMMIT = 8
 
 // Read fresh on every call rather than cached, same reasoning as everywhere
 // else this setting is read - cheap, and lets a mid-session language change
@@ -26,6 +28,13 @@ let lastTextEventTime = 0
 // for as long as the key stays down.
 const SAVE_THROTTLE_MS = 2000
 let lastSaveEventTime = 0
+
+// A commit made just now (via the Source Control view or a terminal) has a
+// committer date of "now". A HEAD move from pulling, fetching or checking
+// out an existing branch instead lands on a commit dated whenever it was
+// originally made, so checking freshness is what tells the two apart
+// without trying to enumerate every git command that can move HEAD.
+const COMMIT_FRESHNESS_MS = 15000
 
 // Output channels, logs, diff views and settings editors all raise document
 // change events, and none of them are the user writing code.
@@ -53,12 +62,20 @@ export function setUpdateCallbacks(
 export class XPTracker {
   private context: vscode.ExtensionContext
   private disposables: vscode.Disposable[] = []
+  // Last HEAD commit seen per repository (keyed by rootUri), so a state
+  // change can tell "HEAD moved" from "something else about the repo
+  // changed" (staging, branch list refresh, ...).
+  private lastKnownHead = new Map<string, string | undefined>()
+  // Commit hashes already credited, so a repository's onDidChange firing
+  // more than once around the same commit does not grant XP twice.
+  private creditedCommits = new Set<string>()
 
   constructor(context: vscode.ExtensionContext) {
     this.context = context
   }
 
   start(): void {
+    void this.startGitTracking()
     this.disposables.push(
       vscode.workspace.onDidChangeTextDocument((event) => {
         if (event.contentChanges.length === 0) {
@@ -96,6 +113,68 @@ export class XPTracker {
         this.addXP(XP_SAVE)
       })
     )
+  }
+
+  // The built-in Git extension is the supported way to reach every open
+  // repository (multi-root workspaces, nested repos, worktrees) without
+  // reimplementing .git discovery. It is not always active yet at this
+  // point, hence the activate() below.
+  private async startGitTracking(): Promise<void> {
+    const gitExtension = vscode.extensions.getExtension<GitExtension>('vscode.git')
+    if (!gitExtension) {
+      return
+    }
+
+    let api
+    try {
+      const exports = gitExtension.isActive ? gitExtension.exports : await gitExtension.activate()
+      api = exports.getAPI(1)
+    } catch {
+      // Git support disabled or unavailable - commits simply earn no XP.
+      return
+    }
+
+    const watchRepository = (repository: Repository) => {
+      this.lastKnownHead.set(repository.rootUri.toString(), repository.state.HEAD?.commit)
+      this.disposables.push(
+        repository.state.onDidChange(() => {
+          void this.handleRepositoryStateChange(repository)
+        })
+      )
+    }
+
+    api.repositories.forEach(watchRepository)
+    this.disposables.push(api.onDidOpenRepository(watchRepository))
+  }
+
+  private async handleRepositoryStateChange(repository: Repository): Promise<void> {
+    const key = repository.rootUri.toString()
+    const previousHead = this.lastKnownHead.get(key)
+    const currentHead = repository.state.HEAD?.commit
+    if (!currentHead || currentHead === previousHead) {
+      return
+    }
+    this.lastKnownHead.set(key, currentHead)
+
+    if (this.creditedCommits.has(currentHead)) {
+      return
+    }
+
+    let commit
+    try {
+      commit = await repository.getCommit(currentHead)
+    } catch {
+      return
+    }
+    if (!commit.commitDate) {
+      return
+    }
+    if (Math.abs(Date.now() - commit.commitDate.getTime()) > COMMIT_FRESHNESS_MS) {
+      return
+    }
+
+    this.creditedCommits.add(currentHead)
+    this.addXP(XP_COMMIT)
   }
 
   private addXP(amount: number): void {

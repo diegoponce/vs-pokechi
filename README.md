@@ -45,7 +45,7 @@ Install it and a Pokéball shows up in your editor. Keep coding and it hatches, 
 
 |  | |
 | --- | --- |
-| <img src="https://raw.githubusercontent.com/diegoponce/vs-pokechi/master/media/gen1/charmander/default_walk_8fps.gif" width="48" /> | **It grows while you work.** 1 XP per edit, 2 per save. Enough XP and it hatches, then evolves through its line. |
+| <img src="https://raw.githubusercontent.com/diegoponce/vs-pokechi/master/media/gen1/charmander/default_walk_8fps.gif" width="48" /> | **It grows while you work.** 1 XP per edit, 2 per save, 8 per commit. Enough XP and it hatches, then evolves through its line. |
 | <img src="https://raw.githubusercontent.com/diegoponce/vs-pokechi/master/media/gen1/charizard/shiny_walk_8fps.gif" width="48" /> | **Shinies.** A 5% chance on every new Pokémon. The colour sticks through every evolution, and the Pokechidex counts them separately. |
 | <img src="https://raw.githubusercontent.com/diegoponce/vs-pokechi/master/media/gen3/rayquaza/default_walk_8fps.gif" width="48" /> | **Legendaries are actually rare.** Mythical ~0.5%, legendary ~1%, sub-legendary ~2%, fossils ~5%, each on their own odds instead of the common pool. |
 | <img src="https://raw.githubusercontent.com/diegoponce/vs-pokechi/master/media/gen2/unown_a/default_walk_8fps.gif" width="48" /> | **All 553 species**, across four generations, every Unown form included, each tagged with its classic (pre-Fairy) typing. |
@@ -131,6 +131,7 @@ Pokechi lives in a panel by default, or docked in the Explorer sidebar if you wo
 | --- | --- |
 | Editing a file | 1 |
 | Saving a file | 2 |
+| Making a commit | 8 |
 
 Only real files count — output channels, logs and diff views do not feed your Pokémon.
 
