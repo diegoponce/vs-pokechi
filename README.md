@@ -11,21 +11,27 @@
 [![Open VSX downloads](https://img.shields.io/open-vsx/dt/d9once/pokechi?label=downloads)](https://open-vsx.org/extension/d9once/pokechi)
 [![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
-<!-- Same twelve, each captioned in a different one of the 8 languages Pokechi now speaks - a small preview of the i18n feature further down. -->
-<table><tr>
+<!-- Same twelve, each captioned in a different one of the 8 languages Pokechi now speaks - a small preview of the i18n feature further down. Four per row (rather than all twelve in one) so the row wraps into a grid instead of overflowing sideways in narrower views, like the VS Code extension details panel. -->
+<table>
+<tr>
 <td align="center"><img src="https://raw.githubusercontent.com/diegoponce/vs-pokechi/master/media/gen1/bulbasaur/default_walk_8fps.gif" width="56" /><br><sub>Bulbasaur</sub></td>
 <td align="center"><img src="https://raw.githubusercontent.com/diegoponce/vs-pokechi/master/media/gen1/charmander/default_walk_8fps.gif" width="56" /><br><sub>Salamèche</sub></td>
 <td align="center"><img src="https://raw.githubusercontent.com/diegoponce/vs-pokechi/master/media/gen1/squirtle/default_walk_8fps.gif" width="56" /><br><sub>꼬부기</sub></td>
 <td align="center"><img src="https://raw.githubusercontent.com/diegoponce/vs-pokechi/master/media/gen1/pikachu/default_walk_8fps.gif" width="56" /><br><sub>皮卡丘</sub></td>
+</tr>
+<tr>
 <td align="center"><img src="https://raw.githubusercontent.com/diegoponce/vs-pokechi/master/media/gen2/cyndaquil/default_walk_8fps.gif" width="56" /><br><sub>Cyndaquil</sub></td>
 <td align="center"><img src="https://raw.githubusercontent.com/diegoponce/vs-pokechi/master/media/gen2/totodile/default_walk_8fps.gif" width="56" /><br><sub>ワニノコ</sub></td>
 <td align="center"><img src="https://raw.githubusercontent.com/diegoponce/vs-pokechi/master/media/gen3/treecko/default_walk_8fps.gif" width="56" /><br><sub>Arcko</sub></td>
 <td align="center"><img src="https://raw.githubusercontent.com/diegoponce/vs-pokechi/master/media/gen3/mudkip/default_walk_8fps.gif" width="56" /><br><sub>물짱이</sub></td>
+</tr>
+<tr>
 <td align="center"><img src="https://raw.githubusercontent.com/diegoponce/vs-pokechi/master/media/gen1/eevee/default_walk_8fps.gif" width="56" /><br><sub>伊布</sub></td>
 <td align="center"><img src="https://raw.githubusercontent.com/diegoponce/vs-pokechi/master/media/gen1/gengar/default_walk_8fps.gif" width="56" /><br><sub>ゲンガー</sub></td>
 <td align="center"><img src="https://raw.githubusercontent.com/diegoponce/vs-pokechi/master/media/gen1/dragonite/default_walk_8fps.gif" width="56" /><br><sub>Dragonite</sub></td>
 <td align="center"><img src="https://raw.githubusercontent.com/diegoponce/vs-pokechi/master/media/gen1/snorlax/default_walk_8fps.gif" width="56" /><br><sub>Ronflex</sub></td>
-</tr></table>
+</tr>
+</table>
 
 </div>
 
