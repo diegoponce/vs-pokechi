@@ -7,7 +7,7 @@
     "url": "https://github.com/diegoponce/vs-pokechi"
   },
   "publisher": "d9once",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "engines": {
     "vscode": "^1.64.0"
   },
@@ -93,6 +93,38 @@
               "Panel",
               "Explorer"
             ]
+          },
+          "pokechi.playCrySounds": {
+            "type": "boolean",
+            "default": true,
+            "description": "Play a cry automatically when a pokemon is picked from the Pokechidex. Clicking a pokemon directly, or a Pokechidex card's play button, always plays its cry regardless of this setting.",
+            "scope": "window"
+          },
+          "pokechi.language": {
+            "type": "string",
+            "enum": [
+              "en",
+              "es",
+              "pt",
+              "fr",
+              "it",
+              "ko",
+              "zh",
+              "ja"
+            ],
+            "default": "en",
+            "description": "Language for Pokechi's notifications and the Pokechidex webview. Anything not yet translated falls back to English.",
+            "enumItemLabels": [
+              "English",
+              "Español",
+              "Português",
+              "Français",
+              "Italiano",
+              "한국어",
+              "中文",
+              "日本語"
+            ],
+            "scope": "window"
           }
         }
       }

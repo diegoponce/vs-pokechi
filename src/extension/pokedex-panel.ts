@@ -1,24 +1,198 @@
 import * as vscode from 'vscode'
-import { PokemonState } from './pokemon-state'
+import { PokemonState, BadgeStatus } from './pokemon-state'
+import { ItemConfig } from '../common/items'
 import { generateNonce } from './nonce'
 import { PokemonColor, PokemonElementType, PokemonGeneration, PokemonType } from '../common/types'
 import { POKEMON_DATA } from '../common/pokemon-data'
-import { SPARKLE_ICON, getSparkleBurstMarkup, getSparkleBurstCssRules } from '../common/icons'
-import { TYPE_BADGES, getTypeBadgeCssRules } from '../common/type-badges'
+import { POKEMON_INFO_DATA, PokemonInfoEntry } from '../common/pokemon-info-data'
+import { POKEMON_INFO_DATA_ES } from '../common/pokemon-info-data.es'
+import { POKEMON_INFO_DATA_FR } from '../common/pokemon-info-data.fr'
+import { POKEMON_INFO_DATA_IT } from '../common/pokemon-info-data.it'
+import { POKEMON_INFO_DATA_KO } from '../common/pokemon-info-data.ko'
+import { POKEMON_INFO_DATA_ZH } from '../common/pokemon-info-data.zh'
+import { POKEMON_INFO_DATA_JA } from '../common/pokemon-info-data.ja'
+import { ITEMS } from '../common/items'
+import {
+  SPARKLE_ICON,
+  SOUND_ICON,
+  INFO_ICON,
+  ATTACK_ICON,
+  getSparkleBurstMarkup,
+  getSparkleBurstCssRules,
+  getSoundWaveMarkup,
+  getSoundWaveCssRules,
+} from '../common/icons'
+import { TYPE_BADGES, TypeBadgeInfo, getTypeBadgeCssRules, getLocalizedTypeBadges } from '../common/type-badges'
+import { Strings, getStrings, Language, isSupportedLanguage } from '../common/i18n'
 
-function renderTypeBadges(types: PokemonElementType[] | undefined): string {
+function getLanguage(): Language {
+  const value = vscode.workspace.getConfiguration('pokechi').get<string>('language', 'en')
+  return isSupportedLanguage(value) ? value : 'en'
+}
+
+// PokeAPI has no Brazilian Portuguese data at all for species flavor text or
+// move names/descriptions (only item/type names even have pt-br entries,
+// and even those turned out to be missing when checked - see pt.ts) - so
+// Portuguese falls back to the English info dataset here specifically,
+// same tolerance the rest of this file already extends to any language
+// without its own dictionary.
+const INFO_DATA_BY_LANGUAGE: Record<Language, { [key: string]: PokemonInfoEntry }> = {
+  en: POKEMON_INFO_DATA,
+  es: POKEMON_INFO_DATA_ES,
+  pt: POKEMON_INFO_DATA,
+  fr: POKEMON_INFO_DATA_FR,
+  it: POKEMON_INFO_DATA_IT,
+  ko: POKEMON_INFO_DATA_KO,
+  zh: POKEMON_INFO_DATA_ZH,
+  ja: POKEMON_INFO_DATA_JA,
+}
+
+function getInfoData(language: Language): { [key: string]: PokemonInfoEntry } {
+  return INFO_DATA_BY_LANGUAGE[language]
+}
+
+function renderTypeBadges(
+  types: PokemonElementType[] | undefined,
+  typeBadges: Record<PokemonElementType, TypeBadgeInfo>
+): string {
   if (!types || types.length === 0) {
     return ''
   }
   return types
     .map((type) => {
-      const badge = TYPE_BADGES[type]
+      const badge = typeBadges[type]
       if (!badge) {
         return ''
       }
       return `<span class="type-badge type-${type}">${badge.abbr}</span>`
     })
     .join('')
+}
+
+// One row per type in the type-filter dropdown - a badge on the left (same
+// markup as everywhere else a type shows up) and its own checkbox on the
+// right, rather than a native <select>, which cannot render anything but
+// plain text per option.
+function renderTypeFilterOptions(typeBadges: Record<PokemonElementType, TypeBadgeInfo>): string {
+  return Object.keys(TYPE_BADGES)
+    .map((type) => {
+      const badge = typeBadges[type as PokemonElementType]
+      return `
+        <label class="type-filter-option">
+          <span class="type-badge type-${type}">${badge.abbr}</span>
+          <input type="checkbox" data-type-option value="${type}" />
+        </label>
+      `
+    })
+    .join('')
+}
+
+// Names come from user-facing config (items.ts, badges.ts), which the
+// project convention treats the same as any other interpolated text: run it
+// through escapeHtml even though nothing in either registry currently
+// contains markup-sensitive characters.
+// A card rather than the old full-width row - items sit in a single
+// horizontally-scrolling row now, the same treatment as a badge generation,
+// so the description (too long for a narrow card) becomes its title
+// instead of inline text.
+function renderItemCardHtml(
+  spriteUri: string,
+  item: ItemConfig,
+  count: number,
+  usable: boolean,
+  strings: Strings
+): string {
+  const name = strings.itemNames[item.id] ?? item.name
+  const description = strings.itemDescriptions[item.id] ?? item.description
+  return `
+    <div class="item-card">
+      <div class="item-card-name">${escapeHtml(name)}</div>
+      <img class="item-card-icon" src="${spriteUri}" alt="" />
+      <div class="item-card-count" data-item-count="${item.id}">x${count}</div>
+      <div class="item-card-actions">
+        <p class="item-card-description">${escapeHtml(description)}</p>
+        <button
+          type="button"
+          class="item-card-use-button"
+          data-use-item="${item.id}"
+          ${usable ? '' : 'disabled'}
+        >${escapeHtml(strings.itemUseButton)}</button>
+      </div>
+    </div>
+  `
+}
+
+function renderBadgeCardHtml(spriteUri: string, status: BadgeStatus, strings: Strings): string {
+  const requirementsHtml = status.requirements
+    .map(
+      (r) => `
+        <li class="badge-requirement${r.met ? ' is-met' : ''}">
+          ${escapeHtml(r.label)}: ${r.current}/${r.required}
+        </li>
+      `
+    )
+    .join('')
+
+  return `
+    <div class="badge-card ${status.earned ? 'is-earned' : 'is-locked'}">
+      <div class="badge-card-name">${escapeHtml(status.badge.name)}</div>
+      <img class="badge-card-image" src="${spriteUri}" alt="" />
+      <ul class="badge-card-requirements">${requirementsHtml}</ul>
+      <div class="badge-card-status">${escapeHtml(status.earned ? strings.badgeStatusObtained : strings.badgeStatusLocked)}</div>
+    </div>
+  `
+}
+
+const BAG_GENERATIONS = [
+  PokemonGeneration.Gen1,
+  PokemonGeneration.Gen2,
+  PokemonGeneration.Gen3,
+  PokemonGeneration.Gen4,
+]
+
+// getSpritePath rather than a resolved URI, since resolving one needs the
+// webview instance - callers pass a small closure that already has it.
+// One generation's row shows at a time, picked by its own tab row rather
+// than all four stacked - each row scrolls sideways instead of wrapping, so
+// 8 badges stay a single line regardless of how narrow the panel is.
+function renderBadgesPanelHtml(
+  resolveSpriteUri: (spritePath: string) => string,
+  statuses: BadgeStatus[],
+  strings: Strings
+): string {
+  const byGeneration = new Map<PokemonGeneration, BadgeStatus[]>()
+  for (const status of statuses) {
+    const list = byGeneration.get(status.badge.generation) ?? []
+    list.push(status)
+    byGeneration.set(status.badge.generation, list)
+  }
+
+  const tabsHtml = BAG_GENERATIONS.map(
+    (gen, index) => `
+      <button
+        type="button"
+        class="badge-gen-tab${index === 0 ? ' is-selected' : ''}"
+        data-badge-gen="${gen}"
+        role="tab"
+        aria-selected="${index === 0 ? 'true' : 'false'}"
+      >${getGenerationLabel(gen, strings)}</button>
+    `
+  ).join('')
+
+  const rowsHtml = BAG_GENERATIONS.map((gen, index) => {
+    const list = (byGeneration.get(gen) ?? []).sort((a, b) => a.badge.order - b.badge.order)
+    const cards = list
+      .map((status) => renderBadgeCardHtml(resolveSpriteUri(status.badge.spritePath), status, strings))
+      .join('')
+    return `
+      <div class="badge-row" data-badge-gen-row="${gen}" ${index === 0 ? '' : 'hidden'}>${cards}</div>
+    `
+  }).join('')
+
+  return `
+    <div class="badge-gen-tabs" role="tablist">${tabsHtml}</div>
+    <div class="badge-row-wrapper" id="badge-row-wrapper">${rowsHtml}</div>
+  `
 }
 
 interface PokedexEntry {
@@ -53,8 +227,8 @@ function padPokemonId(id: number): string {
   return text.length >= 3 ? text : `000${text}`.slice(-3)
 }
 
-function getGenerationLabel(generation: PokemonGeneration): string {
-  return `Gen ${generation}`
+function getGenerationLabel(generation: PokemonGeneration, strings: Strings): string {
+  return strings.badgeGenerationLabel(generation)
 }
 
 function getSpritePath(
@@ -77,6 +251,130 @@ function getSpritePath(
 
   const colorPrefix = color === PokemonColor.shiny ? 'shiny' : 'default'
   return `${generation}/${type}/${colorPrefix}_idle_8fps.gif`
+}
+
+function getCryPath(type: PokemonType): string {
+  const pokemonData = POKEMON_DATA[type]
+  if (!pokemonData) {
+    return ''
+  }
+
+  let generation = 'gen1'
+  if (pokemonData.generation === PokemonGeneration.Gen2) {
+    generation = 'gen2'
+  } else if (pokemonData.generation === PokemonGeneration.Gen3) {
+    generation = 'gen3'
+  } else if (pokemonData.generation === PokemonGeneration.Gen4) {
+    generation = 'gen4'
+  }
+
+  return `${generation}/${type}/cry.mp3`
+}
+
+const STAT_LABELS: Array<[keyof PokemonInfoEntry['stats'], string]> = [
+  ['hp', 'HP'],
+  ['attack', 'ATK'],
+  ['defense', 'DEF'],
+  ['specialAttack', 'SPA'],
+  ['specialDefense', 'SPD'],
+  ['speed', 'SPE'],
+]
+
+// The info side of a flipped card: flavor text plus a compact base-stats grid.
+function renderInfoPanelHtml(info: PokemonInfoEntry): string {
+  const statsHtml = STAT_LABELS.map(
+    ([key, label]) =>
+      `<li><span class="back-stat-label">${label}</span><span class="back-stat-value">${info.stats[key]}</span></li>`
+  ).join('')
+
+  return `
+    <div class="back-panel back-panel-info" data-back-panel="info">
+      <p class="back-flavor">${escapeHtml(info.flavorText)}</p>
+      <ul class="back-stats">${statsHtml}</ul>
+    </div>
+  `
+}
+
+// The moves side of a flipped card: up to 4 representative attacks, each with
+// its power (or "-" for a status move with none) and a one-line description.
+function renderMovesPanelHtml(
+  info: PokemonInfoEntry,
+  typeBadges: Record<PokemonElementType, TypeBadgeInfo>
+): string {
+  const movesHtml = info.moves
+    .map(
+      (move) => `
+        <li class="back-move">
+          <div class="back-move-header">
+            <span class="back-move-name-group">
+              ${renderTypeBadges([move.type], typeBadges)}
+              <span class="back-move-name">${escapeHtml(move.name)}</span>
+            </span>
+            <span class="back-move-power">${move.power === null ? '-' : move.power}</span>
+          </div>
+          <p class="back-move-description">${escapeHtml(move.description)}</p>
+        </li>
+      `
+    )
+    .join('')
+
+  return `
+    <div class="back-panel back-panel-moves" data-back-panel="moves" hidden>
+      <ul class="back-moves">${movesHtml}</ul>
+    </div>
+  `
+}
+
+// Both faces are rendered up front rather than fetched on flip: this is
+// static per species, the same as every other card fact, and keeping it out
+// of a locked card's DOM entirely is what keeps a locked card from spoiling
+// anything about a species the user has not met yet.
+//
+// back-footer-name reserves the same bottom strip the two toggle buttons sit
+// over (they are positioned outside this element, at the wrapper level, so
+// they land visually on top of it) - only the flipped side needs this, since
+// the front already keeps its own name clear of that corner.
+function renderCardBackHtml(
+  type: PokemonType,
+  name: string,
+  infoData: { [key: string]: PokemonInfoEntry },
+  typeBadges: Record<PokemonElementType, TypeBadgeInfo>
+): string {
+  const info = infoData[type]
+  if (!info) {
+    return ''
+  }
+  return `
+    <div class="card-face card-face-back">
+      ${renderInfoPanelHtml(info)}
+      ${renderMovesPanelHtml(info, typeBadges)}
+      <div class="back-footer-name">${escapeHtml(name)}</div>
+    </div>
+  `
+}
+
+function renderFaceToggleButton(target: 'info' | 'moves', name: string, strings: Strings): string {
+  const icon = target === 'info' ? INFO_ICON : ATTACK_ICON
+  const label = target === 'info' ? strings.infoTitle : strings.movesTitle
+  const ariaLabel = target === 'info' ? strings.showInfoLabel(name) : strings.showMovesLabel(name)
+  return `
+    <button
+      type="button"
+      class="face-toggle face-toggle-${target}"
+      data-flip-target="${target}"
+      aria-label="${escapeHtml(ariaLabel)}"
+      aria-pressed="false"
+      title="${escapeHtml(label)}"
+    >${icon}</button>
+  `
+}
+
+// Sit outside card-flip (so neither rotates with the card) and stay at the
+// same bottom corners in both the front and flipped states - the front never
+// had anything at that edge for them to cover, so only the flipped side
+// (renderCardBackHtml below) needs to make room for them.
+function renderFaceTogglesHtml(name: string, strings: Strings): string {
+  return renderFaceToggleButton('info', name, strings) + renderFaceToggleButton('moves', name, strings)
 }
 
 const ABBREVIATION_UNITS = ['', 'K', 'M', 'G', 'T', 'P']
@@ -115,6 +413,27 @@ interface PokedexSnapshot {
   shinyDiscovered: PokemonType[]
   activeType: PokemonType | undefined
   activeColor: PokemonColor | undefined
+  rareCandyCount: number
+  // Whether the active pokemon itself is eligible for a candy (hatched,
+  // not a read-only snapshot, not already at the end of its line) -
+  // independent of whether there is actually a candy to spend on it, which
+  // the button combines this with client-side.
+  canUseRareCandy: boolean
+  masterBallCount: number
+  // Whether there is anything left a Master Ball could reveal - every
+  // sub-legendary, legendary and mythical species across all four
+  // generations already discovered means there is nothing left to give,
+  // independent of whether there is actually a ball to spend.
+  canUseMasterBall: boolean
+  premierBallCount: number
+  // Whether there is any species left whose shiny is not yet unlocked -
+  // independent of whether there is actually a ball to spend.
+  canUsePremierBall: boolean
+  // Just the ids, sorted, purely so a newly-earned badge shows up as a
+  // snapshot change even on the rare tick where nothing else here also
+  // happens to change - the actual badge data sent to the webview is built
+  // fresh from PokemonState.getBadgeStatuses, not from this list.
+  earnedBadgeIds: string[]
 }
 
 export class PokedexPanel {
@@ -171,6 +490,15 @@ export class PokedexPanel {
               )
             }
             break
+          case 'use-rare-candy':
+            void vscode.commands.executeCommand('pokechi.useRareCandy')
+            break
+          case 'use-master-ball':
+            void vscode.commands.executeCommand('pokechi.useMasterBall')
+            break
+          case 'use-premier-ball':
+            void vscode.commands.executeCommand('pokechi.usePremierBall')
+            break
         }
       })
     )
@@ -199,6 +527,13 @@ export class PokedexPanel {
         activePokemon && activePokemon.level > 0 ? activePokemon.type : undefined,
       activeColor:
         activePokemon && activePokemon.level > 0 ? activePokemon.color : undefined,
+      rareCandyCount: PokemonState.getItemCount(this.context, 'rare-candy'),
+      canUseRareCandy: PokemonState.canUseRareCandy(activePokemon),
+      masterBallCount: PokemonState.getItemCount(this.context, 'master-ball'),
+      canUseMasterBall: PokemonState.canUseMasterBall(this.context),
+      premierBallCount: PokemonState.getItemCount(this.context, 'premier-ball'),
+      canUsePremierBall: PokemonState.canUsePremierBall(this.context),
+      earnedBadgeIds: PokemonState.getEarnedBadges(this.context).slice().sort(),
     }
   }
 
@@ -210,9 +545,9 @@ export class PokedexPanel {
       .toString()
   }
 
-  private setTitle(discoveredCount: number): void {
+  private setTitle(discoveredCount: number, strings: Strings): void {
     if (this.panel) {
-      this.panel.title = `Pokechidex (${discoveredCount}/${POKEDEX_ENTRIES.length})`
+      this.panel.title = strings.pokedexPanelTitle(discoveredCount, POKEDEX_ENTRIES.length)
     }
   }
 
@@ -239,8 +574,9 @@ export class PokedexPanel {
     const snapshot = this.getSnapshot()
     this.lastSnapshot = JSON.stringify(snapshot)
     this.lastTotalXP = PokemonState.getTotalXP(this.context)
-    this.setTitle(snapshot.discovered.length)
-    this.panel.webview.html = this.getWebviewContent(this.panel.webview, snapshot)
+    const strings = getStrings(getLanguage())
+    this.setTitle(snapshot.discovered.length, strings)
+    this.panel.webview.html = this.getWebviewContent(this.panel.webview, snapshot, strings)
   }
 
   // Cheap update used while the user codes. Sends only what changed, so typing
@@ -267,7 +603,10 @@ export class PokedexPanel {
     this.lastSnapshot = serialized
 
     const webview = this.panel.webview
-    this.setTitle(snapshot.discovered.length)
+    const language = getLanguage()
+    const strings = getStrings(language)
+    const infoData = getInfoData(language)
+    this.setTitle(snapshot.discovered.length, strings)
     const shinySet = new Set(snapshot.shinyDiscovered)
 
     this.panel.webview.postMessage({
@@ -277,6 +616,20 @@ export class PokedexPanel {
         activeColor: snapshot.activeColor,
         discoveredCount: snapshot.discovered.length,
         shinyDiscoveredCount: snapshot.shinyDiscovered.length,
+        rareCandyCount: snapshot.rareCandyCount,
+        canUseRareCandy: snapshot.canUseRareCandy,
+        masterBallCount: snapshot.masterBallCount,
+        canUseMasterBall: snapshot.canUseMasterBall,
+        premierBallCount: snapshot.premierBallCount,
+        canUsePremierBall: snapshot.canUsePremierBall,
+        badges: PokemonState.getBadgeStatuses(this.context, strings).map((status) => ({
+          name: status.badge.name,
+          generation: status.badge.generation,
+          order: status.badge.order,
+          spriteUri: this.getSpriteUri(webview, status.badge.spritePath),
+          earned: status.earned,
+          requirements: status.requirements,
+        })),
         discovered: snapshot.discovered
           .filter((type) => POKEDEX_INDEX_BY_TYPE[type] !== undefined)
           .map((type) => {
@@ -289,12 +642,14 @@ export class PokedexPanel {
                 webview,
                 getSpritePath(type, PokemonColor.default)
               ),
+              cryUri: this.getSpriteUri(webview, getCryPath(type)),
               isShiny,
               shinySpriteUri: isShiny
                 ? this.getSpriteUri(webview, getSpritePath(type, PokemonColor.shiny))
                 : undefined,
               rarity: POKEMON_DATA[type]?.rarity,
               types: POKEMON_DATA[type]?.types,
+              info: infoData[type],
             }
           }),
       },
@@ -303,9 +658,36 @@ export class PokedexPanel {
 
   private getWebviewContent(
     webview: vscode.Webview,
-    snapshot: PokedexSnapshot
+    snapshot: PokedexSnapshot,
+    strings: Strings
   ): string {
     const nonce = generateNonce()
+    const language = getLanguage()
+    const infoData = getInfoData(language)
+    const localizedTypeBadges = getLocalizedTypeBadges(strings.typeAbbreviations)
+    // Strings' per-species/per-item template functions cannot survive
+    // JSON.stringify (client-side updates need them too, for a card that
+    // becomes discovered mid-session via postMessage rather than a fresh
+    // getWebviewContent render) - so each is called once with a private-use
+    // placeholder character standing in for its argument, and the client
+    // splices the real value back in via a plain string split/join.
+    const NAME_TOKEN = String.fromCharCode(0xe000)
+    const clientStrings = {
+      badgeStatusObtained: strings.badgeStatusObtained,
+      badgeStatusLocked: strings.badgeStatusLocked,
+      infoTitle: strings.infoTitle,
+      movesTitle: strings.movesTitle,
+      toggleShinyTitle: strings.toggleShinyTitle,
+      playCryTitle: strings.playCryTitle,
+      nameToken: NAME_TOKEN,
+      cardShowLabelTemplate: strings.cardShowLabel(NAME_TOKEN),
+      toggleShinyLabelTemplate: strings.toggleShinyLabel(NAME_TOKEN),
+      playCryLabelTemplate: strings.playCryLabel(NAME_TOKEN),
+      showInfoLabelTemplate: strings.showInfoLabel(NAME_TOKEN),
+      showMovesLabelTemplate: strings.showMovesLabel(NAME_TOKEN),
+      candyCounterNoneYetTemplate: strings.candyCounterNoneYet(NAME_TOKEN),
+      candyCounterNotUsableNowTemplate: strings.candyCounterNotUsableNow(NAME_TOKEN),
+    }
     const pokedex = new Set(snapshot.discovered)
     const shinyPokedex = new Set(snapshot.shinyDiscovered)
     const lockedSpriteUri = this.getSpriteUri(webview, 'pokeball.gif')
@@ -313,6 +695,43 @@ export class PokedexPanel {
     const shinyDiscoveredCount = shinyPokedex.size
     const totalCount = POKEDEX_ENTRIES.length
     const totalXPText = formatAbbreviatedNumber(PokemonState.getTotalXP(this.context))
+    const rareCandyItem = ITEMS['rare-candy']
+    const rareCandyName = strings.itemNames['rare-candy'] ?? rareCandyItem.name
+    const candySpriteUri = this.getSpriteUri(webview, rareCandyItem.spritePath)
+    const rareCandyCount = snapshot.rareCandyCount
+    const rareCandyUsable = snapshot.canUseRareCandy && rareCandyCount > 0
+    const masterBallItem = ITEMS['master-ball']
+    const masterBallSpriteUri = this.getSpriteUri(webview, masterBallItem.spritePath)
+    const masterBallCount = snapshot.masterBallCount
+    const masterBallUsable = snapshot.canUseMasterBall && masterBallCount > 0
+    const premierBallItem = ITEMS['premier-ball']
+    const premierBallSpriteUri = this.getSpriteUri(webview, premierBallItem.spritePath)
+    const premierBallCount = snapshot.premierBallCount
+    const premierBallUsable = snapshot.canUsePremierBall && premierBallCount > 0
+    const itemsPanelHtml = `
+      <div class="item-row-wrapper">
+        <div class="item-row">
+          ${renderItemCardHtml(candySpriteUri, rareCandyItem, rareCandyCount, rareCandyUsable, strings)}
+          ${renderItemCardHtml(masterBallSpriteUri, masterBallItem, masterBallCount, masterBallUsable, strings)}
+          ${renderItemCardHtml(premierBallSpriteUri, premierBallItem, premierBallCount, premierBallUsable, strings)}
+        </div>
+      </div>
+    `
+    const badgeStatuses = PokemonState.getBadgeStatuses(this.context, strings)
+    const earnedBadgeCount = badgeStatuses.filter((status) => status.earned).length
+    const totalBadgeCount = badgeStatuses.length
+    const badgesPanelHtml = renderBadgesPanelHtml(
+      (spritePath) => this.getSpriteUri(webview, spritePath),
+      badgeStatuses,
+      strings
+    )
+    // Picking a card counts as "picked from the Pokechidex" for this
+    // setting, same as the automatic reveal it triggers elsewhere - unlike
+    // the dedicated play button, which is an explicit "let me hear it" click
+    // and always plays regardless.
+    const playCrySoundsEnabled = vscode.workspace
+      .getConfiguration()
+      .get('pokechi.playCrySounds', true)
 
     const cards = POKEDEX_ENTRIES.map((entry, index) => {
       const discovered = pokedex.has(entry.type)
@@ -332,8 +751,8 @@ export class PokedexPanel {
       const initialSpriteUri = showsShinyByDefault ? shinySpriteUri : defaultSpriteUri
       const name = discovered ? escapeHtml(entry.name) : '???'
       const label = discovered
-        ? `Show ${escapeHtml(entry.name)}${isActive ? ', currently active' : ''}`
-        : 'Undiscovered pokemon'
+        ? escapeHtml(isActive ? strings.cardShowLabelActive(entry.name) : strings.cardShowLabel(entry.name))
+        : escapeHtml(strings.cardUndiscoveredLabel)
       const cry = POKEMON_DATA[entry.type] ? POKEMON_DATA[entry.type].cry : ''
       const tooltip = discovered && cry ? ` title="${escapeHtml(cry)}"` : ''
       // Never set for a locked card: the border must not spoil how rare an
@@ -344,11 +763,17 @@ export class PokedexPanel {
       // always rendered, empty, so a locked card keeps the same card height
       // without leaking what types the species is.
       const typeBadgesHtml = discovered
-        ? renderTypeBadges(POKEMON_DATA[entry.type]?.types)
+        ? renderTypeBadges(POKEMON_DATA[entry.type]?.types, localizedTypeBadges)
         : ''
+      // Same "never for a locked card" rule: the type filter treats a blank
+      // data-types as "always matches" rather than "matches nothing", so
+      // this never has to hide a card the search/generation filters would
+      // otherwise still show.
+      const typesAttr = discovered ? (POKEMON_DATA[entry.type]?.types ?? []).join(' ') : ''
+      const cryUri = discovered ? this.getSpriteUri(webview, getCryPath(entry.type)) : ''
 
-      // The shiny toggle lives outside the card button: interactive elements
-      // cannot nest, and it must not trigger selecting the pokemon.
+      // Both live outside the card button: interactive elements cannot nest,
+      // and neither must trigger selecting the pokemon.
       const shinyToggle = isShiny
         ? `
           <button
@@ -357,59 +782,87 @@ export class PokedexPanel {
             data-shiny-toggle
             data-default-sprite="${defaultSpriteUri}"
             data-shiny-sprite="${shinySpriteUri}"
-            aria-label="Toggle shiny sprite for ${escapeHtml(entry.name)}"
+            aria-label="${escapeHtml(strings.toggleShinyLabel(entry.name))}"
             aria-pressed="${showsShinyByDefault ? 'true' : 'false'}"
-            title="Toggle shiny sprite"
+            title="${escapeHtml(strings.toggleShinyTitle)}"
           >${SPARKLE_ICON}</button>
         `
         : ''
+      const playCryButton = discovered
+        ? `
+          <button
+            type="button"
+            class="play-cry-button"
+            data-play-cry
+            data-cry-src="${cryUri}"
+            aria-label="${escapeHtml(strings.playCryLabel(entry.name))}"
+            title="${escapeHtml(strings.playCryTitle)}"
+          >${SOUND_ICON}</button>
+        `
+        : ''
+      const cardControls =
+        shinyToggle || playCryButton
+          ? `<div class="card-controls">${playCryButton}${shinyToggle}</div>`
+          : ''
+      const cardBack = discovered
+        ? renderCardBackHtml(entry.type, entry.name, infoData, localizedTypeBadges)
+        : ''
+      const faceToggles = discovered ? renderFaceTogglesHtml(entry.name, strings) : ''
 
       return `
         <div class="pokemon-card-wrapper">
-          <button
-            type="button"
-            class="pokemon-card ${discovered ? 'discovered' : 'locked'}${isActive ? ' active' : ''}${rarityClass}"
-            data-index="${index}"
-            data-generation="${entry.generation}"
-            data-name="${discovered ? escapeHtml(entry.name.toLowerCase()) : ''}"
-            data-number="${padPokemonId(entry.id)}"
-            data-has-shiny="${isShiny ? '1' : '0'}"
-            ${discovered ? `data-pokemon-type="${entry.type}"` : 'disabled'}
-            aria-pressed="${isActive ? 'true' : 'false'}"
-            aria-label="${label}"${tooltip}
-          >
-            <div class="card-top">
-              <span class="pokemon-id">#${padPokemonId(entry.id)}</span>
-              <span class="generation-chip">${getGenerationLabel(entry.generation)}</span>
-              <span class="active-badge">Active</span>
+          <div class="card-flip">
+            <div class="card-flip-inner">
+              <button
+                type="button"
+                class="pokemon-card ${discovered ? 'discovered' : 'locked'}${isActive ? ' active' : ''}${rarityClass}"
+                data-index="${index}"
+                data-generation="${entry.generation}"
+                data-name="${discovered ? escapeHtml(entry.name.toLowerCase()) : ''}"
+                data-number="${padPokemonId(entry.id)}"
+                data-has-shiny="${isShiny ? '1' : '0'}"
+                data-types="${typesAttr}"
+                ${discovered ? `data-pokemon-type="${entry.type}"` : 'disabled'}
+                aria-pressed="${isActive ? 'true' : 'false'}"
+                aria-label="${label}"${tooltip}
+              >
+                <div class="card-top">
+                  <span class="pokemon-id">#${padPokemonId(entry.id)}</span>
+                  <span class="generation-chip">${getGenerationLabel(entry.generation, strings)}</span>
+                  <span class="active-badge">${escapeHtml(strings.activeBadge)}</span>
+                </div>
+                <div class="sprite-frame">
+                  <img
+                    class="sprite"
+                    src="${initialSpriteUri}"
+                    data-default-sprite="${defaultSpriteUri}"
+                    data-shiny-sprite="${shinySpriteUri}"
+                    data-showing-shiny="${showsShinyByDefault ? '1' : '0'}"
+                    alt=""
+                    loading="lazy"
+                  />
+                  <div class="sparkle-burst">${getSparkleBurstMarkup()}</div>
+                  <div class="sound-wave-burst">${getSoundWaveMarkup()}</div>
+                </div>
+                <div class="pokemon-name">${name}</div>
+                <div class="type-badges">${typeBadgesHtml}</div>
+              </button>
+              ${cardBack}
             </div>
-            <div class="sprite-frame">
-              <img
-                class="sprite"
-                src="${initialSpriteUri}"
-                data-default-sprite="${defaultSpriteUri}"
-                data-shiny-sprite="${shinySpriteUri}"
-                data-showing-shiny="${showsShinyByDefault ? '1' : '0'}"
-                alt=""
-                loading="lazy"
-              />
-              <div class="sparkle-burst">${getSparkleBurstMarkup()}</div>
-            </div>
-            <div class="pokemon-name">${name}</div>
-            <div class="type-badges">${typeBadgesHtml}</div>
-          </button>
-          ${shinyToggle}
+          </div>
+          ${cardControls}
+          ${faceToggles}
         </div>
       `
     }).join('')
 
     return `<!DOCTYPE html>
-<html lang="en">
+<html lang="${language}">
 <head>
   <meta charset="UTF-8">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${webview.cspSource} 'nonce-${nonce}'; img-src ${webview.cspSource}; font-src ${webview.cspSource}; script-src 'nonce-${nonce}';">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${webview.cspSource} 'nonce-${nonce}'; img-src ${webview.cspSource}; font-src ${webview.cspSource}; media-src ${webview.cspSource}; connect-src ${webview.cspSource}; script-src 'nonce-${nonce}';">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Pokechidex</title>
+  <title>${escapeHtml(strings.pokechidexTitle)}</title>
   <style nonce="${nonce}">
     :root {
       --card-bg: var(--vscode-editorWidget-background, var(--vscode-editor-background));
@@ -469,13 +922,13 @@ export class PokedexPanel {
       color: var(--muted);
       font-size: 12px;
       margin: 0;
-      max-width: 62ch;
+      max-width: 100%;
       /* Clamped rather than left to wrap freely, so a narrow panel cannot
          grow the header past a couple of lines. */
-      display: -webkit-box;
-      -webkit-line-clamp: 2;
-      -webkit-box-orient: vertical;
-      overflow: hidden;
+      // display: -webkit-box;
+      // -webkit-line-clamp: 2;
+      // -webkit-box-orient: vertical;
+      // overflow: hidden;
     }
 
     .counters {
@@ -489,7 +942,7 @@ export class PokedexPanel {
     .counter {
       flex: 0 0 auto;
       display: flex;
-      align-items: baseline;
+      align-items: center;
       gap: 6px;
       padding: 6px 12px;
       border-radius: 999px;
@@ -508,6 +961,308 @@ export class PokedexPanel {
       text-transform: uppercase;
       letter-spacing: 0.08em;
       opacity: 0.85;
+    }
+
+    /* A button rather than the plain div the other three counters are - it
+       is the only one that does something when clicked - so it needs its
+       own reset on top of the shared .counter look. */
+    .counter-candy {
+      border: none;
+      font: inherit;
+      cursor: pointer;
+      appearance: none;
+    }
+
+    .counter-candy:not(:disabled):hover {
+      background: var(--vscode-button-background);
+      color: var(--vscode-button-foreground);
+    }
+
+    .counter-candy:focus-visible {
+      outline: 1px solid var(--accent);
+      outline-offset: 2px;
+    }
+
+    .counter-candy:disabled {
+      cursor: default;
+      opacity: 0.6;
+    }
+
+    .counter-candy-icon {
+      width: 16px;
+      height: 16px;
+      object-fit: contain;
+      image-rendering: pixelated;
+    }
+
+    .bag-accordion {
+      border: 1px solid var(--vscode-widget-border, var(--card-border));
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    .bag-toggle {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      width: 100%;
+      padding: 8px 12px;
+      border: none;
+      background: var(--card-bg);
+      color: inherit;
+      font: inherit;
+      font-weight: 600;
+      text-align: left;
+      cursor: pointer;
+      appearance: none;
+    }
+
+    .bag-toggle:hover {
+      background: var(--vscode-list-hoverBackground);
+    }
+
+    .bag-toggle:focus-visible {
+      outline: 1px solid var(--accent);
+      outline-offset: -2px;
+    }
+
+    .bag-chevron {
+      display: inline-block;
+      font-size: 10px;
+      transition: transform 150ms ease;
+    }
+
+    .bag-toggle[aria-expanded="true"] .bag-chevron {
+      transform: rotate(90deg);
+    }
+
+    .bag-content {
+      padding: 10px 12px 14px;
+      border-top: 1px solid var(--vscode-widget-border, var(--card-border));
+    }
+
+    .bag-tabs {
+      display: flex;
+      gap: 4px;
+      margin-bottom: 10px;
+    }
+
+    .bag-tab {
+      padding: 4px 12px;
+      border: 1px solid var(--vscode-widget-border, transparent);
+      border-radius: 999px;
+      background: transparent;
+      color: var(--muted);
+      font: inherit;
+      font-size: 11px;
+      cursor: pointer;
+    }
+
+    .bag-tab:hover {
+      background: var(--vscode-list-hoverBackground);
+    }
+
+    .bag-tab.is-selected {
+      background: var(--vscode-button-background);
+      color: var(--vscode-button-foreground);
+      border-color: var(--vscode-button-background);
+    }
+
+    .bag-panel[hidden] {
+      display: none;
+    }
+
+    /* Same treatment as a badge generation's row: one line, scrolling
+       sideways instead of wrapping, rather than a list of full-width rows. */
+    .item-row-wrapper {
+      overflow-x: auto;
+    }
+
+    .item-row {
+      display: flex;
+      flex-wrap: nowrap;
+      gap: 8px;
+      padding-bottom: 4px;
+    }
+
+    .item-card {
+      flex: 0 0 160px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      padding: 8px;
+      border-radius: 6px;
+      border: 1px solid var(--card-border);
+      background: var(--vscode-editorWidget-background, var(--card-bg));
+      text-align: center;
+    }
+
+    .item-card-name {
+      font-size: 10.5px;
+      font-weight: 600;
+    }
+
+    .item-card-icon {
+      width: 32px;
+      height: 32px;
+      object-fit: contain;
+      image-rendering: pixelated;
+    }
+
+    .item-card-count {
+      font-size: 11px;
+      font-weight: 600;
+      font-family: var(--vscode-editor-font-family, monospace);
+    }
+
+    .item-card-actions {
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .item-card-use-button {
+      width: 100%;
+      padding: 4px 0;
+      border: 1px solid var(--vscode-widget-border, transparent);
+      border-radius: 4px;
+      background: var(--vscode-button-background);
+      color: var(--vscode-button-foreground);
+      font: inherit;
+      font-size: 11px;
+      cursor: pointer;
+    }
+
+    .item-card-use-button:not(:disabled):hover {
+      background: var(--vscode-button-hoverBackground, var(--vscode-button-background));
+    }
+
+    .item-card-use-button:disabled {
+      cursor: default;
+      opacity: 0.5;
+    }
+
+    .item-card-description {
+      margin: 0;
+      font-size: 9.5px;
+      line-height: 1.3;
+      color: var(--muted);
+    }
+
+    .badge-gen-tabs {
+      display: flex;
+      gap: 4px;
+      margin-bottom: 8px;
+    }
+
+    .badge-gen-tab {
+      padding: 3px 10px;
+      border: 1px solid var(--vscode-widget-border, transparent);
+      border-radius: 999px;
+      background: transparent;
+      color: var(--muted);
+      font: inherit;
+      font-size: 10.5px;
+      cursor: pointer;
+    }
+
+    .badge-gen-tab:hover {
+      background: var(--vscode-list-hoverBackground);
+    }
+
+    .badge-gen-tab.is-selected {
+      background: var(--vscode-button-background);
+      color: var(--vscode-button-foreground);
+      border-color: var(--vscode-button-background);
+    }
+
+    .badge-row-wrapper {
+      /* Keeps the horizontal scrollbar this row can get contained to the
+         bag, instead of the whole Pokechidex page scrolling sideways. */
+      overflow-x: auto;
+    }
+
+    .badge-row[hidden] {
+      display: none;
+    }
+
+    .badge-row {
+      display: flex;
+      flex-wrap: nowrap;
+      gap: 8px;
+      padding-bottom: 4px;
+    }
+
+    .badge-row .badge-card {
+      flex: 0 0 110px;
+    }
+
+    .badge-card {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      padding: 8px;
+      border-radius: 6px;
+      border: 1px solid var(--card-border);
+      background: var(--vscode-editorWidget-background, var(--card-bg));
+      text-align: center;
+    }
+
+    .badge-card.is-locked {
+      opacity: 0.6;
+    }
+
+    .badge-card.is-earned {
+      border-color: #E3A008;
+    }
+
+    .badge-card-name {
+      font-size: 10.5px;
+      font-weight: 600;
+    }
+
+    .badge-card-image {
+      width: 40px;
+      height: 40px;
+      object-fit: contain;
+      image-rendering: pixelated;
+    }
+
+    .badge-card.is-locked .badge-card-image {
+      filter: grayscale(1);
+    }
+
+    .badge-card-requirements {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      width: 100%;
+    }
+
+    .badge-requirement {
+      font-size: 9px;
+      color: var(--muted);
+    }
+
+    .badge-requirement.is-met {
+      color: #6bbf6b;
+    }
+
+    .badge-card-status {
+      font-size: 9px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--muted);
+    }
+
+    .badge-card.is-earned .badge-card-status {
+      color: #E3A008;
     }
 
     .toolbar {
@@ -578,6 +1333,76 @@ export class PokedexPanel {
       user-select: none;
     }
 
+    .type-filter {
+      position: relative;
+    }
+
+    .type-filter-count {
+      margin-left: 4px;
+      font-weight: 700;
+    }
+
+    /* A display value here would otherwise override the browser's default
+       [hidden] { display: none } - same reason the card-flip back panels
+       need the analogous :not([hidden]) split - so the menu stays visible
+       and un-clickable-shut regardless of the hidden attribute JS toggles. */
+    .type-filter-menu {
+      display: none;
+      position: absolute;
+      top: calc(100% + 4px);
+      left: 0;
+      z-index: 10;
+      grid-template-columns: repeat(2, minmax(90px, 1fr));
+      gap: 2px 10px;
+      padding: 8px;
+      border-radius: 6px;
+      border: 1px solid var(--vscode-widget-border, var(--card-border));
+      background: var(--vscode-editorWidget-background, var(--card-bg));
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+    }
+
+    .type-filter-menu:not([hidden]) {
+      display: grid;
+    }
+
+    .type-filter-option {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 3px 2px;
+      border-radius: 4px;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .type-filter-option:hover {
+      background: var(--vscode-list-hoverBackground);
+    }
+
+    .type-filter-option input:focus-visible {
+      outline: 1px solid var(--accent);
+      outline-offset: 1px;
+    }
+
+    .type-filter-clear {
+      grid-column: 1 / -1;
+      margin-top: 4px;
+      padding: 4px 0;
+      border: none;
+      border-top: 1px solid var(--vscode-widget-border, var(--card-border));
+      border-radius: 0;
+      background: transparent;
+      color: var(--muted);
+      font: inherit;
+      font-size: 11px;
+      cursor: pointer;
+    }
+
+    .type-filter-clear:hover {
+      color: var(--vscode-foreground);
+    }
+
     .empty-state {
       margin: 0;
       padding: 24px;
@@ -593,7 +1418,7 @@ export class PokedexPanel {
 
     .grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(132px, 1fr));
+      grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
       gap: 10px;
     }
 
@@ -601,6 +1426,181 @@ export class PokedexPanel {
       position: relative;
     }
 
+    /* perspective on the outer element rather than card-flip-inner is what
+       gives the rotation actual depth instead of squashing flat sideways. */
+    .card-flip {
+      position: relative;
+      perspective: 1200px;
+    }
+
+    .card-flip-inner {
+      position: relative;
+      transform-style: preserve-3d;
+      transition: transform 0.5s ease;
+    }
+
+    .card-flip.is-flipped .card-flip-inner {
+      transform: rotateY(180deg);
+    }
+
+    /* The play-cry/shiny-toggle row sits outside card-flip (so it never
+       rotates with the card), which means it has to be hidden by hand once
+       flipped instead of just disappearing along with the front face. */
+    .card-flip.is-flipped ~ .card-controls {
+      display: none;
+    }
+
+    /* padding-bottom reserves the strip the two toggle buttons sit over
+       (they are positioned outside this element, at the wrapper level, and
+       land on top of it) - that is what keeps the scrollable panels below
+       from ever running text underneath them. */
+    .card-face-back {
+      position: absolute;
+      inset: 0;
+      backface-visibility: hidden;
+      transform: rotateY(180deg);
+      display: flex;
+      flex-direction: column;
+      border-radius: 8px;
+      border: 1px solid var(--card-border);
+      background: var(--card-bg);
+      padding: 10px 10px 26px;
+      box-sizing: border-box;
+      overflow: hidden;
+    }
+
+    .back-footer-name {
+      position: absolute;
+      left: 30px;
+      right: 30px;
+      bottom: 6px;
+      height: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      font-weight: 600;
+      text-align: center;
+      text-transform: capitalize;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    /* An author display value on .back-panel would otherwise override the
+       browser's default [hidden] { display: none }, which is what keeps
+       both panels from showing stacked on top of each other at once. */
+    .back-panel {
+      display: none;
+      flex-direction: column;
+      gap: 6px;
+      height: 100%;
+      overflow-y: auto;
+      /* Firefox; the ::-webkit-scrollbar rules below cover Chromium, which
+         is what VS Code's webview actually renders on every platform. */
+      scrollbar-width: thin;
+    }
+
+    .back-panel:not([hidden]) {
+      display: flex;
+    }
+
+    .back-panel::-webkit-scrollbar {
+      width: 4px;
+    }
+
+    .back-panel::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    .back-panel::-webkit-scrollbar-thumb {
+      background: var(--vscode-scrollbarSlider-background, rgba(128, 128, 128, 0.4));
+      border-radius: 999px;
+    }
+
+    .back-flavor {
+      margin: 0;
+      font-size: 11px;
+      line-height: 1.4;
+      color: var(--vscode-foreground);
+    }
+
+    .back-stats {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 3px 10px;
+    }
+
+    .back-stats li {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 10.5px;
+    }
+
+    .back-stat-label {
+      color: var(--muted);
+      letter-spacing: 0.04em;
+    }
+
+    .back-stat-value {
+      font-weight: 600;
+      font-family: var(--vscode-editor-font-family, monospace);
+    }
+
+    .back-moves {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .back-move-header {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 6px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+
+    .back-move-name-group {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      min-width: 0;
+    }
+
+    .back-move-name {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .back-move-power {
+      font-size: 10px;
+      font-weight: 400;
+      color: var(--muted);
+      font-family: var(--vscode-editor-font-family, monospace);
+      flex: 0 0 auto;
+    }
+
+    .back-move-description {
+      margin: 2px 0 0;
+      font-size: 10px;
+      line-height: 1.3;
+      color: var(--muted);
+    }
+
+    /* Doubles as the flip's front face - card-flip-inner has no other
+       in-flow child, so it takes this element's own height and inset: 0 on
+       .card-face-back above sizes correctly against it. backface-visibility
+       keeps it from showing through, mirrored, once rotated past 90deg. */
     .pokemon-card {
       position: relative;
       display: flex;
@@ -617,15 +1617,27 @@ export class PokedexPanel {
       width: 100%;
       appearance: none;
       cursor: pointer;
+      backface-visibility: hidden;
       transition: background-color 120ms ease, border-color 120ms ease;
     }
 
-    .shiny-toggle {
+    /* Holds the play button and, once unlocked, the shiny toggle - centered
+       as a pair instead of each one separately claiming the card's midpoint,
+       which is what let only one of them ever be centered at a time. */
+    .card-controls {
       position: absolute;
       top: 6px;
       left: 50%;
       transform: translateX(-50%);
       z-index: 1;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .play-cry-button,
+    .shiny-toggle,
+    .face-toggle {
       display: grid;
       place-items: center;
       width: 20px;
@@ -639,12 +1651,16 @@ export class PokedexPanel {
       appearance: none;
     }
 
-    .shiny-toggle:hover {
+    .play-cry-button:hover,
+    .shiny-toggle:hover,
+    .face-toggle:hover {
       background: var(--vscode-button-background);
       color: var(--vscode-button-foreground);
     }
 
-    .shiny-toggle:focus-visible {
+    .play-cry-button:focus-visible,
+    .shiny-toggle:focus-visible,
+    .face-toggle:focus-visible {
       outline: 1px solid var(--accent);
       outline-offset: 2px;
     }
@@ -652,6 +1668,30 @@ export class PokedexPanel {
     .shiny-toggle.is-shiny-active {
       background: var(--vscode-button-background);
       color: var(--vscode-button-foreground);
+    }
+
+    .face-toggle[aria-pressed="true"] {
+      background: var(--vscode-button-background);
+      color: var(--vscode-button-foreground);
+    }
+
+    /* Sit outside card-flip, at the wrapper level, so they never rotate with
+       the card and stay one on each bottom corner in both the front and
+       flipped states - the flipped side reserves room for them via
+       .card-face-back's padding-bottom and .back-footer-name above. */
+    .face-toggle-info,
+    .face-toggle-moves {
+      position: absolute;
+      bottom: 6px;
+      z-index: 2;
+    }
+
+    .face-toggle-info {
+      left: 6px;
+    }
+
+    .face-toggle-moves {
+      right: 6px;
     }
 
     .pokemon-card.discovered:hover {
@@ -833,6 +1873,7 @@ export class PokedexPanel {
 
     ${getTypeBadgeCssRules()}
     ${getSparkleBurstCssRules()}
+    ${getSoundWaveCssRules()}
 
     /* The badge takes the generation chip's slot rather than stacking under it:
        one chip per card, no overlap, and no reflow when a card becomes active.
@@ -881,54 +1922,115 @@ export class PokedexPanel {
   <main class="pokedex-shell">
     <header class="header">
       <div class="title-block">
-        <h1>Pokechidex</h1>
-        <p class="subtitle">Species you have met from a Pok&eacute;ball or an evolution. Pick one to bring it out &mdash; each line keeps its own XP, so nothing is lost when you switch.</p>
+        <h1>${escapeHtml(strings.pokechidexTitle)}</h1>
+        <p class="subtitle">${strings.pokechidexSubtitle}</p>
       </div>
       <div class="counters">
         <div class="counter">
           <span class="counter-value" id="counter-value">${discoveredCount}/${totalCount}</span>
-          <span class="counter-label">Discovered</span>
+          <span class="counter-label">${escapeHtml(strings.counterDiscovered)}</span>
         </div>
         <div class="counter">
           <span class="counter-value" id="shiny-counter-value">${shinyDiscoveredCount}/${totalCount}</span>
-          <span class="counter-label">Shiny</span>
+          <span class="counter-label">${escapeHtml(strings.counterShiny)}</span>
+        </div>
+        <div class="counter">
+          <span class="counter-value" id="badge-counter-value">${earnedBadgeCount}/${totalBadgeCount}</span>
+          <span class="counter-label">${escapeHtml(strings.counterBadges)}</span>
         </div>
         <div class="counter">
           <span class="counter-value" id="total-xp-value">${totalXPText}</span>
-          <span class="counter-label">Total XP</span>
+          <span class="counter-label">${escapeHtml(strings.counterTotalXP)}</span>
         </div>
+        <button
+          type="button"
+          class="counter counter-candy"
+          id="candy-counter"
+          ${rareCandyUsable ? '' : 'disabled'}
+          title="${
+            rareCandyCount === 0
+              ? escapeHtml(strings.candyCounterNoneYet(rareCandyName))
+              : rareCandyUsable
+              ? escapeHtml(strings.itemDescriptions['rare-candy'] ?? rareCandyItem.description)
+              : escapeHtml(strings.candyCounterNotUsableNow(rareCandyName))
+          }"
+        >
+          <img class="counter-candy-icon" src="${candySpriteUri}" alt="" />
+          <span class="counter-value" id="candy-counter-value">${rareCandyCount}</span>
+          <span class="counter-label">${escapeHtml(rareCandyName)}</span>
+        </button>
       </div>
     </header>
+
+    <section class="bag-accordion">
+      <button
+        type="button"
+        class="bag-toggle"
+        id="bag-toggle"
+        aria-expanded="false"
+        aria-controls="bag-content"
+      >
+        <span class="bag-chevron">&#9656;</span>
+        ${escapeHtml(strings.bagLabel)}
+      </button>
+      <div class="bag-content" id="bag-content" hidden>
+        <div class="bag-tabs" role="tablist">
+          <button type="button" class="bag-tab is-selected" data-bag-tab="items" role="tab" aria-selected="true">${escapeHtml(strings.bagTabItems)}</button>
+          <button type="button" class="bag-tab" data-bag-tab="badges" role="tab" aria-selected="false">${escapeHtml(strings.bagTabBadges)}</button>
+        </div>
+        <div class="bag-panel bag-panel-items" data-bag-tabpanel="items" id="bag-panel-items">
+          ${itemsPanelHtml}
+        </div>
+        <div class="bag-panel bag-panel-badges" data-bag-tabpanel="badges" id="bag-panel-badges" hidden>
+          ${badgesPanelHtml}
+        </div>
+      </div>
+    </section>
 
     <div class="toolbar">
       <input
         id="search"
         class="search"
         type="search"
-        placeholder="Search by name or number"
-        aria-label="Search the Pokechidex"
+        placeholder="${escapeHtml(strings.searchPlaceholder)}"
+        aria-label="${escapeHtml(strings.searchAriaLabel)}"
         autocomplete="off"
       />
-      <div class="filters" role="group" aria-label="Filter by generation">
-        <button type="button" class="filter-chip is-selected" data-generation="all">All</button>
-        <button type="button" class="filter-chip" data-generation="1">Gen 1</button>
-        <button type="button" class="filter-chip" data-generation="2">Gen 2</button>
-        <button type="button" class="filter-chip" data-generation="3">Gen 3</button>
-        <button type="button" class="filter-chip" data-generation="4">Gen 4</button>
+      <div class="filters" role="group" aria-label="${escapeHtml(strings.filtersAriaLabel)}">
+        <button type="button" class="filter-chip is-selected" data-generation="all">${escapeHtml(strings.filterAll)}</button>
+        <button type="button" class="filter-chip" data-generation="1">${escapeHtml(strings.badgeGenerationLabel(1))}</button>
+        <button type="button" class="filter-chip" data-generation="2">${escapeHtml(strings.badgeGenerationLabel(2))}</button>
+        <button type="button" class="filter-chip" data-generation="3">${escapeHtml(strings.badgeGenerationLabel(3))}</button>
+        <button type="button" class="filter-chip" data-generation="4">${escapeHtml(strings.badgeGenerationLabel(4))}</button>
+        <div class="type-filter">
+          <button
+            type="button"
+            class="filter-chip type-filter-toggle"
+            id="type-filter-toggle"
+            aria-haspopup="true"
+            aria-expanded="false"
+          >
+            ${escapeHtml(strings.typeFilterLabel)}<span class="type-filter-count" id="type-filter-count" hidden></span>
+          </button>
+          <div class="type-filter-menu" id="type-filter-menu" role="group" aria-label="${escapeHtml(strings.typeFilterAriaLabel)}" hidden>
+            ${renderTypeFilterOptions(localizedTypeBadges)}
+            <button type="button" class="type-filter-clear" id="type-filter-clear">${escapeHtml(strings.typeFilterClear)}</button>
+          </div>
+        </div>
         <label class="filter-toggle">
           <input type="checkbox" id="only-discovered" />
-          Discovered only
+          ${escapeHtml(strings.filterDiscoveredOnly)}
         </label>
         <label class="filter-toggle">
           <input type="checkbox" id="only-shiny" />
-          Shiny unlocked
+          ${escapeHtml(strings.filterShinyUnlocked)}
         </label>
       </div>
     </div>
 
-    <p class="empty-state" id="empty-state" hidden>Nothing matches that search.</p>
+    <p class="empty-state" id="empty-state" hidden>${escapeHtml(strings.emptyState)}</p>
 
-    <section class="grid" aria-label="Pokechidex grid">
+    <section class="grid" aria-label="${escapeHtml(strings.gridAriaLabel)}">
       ${cards}
     </section>
   </main>
@@ -941,17 +2043,33 @@ export class PokedexPanel {
         return;
       }
 
-      var TYPE_BADGES = ${JSON.stringify(TYPE_BADGES)};
+      var TYPE_BADGES = ${JSON.stringify(localizedTypeBadges)};
+      var STRINGS = ${JSON.stringify(clientStrings)};
+      var playCrySoundsEnabled = ${JSON.stringify(playCrySoundsEnabled)};
+      var RARE_CANDY_NAME = ${JSON.stringify(rareCandyName)};
+      var RARE_CANDY_DESCRIPTION = ${JSON.stringify(strings.itemDescriptions['rare-candy'] ?? rareCandyItem.description)};
+
+      function fillTemplate(template, value) {
+        return template.split(STRINGS.nameToken).join(value);
+      }
 
       var grid = document.querySelector('.grid');
       var counter = document.getElementById('counter-value');
       var shinyCounter = document.getElementById('shiny-counter-value');
+      var badgeCounter = document.getElementById('badge-counter-value');
       var totalXPEl = document.getElementById('total-xp-value');
+      var candyCounter = document.getElementById('candy-counter');
+      var candyCounterValue = document.getElementById('candy-counter-value');
       var search = document.getElementById('search');
       var emptyState = document.getElementById('empty-state');
       var onlyDiscovered = document.getElementById('only-discovered');
       var onlyShiny = document.getElementById('only-shiny');
+      var typeFilterToggle = document.getElementById('type-filter-toggle');
+      var typeFilterMenu = document.getElementById('type-filter-menu');
+      var typeFilterCount = document.getElementById('type-filter-count');
+      var typeFilterClear = document.getElementById('type-filter-clear');
       var generation = 'all';
+      var selectedTypes = {};
 
       function applyFilters() {
         if (!grid) {
@@ -961,6 +2079,7 @@ export class PokedexPanel {
         var term = (search && search.value ? search.value : '').trim().toLowerCase();
         var wrappers = grid.querySelectorAll('.pokemon-card-wrapper');
         var visible = 0;
+        var hasSelectedTypes = Object.keys(selectedTypes).some(function (t) { return selectedTypes[t]; });
 
         Array.prototype.forEach.call(wrappers, function (wrapper) {
           var card = wrapper.querySelector('.pokemon-card');
@@ -980,8 +2099,17 @@ export class PokedexPanel {
             !term ||
             (card.dataset.name && card.dataset.name.indexOf(term) >= 0) ||
             (card.dataset.number && card.dataset.number.indexOf(term) >= 0);
+          // Same reasoning as the search term: an undiscovered card has no
+          // data-types either, so the type filter only ever narrows down
+          // what is already discovered instead of hiding a locked card and
+          // giving away whether it happens to match.
+          var cardTypes = card.dataset.types ? card.dataset.types.split(' ') : [];
+          var matchesTypes =
+            !hasSelectedTypes ||
+            !cardTypes.length ||
+            cardTypes.some(function (t) { return selectedTypes[t]; });
 
-          var show = matchesGeneration && matchesDiscovered && matchesShiny && matchesTerm;
+          var show = matchesGeneration && matchesDiscovered && matchesShiny && matchesTerm && matchesTypes;
           wrapper.hidden = !show;
           if (show) {
             visible++;
@@ -1006,12 +2134,12 @@ export class PokedexPanel {
       }
 
       Array.prototype.forEach.call(
-        document.querySelectorAll('.filter-chip'),
+        document.querySelectorAll('.filter-chip[data-generation]'),
         function (chip) {
           chip.addEventListener('click', function () {
             generation = chip.dataset.generation;
             Array.prototype.forEach.call(
-              document.querySelectorAll('.filter-chip'),
+              document.querySelectorAll('.filter-chip[data-generation]'),
               function (other) {
                 other.classList.toggle('is-selected', other === chip);
               }
@@ -1021,8 +2149,235 @@ export class PokedexPanel {
         }
       );
 
+      function updateTypeFilterButton() {
+        var selected = Object.keys(selectedTypes).filter(function (t) { return selectedTypes[t]; });
+        if (typeFilterToggle) {
+          typeFilterToggle.classList.toggle('is-selected', selected.length > 0);
+        }
+        if (typeFilterCount) {
+          typeFilterCount.hidden = selected.length === 0;
+          typeFilterCount.textContent = selected.length ? ' (' + selected.length + ')' : '';
+        }
+      }
+
+      function setTypeFilterOpen(open) {
+        if (!typeFilterMenu || !typeFilterToggle) {
+          return;
+        }
+        typeFilterMenu.hidden = !open;
+        typeFilterToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+      }
+
+      if (typeFilterToggle) {
+        typeFilterToggle.addEventListener('click', function (event) {
+          event.stopPropagation();
+          setTypeFilterOpen(typeFilterMenu && typeFilterMenu.hidden);
+        });
+      }
+
+      if (typeFilterMenu) {
+        // Each option is a <label> wrapping its own checkbox, so a click
+        // anywhere in the row - not just the tiny checkbox itself - already
+        // toggles it natively. This only needs to stop the click from
+        // bubbling to the document listener below and closing the menu.
+        typeFilterMenu.addEventListener('click', function (event) {
+          event.stopPropagation();
+        });
+
+        Array.prototype.forEach.call(
+          typeFilterMenu.querySelectorAll('[data-type-option]'),
+          function (checkbox) {
+            checkbox.addEventListener('change', function () {
+              selectedTypes[checkbox.value] = checkbox.checked;
+              updateTypeFilterButton();
+              applyFilters();
+            });
+          }
+        );
+      }
+
+      if (typeFilterClear) {
+        typeFilterClear.addEventListener('click', function (event) {
+          event.stopPropagation();
+          selectedTypes = {};
+          Array.prototype.forEach.call(
+            typeFilterMenu.querySelectorAll('[data-type-option]'),
+            function (checkbox) { checkbox.checked = false; }
+          );
+          updateTypeFilterButton();
+          applyFilters();
+        });
+      }
+
+      document.addEventListener('click', function (event) {
+        if (typeFilterMenu && !typeFilterMenu.hidden && !event.target.closest('.type-filter')) {
+          setTypeFilterOpen(false);
+        }
+      });
+
+      document.addEventListener('keydown', function (event) {
+        if (event.key === 'Escape') {
+          setTypeFilterOpen(false);
+        }
+      });
+
+      // The actual eligibility check (hatched, not a read-only snapshot, not
+      // already at the end of its line, and a candy to spend) lives on the
+      // extension side and runs again there regardless - disabled here is
+      // just so the button does not invite a click that would do nothing.
+      if (candyCounter) {
+        candyCounter.addEventListener('click', function () {
+          if (candyCounter.disabled) {
+            return;
+          }
+          vscode.postMessage({ command: 'use-rare-candy' });
+        });
+      }
+
+      // Collapsed on every fresh load/reload by design - the accordion's
+      // open/closed state itself is otherwise just DOM state, which
+      // retainContextWhenHidden already carries across the panel being
+      // hidden and shown again, same as the search/filter state below.
+      var bagToggle = document.getElementById('bag-toggle');
+      var bagContent = document.getElementById('bag-content');
+      if (bagToggle && bagContent) {
+        bagToggle.addEventListener('click', function () {
+          var open = bagContent.hidden;
+          bagContent.hidden = !open;
+          bagToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+        });
+      }
+
+      Array.prototype.forEach.call(
+        document.querySelectorAll('[data-bag-tab]'),
+        function (tab) {
+          tab.addEventListener('click', function () {
+            var target = tab.dataset.bagTab;
+            Array.prototype.forEach.call(
+              document.querySelectorAll('[data-bag-tab]'),
+              function (other) {
+                var isTarget = other === tab;
+                other.classList.toggle('is-selected', isTarget);
+                other.setAttribute('aria-selected', isTarget ? 'true' : 'false');
+              }
+            );
+            Array.prototype.forEach.call(
+              document.querySelectorAll('[data-bag-tabpanel]'),
+              function (panel) {
+                panel.hidden = panel.dataset.bagTabpanel !== target;
+              }
+            );
+          });
+        }
+      );
+
+      var bagPanelItems = document.getElementById('bag-panel-items');
+      var bagPanelBadges = document.getElementById('bag-panel-badges');
+
+      if (bagPanelBadges) {
+        bagPanelBadges.addEventListener('click', function (event) {
+          var genTab = event.target.closest('[data-badge-gen]');
+          if (!genTab) {
+            return;
+          }
+          var target = genTab.dataset.badgeGen;
+          Array.prototype.forEach.call(
+            bagPanelBadges.querySelectorAll('.badge-gen-tab'),
+            function (other) {
+              var isTarget = other === genTab;
+              other.classList.toggle('is-selected', isTarget);
+              other.setAttribute('aria-selected', isTarget ? 'true' : 'false');
+            }
+          );
+          Array.prototype.forEach.call(
+            bagPanelBadges.querySelectorAll('[data-badge-gen-row]'),
+            function (row) {
+              row.hidden = row.dataset.badgeGenRow !== target;
+            }
+          );
+        });
+      }
+      // Each item's own use command - the item id itself is not sent as
+      // data, so the extension side never has to trust which one the
+      // webview claims was clicked.
+      var ITEM_USE_COMMANDS = {
+        'rare-candy': 'use-rare-candy',
+        'master-ball': 'use-master-ball',
+        'premier-ball': 'use-premier-ball'
+      };
+
+      if (bagPanelItems) {
+        bagPanelItems.addEventListener('click', function (event) {
+          var useButton = event.target.closest('[data-use-item]');
+          if (!useButton || useButton.disabled) {
+            return;
+          }
+          var command = ITEM_USE_COMMANDS[useButton.dataset.useItem];
+          if (command) {
+            vscode.postMessage({ command: command });
+          }
+        });
+      }
+
+      // Same reasoning as the main panel/Explorer view: a fresh
+      // HTMLAudioElement re-checks the browser's autoplay gesture policy on
+      // every play() call, while a Web Audio AudioContext only needs a
+      // gesture once to start running, after which playing a buffer through
+      // it works the same regardless of what triggered it.
+      var audioContext;
+      var cryBufferCache = {};
+
+      function loadCryBuffer(crySrc, ctx) {
+        if (cryBufferCache[crySrc]) {
+          return Promise.resolve(cryBufferCache[crySrc]);
+        }
+        return fetch(crySrc)
+          .then(function (response) { return response.arrayBuffer(); })
+          .then(function (arrayBuffer) { return ctx.decodeAudioData(arrayBuffer); })
+          .then(function (buffer) {
+            cryBufferCache[crySrc] = buffer;
+            return buffer;
+          });
+      }
+
+      function playCrySrc(crySrc) {
+        if (!audioContext) {
+          audioContext = new AudioContext();
+        }
+        var ctx = audioContext;
+        Promise.resolve(ctx.state === 'suspended' ? ctx.resume() : undefined)
+          .then(function () { return loadCryBuffer(crySrc, ctx); })
+          .then(function (buffer) {
+            var source = ctx.createBufferSource();
+            source.buffer = buffer;
+            source.connect(ctx.destination);
+            source.start(0);
+          })
+          .catch(function (err) {
+            console.warn('[pokechi] could not play cry:', err);
+          });
+      }
+
       if (grid) {
         grid.addEventListener('click', function (event) {
+          var playButton = event.target.closest('[data-play-cry]');
+          if (playButton) {
+            event.stopPropagation();
+            var crySrc = playButton.dataset.crySrc;
+            if (crySrc) {
+              playCrySrc(crySrc);
+            }
+            playSoundWaveBurst(playButton.closest('.pokemon-card-wrapper'));
+            return;
+          }
+
+          var faceToggle = event.target.closest('[data-flip-target]');
+          if (faceToggle) {
+            event.stopPropagation();
+            toggleCardFace(faceToggle);
+            return;
+          }
+
           var toggle = event.target.closest('[data-shiny-toggle]');
           if (toggle) {
             // The toggle sits next to the card button, not inside it, but
@@ -1040,12 +2395,62 @@ export class PokedexPanel {
 
           var sprite = card.querySelector('.sprite');
 
+          // Picking a card counts as being "picked from the Pokechidex" for
+          // pokechi.playCrySounds, unlike the dedicated play button (an
+          // explicit "let me hear it" click, which always plays). Playing it
+          // here rather than leaving it to whatever webview ends up showing
+          // the pokemon also means it does not depend on that separate
+          // frame's own, independent autoplay unlock state.
+          var cardWrapper = card.closest('.pokemon-card-wrapper');
+          var cardPlayButton = cardWrapper && cardWrapper.querySelector('[data-play-cry]');
+          if (playCrySoundsEnabled && cardPlayButton && cardPlayButton.dataset.crySrc) {
+            playCrySrc(cardPlayButton.dataset.crySrc);
+            playSoundWaveBurst(cardWrapper);
+          }
+
           vscode.postMessage({
             command: 'show-pokemon',
             pokemonType: card.dataset.pokemonType,
             isShiny: !!sprite && sprite.dataset.showingShiny === '1'
           });
         });
+      }
+
+      // Clicking the currently-showing side's own button flips the card back
+      // to the front. Clicking the other one while already flipped just
+      // swaps which back panel is visible, no second flip needed - the card
+      // is already turned around.
+      function toggleCardFace(button) {
+        var wrapper = button.closest('.pokemon-card-wrapper');
+        var flip = wrapper && wrapper.querySelector('.card-flip');
+        if (!flip) {
+          return;
+        }
+
+        var target = button.dataset.flipTarget;
+        var isFlipped = flip.classList.contains('is-flipped');
+        var currentPanel = flip.querySelector('.back-panel:not([hidden])');
+        var currentTarget = currentPanel && currentPanel.dataset.backPanel;
+
+        if (isFlipped && currentTarget === target) {
+          flip.classList.remove('is-flipped');
+        } else {
+          var panels = flip.querySelectorAll('.back-panel');
+          Array.prototype.forEach.call(panels, function (panel) {
+            panel.hidden = panel.dataset.backPanel !== target;
+          });
+          flip.classList.add('is-flipped');
+        }
+
+        var stillFlipped = flip.classList.contains('is-flipped');
+        var activePanel = stillFlipped && flip.querySelector('.back-panel:not([hidden])');
+        var activeTarget = activePanel && activePanel.dataset.backPanel;
+        Array.prototype.forEach.call(
+          wrapper.querySelectorAll('[data-flip-target]'),
+          function (toggleButton) {
+            toggleButton.setAttribute('aria-pressed', toggleButton.dataset.flipTarget === activeTarget ? 'true' : 'false');
+          }
+        );
       }
 
       function toggleShinySprite(toggle) {
@@ -1092,6 +2497,23 @@ export class PokedexPanel {
         }, 1000);
       }
 
+      // Ripples a few rings out from the sprite whenever its cry plays.
+      function playSoundWaveBurst(wrapper) {
+        var burst = wrapper && wrapper.querySelector('.sound-wave-burst');
+        if (!burst) {
+          return;
+        }
+
+        burst.classList.remove('is-active');
+        void burst.offsetWidth;
+        burst.classList.add('is-active');
+
+        clearTimeout(burst._hideTimer);
+        burst._hideTimer = setTimeout(function () {
+          burst.classList.remove('is-active');
+        }, 1000);
+      }
+
       // Keeps a card's sprite/toggle in step with whatever is actually shown
       // on screen. Only used for the active card: browsing other cards'
       // sprites is a free cosmetic choice and must not be overridden.
@@ -1115,6 +2537,44 @@ export class PokedexPanel {
         }
       }
 
+      // Both card-controls helpers below share this: the row only exists on
+      // a card once something (the play button, the shiny toggle) needs it.
+      function ensureCardControls(wrapper) {
+        var controls = wrapper.querySelector('.card-controls');
+        if (!controls) {
+          controls = document.createElement('div');
+          controls.className = 'card-controls';
+          wrapper.appendChild(controls);
+        }
+        return controls;
+      }
+
+      // Adds the play button the moment a card becomes discovered - every
+      // discovered species has a cry, so unlike the shiny toggle this is
+      // unconditional.
+      function ensurePlayCryButton(card, entry) {
+        if (!entry.cryUri) {
+          return;
+        }
+        var wrapper = card.closest('.pokemon-card-wrapper');
+        if (!wrapper) {
+          return;
+        }
+        var controls = ensureCardControls(wrapper);
+        if (controls.querySelector('[data-play-cry]')) {
+          return;
+        }
+        var button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'play-cry-button';
+        button.setAttribute('data-play-cry', '');
+        button.setAttribute('data-cry-src', entry.cryUri);
+        button.setAttribute('aria-label', fillTemplate(STRINGS.playCryLabelTemplate, entry.name));
+        button.title = STRINGS.playCryTitle;
+        button.innerHTML = '${SOUND_ICON}';
+        controls.insertBefore(button, controls.firstChild);
+      }
+
       // Adds the toggle next to a card that just became shiny-discovered.
       // Already-shiny cards (and non-shiny ones) are left untouched.
       function ensureShinyToggle(card, entry) {
@@ -1134,15 +2594,153 @@ export class PokedexPanel {
           return;
         }
 
+        var controls = ensureCardControls(wrapper);
         var toggle = document.createElement('button');
         toggle.type = 'button';
         toggle.className = 'shiny-toggle';
         toggle.setAttribute('data-shiny-toggle', '');
-        toggle.setAttribute('aria-label', 'Toggle shiny sprite for ' + entry.name);
+        toggle.setAttribute('aria-label', fillTemplate(STRINGS.toggleShinyLabelTemplate, entry.name));
         toggle.setAttribute('aria-pressed', 'false');
-        toggle.title = 'Toggle shiny sprite';
+        toggle.title = STRINGS.toggleShinyTitle;
         toggle.innerHTML = '${SPARKLE_ICON}';
-        wrapper.appendChild(toggle);
+        controls.appendChild(toggle);
+      }
+
+      var BACK_STAT_LABELS = [
+        ['hp', 'HP'], ['attack', 'ATK'], ['defense', 'DEF'],
+        ['specialAttack', 'SPA'], ['specialDefense', 'SPD'], ['speed', 'SPE']
+      ];
+
+      function escapeHtmlClient(value) {
+        return String(value)
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&#39;');
+      }
+
+      // Mirrors renderBadgeCardHtml/renderBadgesPanelHtml in getWebviewContent
+      // - the Pokedex webview is never fully reloaded after it is first
+      // created (only ever sent pokedex-update messages), so a badge earned
+      // mid-session has to be rendered here too, not just on the server.
+      function buildBadgeCardHtml(status) {
+        var requirementsHtml = status.requirements.map(function (r) {
+          return '<li class="badge-requirement' + (r.met ? ' is-met' : '') + '">' +
+            escapeHtmlClient(r.label) + ': ' + r.current + '/' + r.required + '</li>';
+        }).join('');
+
+        return (
+          '<div class="badge-card ' + (status.earned ? 'is-earned' : 'is-locked') + '">' +
+          '<div class="badge-card-name">' + escapeHtmlClient(status.name) + '</div>' +
+          '<img class="badge-card-image" src="' + status.spriteUri + '" alt="" />' +
+          '<ul class="badge-card-requirements">' + requirementsHtml + '</ul>' +
+          '<div class="badge-card-status">' + (status.earned ? STRINGS.badgeStatusObtained : STRINGS.badgeStatusLocked) + '</div>' +
+          '</div>'
+        );
+      }
+
+      // Rows only, not the generation tabs above them - a live update
+      // rebuilds just this wrapper, so it does not reset whichever
+      // generation tab the user already had open back to Gen 1.
+      function buildBadgeRowsHtml(statuses) {
+        var byGeneration = {};
+        statuses.forEach(function (status) {
+          var gen = status.generation;
+          if (!byGeneration[gen]) {
+            byGeneration[gen] = [];
+          }
+          byGeneration[gen].push(status);
+        });
+
+        return [1, 2, 3, 4].map(function (gen, index) {
+          var list = (byGeneration[gen] || []).slice().sort(function (a, b) {
+            return a.order - b.order;
+          });
+          var cards = list.map(buildBadgeCardHtml).join('');
+          return (
+            '<div class="badge-row" data-badge-gen-row="' + gen + '"' + (index === 0 ? '' : ' hidden') + '>' +
+            cards +
+            '</div>'
+          );
+        }).join('');
+      }
+
+      // Mirrors the server-rendered back face in getWebviewContent - used
+      // only for a card that reaches "discovered" mid-session, since a card
+      // already in the initial HTML already has this from the server.
+      function buildCardFaceHtml(info, name) {
+        var statsHtml = BACK_STAT_LABELS.map(function (pair) {
+          return '<li><span class="back-stat-label">' + pair[1] + '</span><span class="back-stat-value">' + info.stats[pair[0]] + '</span></li>';
+        }).join('');
+        var movesHtml = info.moves.map(function (move) {
+          var badge = TYPE_BADGES[move.type];
+          var badgeHtml = badge ? '<span class="type-badge type-' + move.type + '">' + badge.abbr + '</span>' : '';
+          return (
+            '<li class="back-move"><div class="back-move-header">' +
+            '<span class="back-move-name-group">' + badgeHtml + '<span class="back-move-name">' + escapeHtmlClient(move.name) + '</span></span>' +
+            '<span class="back-move-power">' + (move.power === null ? '-' : move.power) + '</span>' +
+            '</div><p class="back-move-description">' + escapeHtmlClient(move.description) + '</p></li>'
+          );
+        }).join('');
+
+        return (
+          '<div class="card-face card-face-back">' +
+          '<div class="back-panel back-panel-info" data-back-panel="info">' +
+          '<p class="back-flavor">' + escapeHtmlClient(info.flavorText) + '</p>' +
+          '<ul class="back-stats">' + statsHtml + '</ul>' +
+          '</div>' +
+          '<div class="back-panel back-panel-moves" data-back-panel="moves" hidden>' +
+          '<ul class="back-moves">' + movesHtml + '</ul>' +
+          '</div>' +
+          '<div class="back-footer-name">' + escapeHtmlClient(name) + '</div>' +
+          '</div>'
+        );
+      }
+
+      // Adds the flipped-card back and its two corner toggle buttons the
+      // moment a card becomes discovered - same "unconditional once
+      // discovered" reasoning as the play-cry button, since every species
+      // has info and (almost always) a moveset. Both buttons sit outside
+      // card-flip, at the wrapper level, same as the server-rendered ones.
+      function ensureCardFace(card, entry) {
+        if (!entry.info) {
+          return;
+        }
+        var wrapper = card.closest('.pokemon-card-wrapper');
+        var inner = wrapper && wrapper.querySelector('.card-flip-inner');
+        if (!wrapper || !inner) {
+          return;
+        }
+
+        if (!inner.querySelector('.card-face-back')) {
+          inner.insertAdjacentHTML('beforeend', buildCardFaceHtml(entry.info, entry.name));
+        }
+
+        if (wrapper.querySelector('[data-flip-target]')) {
+          return;
+        }
+
+        var infoButton = document.createElement('button');
+        infoButton.type = 'button';
+        infoButton.className = 'face-toggle face-toggle-info';
+        infoButton.setAttribute('data-flip-target', 'info');
+        infoButton.setAttribute('aria-label', fillTemplate(STRINGS.showInfoLabelTemplate, entry.name));
+        infoButton.setAttribute('aria-pressed', 'false');
+        infoButton.title = STRINGS.infoTitle;
+        infoButton.innerHTML = '${INFO_ICON}';
+
+        var movesButton = document.createElement('button');
+        movesButton.type = 'button';
+        movesButton.className = 'face-toggle face-toggle-moves';
+        movesButton.setAttribute('data-flip-target', 'moves');
+        movesButton.setAttribute('aria-label', fillTemplate(STRINGS.showMovesLabelTemplate, entry.name));
+        movesButton.setAttribute('aria-pressed', 'false');
+        movesButton.title = STRINGS.movesTitle;
+        movesButton.innerHTML = '${ATTACK_ICON}';
+
+        wrapper.appendChild(infoButton);
+        wrapper.appendChild(movesButton);
       }
 
       function unlock(card, entry) {
@@ -1150,7 +2748,8 @@ export class PokedexPanel {
         card.classList.add('discovered');
         card.disabled = false;
         card.dataset.pokemonType = entry.type;
-        card.setAttribute('aria-label', 'Show ' + entry.name);
+        card.dataset.types = entry.types ? entry.types.join(' ') : '';
+        card.setAttribute('aria-label', fillTemplate(STRINGS.cardShowLabelTemplate, entry.name));
 
         var sprite = card.querySelector('.sprite');
         if (sprite && entry.spriteUri) {
@@ -1182,7 +2781,9 @@ export class PokedexPanel {
           }).join('');
         }
 
+        ensurePlayCryButton(card, entry);
         ensureShinyToggle(card, entry);
+        ensureCardFace(card, entry);
       }
 
       window.addEventListener('message', function (event) {
@@ -1219,10 +2820,16 @@ export class PokedexPanel {
             !term ||
             (target.dataset.name && target.dataset.name.indexOf(term) >= 0) ||
             (target.dataset.number && target.dataset.number.indexOf(term) >= 0);
+          var targetHasSelectedTypes = Object.keys(selectedTypes).some(function (t) { return selectedTypes[t]; });
+          var targetTypes = target.dataset.types ? target.dataset.types.split(' ') : [];
+          var matchesTypes =
+            !targetHasSelectedTypes ||
+            !targetTypes.length ||
+            targetTypes.some(function (t) { return selectedTypes[t]; });
 
-          if (!(matchesGeneration && matchesDiscovered && matchesShiny && matchesTerm)) {
+          if (!(matchesGeneration && matchesDiscovered && matchesShiny && matchesTerm && matchesTypes)) {
             generation = 'all';
-            Array.prototype.forEach.call(document.querySelectorAll('.filter-chip'), function (chip) {
+            Array.prototype.forEach.call(document.querySelectorAll('.filter-chip[data-generation]'), function (chip) {
               chip.classList.toggle('is-selected', chip.dataset.generation === 'all');
             });
             if (search) {
@@ -1234,6 +2841,14 @@ export class PokedexPanel {
             if (onlyShiny) {
               onlyShiny.checked = false;
             }
+            selectedTypes = {};
+            if (typeFilterMenu) {
+              Array.prototype.forEach.call(
+                typeFilterMenu.querySelectorAll('[data-type-option]'),
+                function (checkbox) { checkbox.checked = false; }
+              );
+            }
+            updateTypeFilterButton();
             applyFilters();
           }
 
@@ -1262,7 +2877,9 @@ export class PokedexPanel {
           if (card.classList.contains('locked')) {
             unlock(card, entry);
           } else {
+            ensurePlayCryButton(card, entry);
             ensureShinyToggle(card, entry);
+            ensureCardFace(card, entry);
           }
         });
 
@@ -1286,6 +2903,76 @@ export class PokedexPanel {
 
         if (shinyCounter && typeof data.shinyDiscoveredCount === 'number') {
           shinyCounter.textContent = data.shinyDiscoveredCount + '/${totalCount}';
+        }
+
+        if (typeof data.rareCandyCount === 'number') {
+          if (candyCounterValue) {
+            candyCounterValue.textContent = String(data.rareCandyCount);
+          }
+          if (candyCounter) {
+            var usable = !!data.canUseRareCandy && data.rareCandyCount > 0;
+            candyCounter.disabled = !usable;
+            candyCounter.title = data.rareCandyCount === 0
+              ? fillTemplate(STRINGS.candyCounterNoneYetTemplate, RARE_CANDY_NAME)
+              : usable
+              ? RARE_CANDY_DESCRIPTION
+              : fillTemplate(STRINGS.candyCounterNotUsableNowTemplate, RARE_CANDY_NAME);
+          }
+
+          var bagCandyCount = document.querySelector('[data-item-count="rare-candy"]');
+          if (bagCandyCount) {
+            bagCandyCount.textContent = 'x' + data.rareCandyCount;
+          }
+          var bagCandyUseButton = document.querySelector('[data-use-item="rare-candy"]');
+          if (bagCandyUseButton) {
+            bagCandyUseButton.disabled = !usable;
+          }
+        }
+
+        if (typeof data.masterBallCount === 'number') {
+          var masterBallUsableNow = !!data.canUseMasterBall && data.masterBallCount > 0;
+          var bagBallCount = document.querySelector('[data-item-count="master-ball"]');
+          if (bagBallCount) {
+            bagBallCount.textContent = 'x' + data.masterBallCount;
+          }
+          var bagBallUseButton = document.querySelector('[data-use-item="master-ball"]');
+          if (bagBallUseButton) {
+            bagBallUseButton.disabled = !masterBallUsableNow;
+          }
+        }
+
+        if (typeof data.premierBallCount === 'number') {
+          var premierBallUsableNow = !!data.canUsePremierBall && data.premierBallCount > 0;
+          var bagPremierCount = document.querySelector('[data-item-count="premier-ball"]');
+          if (bagPremierCount) {
+            bagPremierCount.textContent = 'x' + data.premierBallCount;
+          }
+          var bagPremierUseButton = document.querySelector('[data-use-item="premier-ball"]');
+          if (bagPremierUseButton) {
+            bagPremierUseButton.disabled = !premierBallUsableNow;
+          }
+        }
+
+        if (Array.isArray(data.badges)) {
+          if (badgeCounter) {
+            var earnedCount = data.badges.filter(function (b) { return b.earned; }).length;
+            badgeCounter.textContent = earnedCount + '/' + data.badges.length;
+          }
+        }
+
+        if (Array.isArray(data.badges) && bagPanelBadges) {
+          var badgeRowWrapper = document.getElementById('badge-row-wrapper');
+          if (badgeRowWrapper) {
+            var selectedGenTab = bagPanelBadges.querySelector('.badge-gen-tab.is-selected');
+            var selectedGen = selectedGenTab ? selectedGenTab.dataset.badgeGen : '1';
+            badgeRowWrapper.innerHTML = buildBadgeRowsHtml(data.badges);
+            Array.prototype.forEach.call(
+              badgeRowWrapper.querySelectorAll('[data-badge-gen-row]'),
+              function (row) {
+                row.hidden = row.dataset.badgeGenRow !== selectedGen;
+              }
+            );
+          }
         }
 
         // A newly discovered species may now match the active filters.

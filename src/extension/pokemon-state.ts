@@ -1,6 +1,12 @@
 import * as vscode from 'vscode'
 import { Roster, RosterEntry, UserPokemon } from './types'
-import { PokemonColor, PokemonElementType, PokemonType } from '../common/types'
+import {
+  PokemonColor,
+  PokemonElementType,
+  PokemonGeneration,
+  PokemonRarity,
+  PokemonType,
+} from '../common/types'
 import { StateStore } from './state-store'
 import {
   EvolutionLine,
@@ -18,6 +24,9 @@ import {
   STARTER_POKEMON,
 } from '../common/pokemon-evolutions'
 import { POKEMON_DATA } from '../common/pokemon-data'
+import { ItemId } from '../common/items'
+import { BADGES, BadgeConfig, BadgeCondition } from '../common/badges'
+import { Strings, getStrings } from '../common/i18n'
 
 const DEFAULT_XP_FOR_POKEBALL = 500
 const DEFAULT_XP_FOR_FIRST_EVOLUTION = 1000
@@ -332,10 +341,13 @@ export class PokemonState {
       evolutionLine: entry.evolutionLine,
       state: 'walking',
       scale: scaleFactor,
-      // Resuming a line does not replay a hatch/evolve-style reveal, except
-      // for a shiny: bringing one out of the Pokedex is still worth the
-      // sparkle, unlike a plain recolor-free resume.
-      isTransitionIn: entry.color === PokemonColor.shiny,
+      // Every Pokedex pick is a deliberate reveal - the transition flash,
+      // its cry, and (for a shiny) the sparkle burst all ride this same
+      // flag, delivered through the webview's initial embedded state rather
+      // than a follow-up message, since a message posted right after the
+      // reload that always accompanies a pick can be dropped before the
+      // webview has finished loading.
+      isTransitionIn: true,
       leftPosition: 0,
       direction: 'right',
       color: entry.color,
@@ -431,17 +443,22 @@ export class PokemonState {
     return pokemon
   }
 
-  // Shared by createNewPokemon and createStarterPokemon: everything past
-  // "which base species" is identical for both.
+  // Shared by createNewPokemon, createStarterPokemon, useMasterBall and
+  // usePremierBall: everything past "which base species, which color" is
+  // identical for all four. forcedColor lets a Master/Premier Ball honor its
+  // own odds (or guarantee) instead of the usual random roll every other
+  // catch gets.
   private static buildFreshPokeball(
     context: vscode.ExtensionContext,
-    basePokemon: PokemonType
+    basePokemon: PokemonType,
+    forcedColor?: PokemonColor,
+    ballSource?: 'master-ball' | 'premier-ball'
   ): UserPokemon {
     const scaleFactor = vscode.workspace
       .getConfiguration()
       .get('pokechi.scaleFactor', 1.0)
 
-    const color = getRandomPokemonColor()
+    const color = forcedColor ?? getRandomPokemonColor()
     // A branching base (Eevee, Oddish, ...) has more than one possible line;
     // this rolls which one this specific catch commits to. Non-branching
     // bases only ever have one, so this is a no-op for them.
@@ -489,6 +506,7 @@ export class PokemonState {
       color,
       canGainXP: true,
       pendingAlreadyOwned: isAlreadyOwned,
+      pendingBallReveal: ballSource,
     }
 
     store(context).getState().pokemon = pokemon
@@ -597,4 +615,424 @@ export class PokemonState {
     state.totalXP = (state.totalXP || 0) + amount
     store(context).save()
   }
+
+  static getHatchCount(context: vscode.ExtensionContext): number {
+    return store(context).getState().hatchCount || 0
+  }
+
+  // Called once per hatch (Pokeball -> level 1) by the XP tracker, before
+  // it checks any item's hatchMilestone against the new total - so an item
+  // due exactly on this hatch (the 10th, 20th, ...) sees the count that
+  // already includes it.
+  static incrementHatchCount(context: vscode.ExtensionContext): number {
+    const state = store(context).getState()
+    state.hatchCount = (state.hatchCount || 0) + 1
+    store(context).save()
+    return state.hatchCount
+  }
+
+  // --- Generic item inventory -----------------------------------------
+  // Storage only: what an item actually does when used is its own
+  // dedicated code (see useRareCandy below), built on top of these.
+
+  static getItemCount(context: vscode.ExtensionContext, itemId: ItemId): number {
+    return store(context).getState().items[itemId] || 0
+  }
+
+  static addItem(
+    context: vscode.ExtensionContext,
+    itemId: ItemId,
+    amount = 1
+  ): void {
+    const state = store(context).getState()
+    state.items[itemId] = (state.items[itemId] || 0) + amount
+    store(context).save()
+  }
+
+  // False (does nothing) rather than throwing if the player has fewer than
+  // amount - every caller is expected to have already checked getItemCount.
+  static removeItem(
+    context: vscode.ExtensionContext,
+    itemId: ItemId,
+    amount = 1
+  ): boolean {
+    const state = store(context).getState()
+    const current = state.items[itemId] || 0
+    if (current < amount) {
+      return false
+    }
+    state.items[itemId] = current - amount
+    store(context).save()
+    return true
+  }
+
+  // --- Rare Candy --------------------------------------------------------
+
+  // A candy can only speed up growth already under way, never conjure it
+  // from nothing: no effect on a still-unhatched Pokeball (level 0,
+  // "eclosionar" is not what it is for) and none on a read-only Pokedex
+  // snapshot, which must not grow at all regardless of how the growth is
+  // triggered.
+  static canUseRareCandy(pokemon: UserPokemon | undefined): boolean {
+    if (!pokemon || pokemon.level === 0 || !pokemon.canGainXP) {
+      return false
+    }
+    return PokemonState.hasFurtherEvolution(pokemon)
+  }
+
+  // Skips straight to the next stage by topping the current one up to its
+  // XP requirement first, so the rest of the transition - discoverPokemon,
+  // rememberActivePokemon, the already-owned freeze - runs through the same
+  // evolvePokemon path a naturally-earned evolution does, rather than
+  // duplicating it.
+  static useRareCandy(
+    context: vscode.ExtensionContext,
+    pokemon: UserPokemon
+  ): boolean {
+    if (
+      PokemonState.getItemCount(context, 'rare-candy') <= 0 ||
+      !PokemonState.canUseRareCandy(pokemon)
+    ) {
+      return false
+    }
+
+    pokemon.xp = PokemonState.getRequiredXP(pokemon)
+    const evolved = PokemonState.evolvePokemon(context, pokemon)
+    if (!evolved) {
+      return false
+    }
+
+    PokemonState.removeItem(context, 'rare-candy', 1)
+    PokemonState.recordItemUsed(context, 'rare-candy', 1)
+    return true
+  }
+
+  // --- Master Ball ---------------------------------------------------------
+
+  // 60% sub-legendary, 30% legendary, 10% mythical - unrelated to any
+  // generation's own rarity odds, since this always draws from every
+  // generation at once.
+  private static readonly MASTER_BALL_TIER_ODDS: Array<[PokemonRarity, number]> = [
+    [PokemonRarity.subLegendary, 0.6],
+    [PokemonRarity.legendary, 0.3],
+    [PokemonRarity.mythical, 0.1],
+  ]
+
+  private static rollMasterBallTier(): PokemonRarity {
+    let roll = Math.random()
+    for (const [rarity, weight] of PokemonState.MASTER_BALL_TIER_ODDS) {
+      if (roll < weight) {
+        return rarity
+      }
+      roll -= weight
+    }
+    // Only reachable through floating-point rounding at the very top of the
+    // range - the weights above already sum to 1.
+    return PokemonRarity.mythical
+  }
+
+  // Picks what a Master Ball would reveal without spending it or touching
+  // state, so canUseMasterBall can ask "is there anything left to give"
+  // without duplicating this search. Rolls a tier, then a random species
+  // within it that is not already discovered; falls back to the other two
+  // tiers (still undiscovered-only) if the rolled one has nothing left, and
+  // only comes up empty once every sub-legendary, legendary and mythical
+  // species across all four generations is already caught.
+  private static pickMasterBallReward(
+    context: vscode.ExtensionContext
+  ): PokemonType | undefined {
+    const discovered = new Set(PokemonState.getPokedex(context))
+    const allTiers = PokemonState.MASTER_BALL_TIER_ODDS.map(([rarity]) => rarity)
+    const rolledTier = PokemonState.rollMasterBallTier()
+    const orderedTiers = [rolledTier, ...allTiers.filter((tier) => tier !== rolledTier)]
+
+    for (const tier of orderedTiers) {
+      const candidates = Object.entries(POKEMON_DATA)
+        .filter(([type, data]) => data.rarity === tier && !discovered.has(type))
+        .map(([type]) => type as PokemonType)
+      if (candidates.length > 0) {
+        return candidates[Math.floor(Math.random() * candidates.length)]
+      }
+    }
+    return undefined
+  }
+
+  static canUseMasterBall(context: vscode.ExtensionContext): boolean {
+    return PokemonState.pickMasterBallReward(context) !== undefined
+  }
+
+  // Same as a candy in one sense (it never leaves the roster) but not in
+  // another - it does replace the active pokemon, the same way "Catch a new
+  // Pokemon" does (rememberActivePokemon banks whatever was out first). What
+  // it guarantees is the species, not an instant unlock: it opens as a
+  // fresh, unhatched Pokeball of that line's base, so it still has to be
+  // raised to actually show up in the Pokechidex. Returns the new active
+  // pokemon plus the exact species promised (for the announcement, since the
+  // ball may start the player several stages before it), or undefined if
+  // there was nothing left to give (or nothing to spend).
+  static useMasterBall(
+    context: vscode.ExtensionContext
+  ): { pokemon: UserPokemon; revealedType: PokemonType; isShiny: boolean } | undefined {
+    if (PokemonState.getItemCount(context, 'master-ball') <= 0) {
+      return undefined
+    }
+
+    const reward = PokemonState.pickMasterBallReward(context)
+    if (!reward) {
+      return undefined
+    }
+
+    // Same odds as any other reveal - a Master Ball skips the catch itself,
+    // not the usual chance of what comes out of it.
+    const color = getRandomPokemonColor()
+    const base = getEvolutionLineContaining(reward)?.base ?? reward
+    PokemonState.rememberActivePokemon(context)
+    const pokemon = PokemonState.buildFreshPokeball(context, base, color, 'master-ball')
+    PokemonState.removeItem(context, 'master-ball', 1)
+    PokemonState.recordItemUsed(context, 'master-ball', 1)
+    return { pokemon, revealedType: reward, isShiny: color === PokemonColor.shiny }
+  }
+
+  // --- Premier Ball ----------------------------------------------------------
+
+  // No tier restriction (any of the 553, any generation) and always
+  // shiny - the point is a guaranteed shiny, so this specifically avoids a
+  // species whose shiny is already unlocked, even if the species itself is
+  // already caught in its default color. Only comes up empty once every
+  // single species' shiny is already unlocked.
+  private static pickPremierBallReward(
+    context: vscode.ExtensionContext
+  ): PokemonType | undefined {
+    const shinyDiscovered = new Set(PokemonState.getShinyPokedex(context))
+    const candidates = Object.keys(POKEMON_DATA).filter(
+      (type) => !shinyDiscovered.has(type)
+    ) as PokemonType[]
+    if (candidates.length === 0) {
+      return undefined
+    }
+    return candidates[Math.floor(Math.random() * candidates.length)]
+  }
+
+  static canUsePremierBall(context: vscode.ExtensionContext): boolean {
+    return PokemonState.pickPremierBallReward(context) !== undefined
+  }
+
+  // Same "guarantees the species, not an instant unlock" treatment as
+  // useMasterBall above - opens as a fresh, unhatched Pokeball of the
+  // promised species' line base, always shiny, replacing whatever was
+  // active (progress banked first, same as any other new catch).
+  static usePremierBall(
+    context: vscode.ExtensionContext
+  ): { pokemon: UserPokemon; revealedType: PokemonType } | undefined {
+    if (PokemonState.getItemCount(context, 'premier-ball') <= 0) {
+      return undefined
+    }
+
+    const reward = PokemonState.pickPremierBallReward(context)
+    if (!reward) {
+      return undefined
+    }
+
+    const base = getEvolutionLineContaining(reward)?.base ?? reward
+    PokemonState.rememberActivePokemon(context)
+    const pokemon = PokemonState.buildFreshPokeball(
+      context,
+      base,
+      PokemonColor.shiny,
+      'premier-ball'
+    )
+    PokemonState.removeItem(context, 'premier-ball', 1)
+    PokemonState.recordItemUsed(context, 'premier-ball', 1)
+    return { pokemon, revealedType: reward }
+  }
+
+  // --- Item usage (lifetime, for badge conditions) ------------------------
+
+  static getItemUsedCount(context: vscode.ExtensionContext, itemId: ItemId): number {
+    return store(context).getState().itemUsageCount[itemId] || 0
+  }
+
+  private static recordItemUsed(
+    context: vscode.ExtensionContext,
+    itemId: ItemId,
+    amount = 1
+  ): void {
+    const state = store(context).getState()
+    state.itemUsageCount[itemId] = (state.itemUsageCount[itemId] || 0) + amount
+    store(context).save()
+  }
+
+  // --- Badges --------------------------------------------------------------
+
+  // Per generation: how many of its species (species and formes both count,
+  // as everywhere else in the Pokedex) the player has discovered, broken
+  // down by rarity tier, plus how many of those are shiny. Recomputed from
+  // the pokedex/shinyPokedex on every call rather than cached - 553 species
+  // is cheap to scan and this only runs on the few actions that could
+  // possibly change a badge's status, not on every keystroke.
+  private static getGenerationProgress(
+    context: vscode.ExtensionContext
+  ): Record<number, BadgeGenerationProgress> {
+    const discovered = new Set(PokemonState.getPokedex(context))
+    const shinyDiscovered = new Set(PokemonState.getShinyPokedex(context))
+
+    const progress: Record<number, BadgeGenerationProgress> = {}
+    for (const gen of [
+      PokemonGeneration.Gen1,
+      PokemonGeneration.Gen2,
+      PokemonGeneration.Gen3,
+      PokemonGeneration.Gen4,
+    ]) {
+      progress[gen] = {
+        discovered: 0,
+        total: 0,
+        shinyDiscovered: 0,
+        fossilDiscovered: 0,
+        subLegendaryDiscovered: 0,
+        legendaryDiscovered: 0,
+        mythicalDiscovered: 0,
+      }
+    }
+
+    for (const [type, data] of Object.entries(POKEMON_DATA)) {
+      const genProgress = progress[data.generation]
+      if (!genProgress) {
+        continue
+      }
+
+      genProgress.total++
+      if (discovered.has(type)) {
+        genProgress.discovered++
+        if (data.rarity === PokemonRarity.fossil) {
+          genProgress.fossilDiscovered++
+        } else if (data.rarity === PokemonRarity.subLegendary) {
+          genProgress.subLegendaryDiscovered++
+        } else if (data.rarity === PokemonRarity.legendary) {
+          genProgress.legendaryDiscovered++
+        } else if (data.rarity === PokemonRarity.mythical) {
+          genProgress.mythicalDiscovered++
+        }
+      }
+      if (shinyDiscovered.has(type)) {
+        genProgress.shinyDiscovered++
+      }
+    }
+
+    return progress
+  }
+
+  private static evaluateBadgeCondition(
+    condition: BadgeCondition,
+    progress: BadgeGenerationProgress,
+    rareCandyUsed: number,
+    strings: Strings
+  ): BadgeRequirementStatus[] {
+    const requirements: BadgeRequirementStatus[] = []
+    const push = (label: string, current: number, required: number | undefined) => {
+      if (required === undefined) {
+        return
+      }
+      requirements.push({ label, current, required, met: current >= required })
+    }
+
+    push(strings.requirementSpeciesDiscovered, progress.discovered, condition.minDiscovered)
+    push(strings.requirementShinyDiscovered, progress.shinyDiscovered, condition.minShinyDiscovered)
+    push(strings.requirementFossilsDiscovered, progress.fossilDiscovered, condition.minFossilDiscovered)
+    push(
+      strings.requirementSubLegendariesDiscovered,
+      progress.subLegendaryDiscovered,
+      condition.minSubLegendaryDiscovered
+    )
+    push(
+      strings.requirementLegendariesDiscovered,
+      progress.legendaryDiscovered,
+      condition.minLegendaryDiscovered
+    )
+    push(strings.requirementMythicalsDiscovered, progress.mythicalDiscovered, condition.minMythicalDiscovered)
+    push(strings.requirementRareCandiesUsed, rareCandyUsed, condition.minRareCandyUsed)
+
+    return requirements
+  }
+
+  // Every badge, evaluated fresh against current progress - not just the
+  // earned ones, so the Pokechidex can show a locked badge's remaining
+  // requirements too. strings defaults to English since refreshBadges below
+  // only ever reads the boolean met flags, never the display labels.
+  static getBadgeStatuses(
+    context: vscode.ExtensionContext,
+    strings: Strings = getStrings('en')
+  ): BadgeStatus[] {
+    const progressByGen = PokemonState.getGenerationProgress(context)
+    const earnedIds = new Set(store(context).getState().badges)
+    const rareCandyUsed = PokemonState.getItemUsedCount(context, 'rare-candy')
+
+    return BADGES.map((badge) => {
+      const progress = progressByGen[badge.generation]
+      const requirements = PokemonState.evaluateBadgeCondition(
+        badge.condition,
+        progress,
+        rareCandyUsed,
+        strings
+      )
+      return {
+        badge,
+        earned: earnedIds.has(badge.id),
+        requirements,
+      }
+    })
+  }
+
+  static getEarnedBadges(context: vscode.ExtensionContext): string[] {
+    return store(context).getState().badges
+  }
+
+  // Called after anything that could newly satisfy a badge - a new
+  // discovery, a new shiny, a rare candy use - and also once at activation
+  // so an existing install picks up any badge its past progress already
+  // qualifies for, not just ones earned going forward. Returns whichever
+  // badges were newly earned by this call, if any, so the caller can
+  // announce them.
+  static refreshBadges(context: vscode.ExtensionContext): BadgeConfig[] {
+    const state = store(context).getState()
+    const earned = new Set(state.badges)
+    const statuses = PokemonState.getBadgeStatuses(context)
+    const newlyEarned: BadgeConfig[] = []
+
+    for (const status of statuses) {
+      if (!earned.has(status.badge.id) && status.requirements.every((r) => r.met)) {
+        state.badges.push(status.badge.id)
+        earned.add(status.badge.id)
+        newlyEarned.push(status.badge)
+      }
+    }
+
+    if (newlyEarned.length > 0) {
+      store(context).save()
+    }
+
+    return newlyEarned
+  }
+}
+
+export interface BadgeGenerationProgress {
+  discovered: number
+  total: number
+  shinyDiscovered: number
+  fossilDiscovered: number
+  subLegendaryDiscovered: number
+  legendaryDiscovered: number
+  mythicalDiscovered: number
+}
+
+export interface BadgeRequirementStatus {
+  label: string
+  current: number
+  required: number
+  met: boolean
+}
+
+export interface BadgeStatus {
+  badge: BadgeConfig
+  earned: boolean
+  requirements: BadgeRequirementStatus[]
 }

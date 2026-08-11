@@ -9,6 +9,17 @@ const STATE_FILE = 'state.json'
 // Writing on every keystroke would hammer the disk, so changes are batched.
 const WRITE_DEBOUNCE_MS = 2000
 
+// Item id -> how many the player has. A new item (src/common/items.ts) only
+// ever needs an entry in that registry plus whatever earns or spends it -
+// this map does not change shape to hold one more kind.
+export type ItemInventory = { [itemId: string]: number }
+
+// Item id -> how many times it has ever been used (successfully), lifetime.
+// Separate from ItemInventory: that one goes up and down as items are
+// earned and spent, this one only ever goes up - it exists purely so a
+// badge condition can ask "has the player used at least N of these ever".
+export type ItemUsageCount = { [itemId: string]: number }
+
 export interface PokechiState {
   pokemon?: UserPokemon
   pokedex: PokemonType[]
@@ -17,10 +28,31 @@ export interface PokechiState {
   // Lifetime XP ever granted, regardless of resets on evolution or of which
   // line earned it. A vanity counter, not gameplay state.
   totalXP: number
+  // Lifetime count of Pokeballs opened (hatches), regardless of species or
+  // whether that hatch grew normally or froze read-only for an
+  // already-owned line - what Premier Ball's every-10th-hatch reward counts
+  // against.
+  hatchCount: number
+  items: ItemInventory
+  itemUsageCount: ItemUsageCount
+  // Ids of badges (src/common/badges.ts) already earned. Once in this list,
+  // always in it - a badge is never un-earned even if, say, the pokedex
+  // were ever reset, same spirit as pokedex/shinyPokedex themselves.
+  badges: string[]
 }
 
 function emptyState(): PokechiState {
-  return { pokemon: undefined, pokedex: [], shinyPokedex: [], roster: {}, totalXP: 0 }
+  return {
+    pokemon: undefined,
+    pokedex: [],
+    shinyPokedex: [],
+    roster: {},
+    totalXP: 0,
+    hatchCount: 0,
+    items: {},
+    itemUsageCount: {},
+    badges: [],
+  }
 }
 
 // Keeps every key the file already had, including any a newer version of the
@@ -35,7 +67,30 @@ export function normalizeState(parsed: Partial<PokechiState>): PokechiState {
     roster:
       parsed.roster && typeof parsed.roster === 'object' ? parsed.roster : {},
     totalXP: typeof parsed.totalXP === 'number' ? parsed.totalXP : 0,
+    hatchCount: typeof parsed.hatchCount === 'number' ? parsed.hatchCount : 0,
+    items: normalizeItems(parsed),
+    itemUsageCount:
+      parsed.itemUsageCount && typeof parsed.itemUsageCount === 'object'
+        ? parsed.itemUsageCount
+        : {},
+    badges: Array.isArray(parsed.badges) ? parsed.badges : [],
   }
+}
+
+// Pre-1.5.0 saves kept a Rare Candy count in its own top-level rareCandy
+// field, from before it was one item among others. Folded into the items
+// map the first time such a save is read; the old field itself is left
+// alone rather than deleted, same as any other field this version does not
+// actively use but should not destroy.
+function normalizeItems(parsed: Partial<PokechiState> & { rareCandy?: number }): ItemInventory {
+  const items: ItemInventory =
+    parsed.items && typeof parsed.items === 'object' ? { ...parsed.items } : {}
+
+  if (typeof parsed.rareCandy === 'number' && items['rare-candy'] === undefined) {
+    items['rare-candy'] = parsed.rareCandy
+  }
+
+  return items
 }
 
 // The parts worth persisting an extra write for. Deliberately excludes the
@@ -46,6 +101,10 @@ function durableSignature(state: PokechiState): string {
     shinyPokedex: state.shinyPokedex.slice().sort(),
     roster: state.roster,
     totalXP: state.totalXP,
+    hatchCount: state.hatchCount,
+    items: state.items,
+    itemUsageCount: state.itemUsageCount,
+    badges: state.badges.slice().sort(),
   })
 }
 
@@ -106,9 +165,53 @@ export function mergeStates(local: PokechiState, remote: PokechiState): PokechiS
   // one that has seen the most of the combined history.
   const totalXP = Math.max(local.totalXP || 0, remote.totalXP || 0)
 
+  // Same reasoning as totalXP - only ever grows, so the higher figure is
+  // the one that has seen more of the combined history.
+  const hatchCount = Math.max(local.hatchCount || 0, remote.hatchCount || 0)
+
+  // Unlike totalXP an item count can go down (spent), so per-item Math.max
+  // is only a good guess, not a guarantee - a window that just spent one
+  // right before this merge can see it come back if the other window has
+  // not caught up yet. Same tradeoff the rest of this function already
+  // makes for a two-window edge case rather than tracking every earn/spend
+  // as its own event.
+  const items: ItemInventory = { ...local.items }
+  Object.keys(remote.items || {}).forEach((itemId) => {
+    items[itemId] = Math.max(local.items[itemId] || 0, remote.items[itemId] || 0)
+  })
+
+  // Unlike the spendable count above, a usage count only ever grows, so
+  // Math.max here is exact, not a guess - same reasoning as totalXP.
+  const itemUsageCount: ItemUsageCount = { ...local.itemUsageCount }
+  Object.keys(remote.itemUsageCount || {}).forEach((itemId) => {
+    itemUsageCount[itemId] = Math.max(
+      local.itemUsageCount[itemId] || 0,
+      remote.itemUsageCount[itemId] || 0
+    )
+  })
+
+  const badges = (local.badges || []).slice()
+  ;(remote.badges || []).forEach((id) => {
+    if (badges.indexOf(id) < 0) {
+      badges.push(id)
+    }
+  })
+
   // Spreading both sides first keeps any key neither this version nor the
   // merge rules know about.
-  return { ...local, ...remote, pokemon, pokedex, shinyPokedex, roster, totalXP }
+  return {
+    ...local,
+    ...remote,
+    pokemon,
+    pokedex,
+    shinyPokedex,
+    roster,
+    totalXP,
+    hatchCount,
+    items,
+    itemUsageCount,
+    badges,
+  }
 }
 
 export class StateStore {
@@ -215,6 +318,10 @@ export class StateStore {
       shinyPokedex: [],
       roster: roster && typeof roster === 'object' ? roster : {},
       totalXP: 0,
+      hatchCount: 0,
+      items: {},
+      itemUsageCount: {},
+      badges: [],
     }
 
     if (migrated.pokemon || migrated.pokedex.length > 0) {
