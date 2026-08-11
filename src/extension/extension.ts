@@ -1175,12 +1175,10 @@ export function activate(context: vscode.ExtensionContext) {
 
       PokemonState.flush(context)
 
-      const rewardName = POKEMON_DATA[reward.revealedType]?.name ?? reward.revealedType
-      vscode.window.showInformationMessage(
-        reward.isShiny
-          ? t().masterBallRevealedMessageShiny(itemName, rewardName)
-          : t().masterBallRevealedMessage(itemName, rewardName)
-      )
+      // Which species this promises is announced once the Pokeball actually
+      // hatches (pendingBallReveal, read by the XP tracker), not here - same
+      // wait as any other catch. This one just confirms the ball was spent.
+      vscode.window.showInformationMessage(t().masterBallUsedMessage(itemName))
 
       presentNewActivePokemon(reward.pokemon)
       refreshPokedex()
@@ -1213,8 +1211,9 @@ export function activate(context: vscode.ExtensionContext) {
 
       PokemonState.flush(context)
 
-      const rewardName = POKEMON_DATA[reward.revealedType]?.name ?? reward.revealedType
-      vscode.window.showInformationMessage(t().premierBallRevealedMessage(itemName, rewardName))
+      // Same wait as useMasterBall above - the reveal message fires once the
+      // Pokeball actually hatches. This one just confirms the ball was spent.
+      vscode.window.showInformationMessage(t().premierBallUsedMessage(itemName))
 
       presentNewActivePokemon(reward.pokemon)
       refreshPokedex()

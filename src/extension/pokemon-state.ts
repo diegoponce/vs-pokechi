@@ -451,7 +451,8 @@ export class PokemonState {
   private static buildFreshPokeball(
     context: vscode.ExtensionContext,
     basePokemon: PokemonType,
-    forcedColor?: PokemonColor
+    forcedColor?: PokemonColor,
+    ballSource?: 'master-ball' | 'premier-ball'
   ): UserPokemon {
     const scaleFactor = vscode.workspace
       .getConfiguration()
@@ -505,6 +506,7 @@ export class PokemonState {
       color,
       canGainXP: true,
       pendingAlreadyOwned: isAlreadyOwned,
+      pendingBallReveal: ballSource,
     }
 
     store(context).getState().pokemon = pokemon
@@ -785,7 +787,7 @@ export class PokemonState {
     const color = getRandomPokemonColor()
     const base = getEvolutionLineContaining(reward)?.base ?? reward
     PokemonState.rememberActivePokemon(context)
-    const pokemon = PokemonState.buildFreshPokeball(context, base, color)
+    const pokemon = PokemonState.buildFreshPokeball(context, base, color, 'master-ball')
     PokemonState.removeItem(context, 'master-ball', 1)
     PokemonState.recordItemUsed(context, 'master-ball', 1)
     return { pokemon, revealedType: reward, isShiny: color === PokemonColor.shiny }
@@ -833,7 +835,12 @@ export class PokemonState {
 
     const base = getEvolutionLineContaining(reward)?.base ?? reward
     PokemonState.rememberActivePokemon(context)
-    const pokemon = PokemonState.buildFreshPokeball(context, base, PokemonColor.shiny)
+    const pokemon = PokemonState.buildFreshPokeball(
+      context,
+      base,
+      PokemonColor.shiny,
+      'premier-ball'
+    )
     PokemonState.removeItem(context, 'premier-ball', 1)
     PokemonState.recordItemUsed(context, 'premier-ball', 1)
     return { pokemon, revealedType: reward }

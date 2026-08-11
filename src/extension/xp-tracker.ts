@@ -107,6 +107,11 @@ export class XPTracker {
     }
 
     const previousLevel = pokemon.level
+    // Read before evolvePokemon can touch the pokemon object below - a
+    // Master/Premier Ball promises its species at use time, but the
+    // announcement itself waits for the actual hatch, same XP wait as any
+    // other catch.
+    const pendingBallReveal = pokemon.pendingBallReveal
     PokemonState.addXP(pokemon, amount)
     PokemonState.addTotalXP(this.context, amount)
     PokemonState.savePokemon(this.context)
@@ -114,6 +119,9 @@ export class XPTracker {
     if (PokemonState.canEvolve(pokemon)) {
       const evolved = PokemonState.evolvePokemon(this.context, pokemon)
       if (evolved) {
+        // Consumed on the very hatch it was set for, same as
+        // pendingAlreadyOwned.
+        pokemon.pendingBallReveal = undefined
         // Evolving is rare and worth persisting straight away rather than
         // waiting for the batched write.
         PokemonState.flush(this.context)
@@ -138,11 +146,22 @@ export class XPTracker {
             }
           }
           const dropNote = strings.itemDroppedNote(droppedItemNames)
-          vscode.window.showInformationMessage(
-            isShiny
-              ? strings.hatchMessageShiny(pokemonName, cry, dropNote)
-              : strings.hatchMessage(pokemonName, cry, dropNote)
-          )
+          if (pendingBallReveal) {
+            const itemName = strings.itemNames[pendingBallReveal]
+            const revealMessage =
+              pendingBallReveal === 'master-ball'
+                ? isShiny
+                  ? strings.masterBallRevealedMessageShiny(itemName, pokemonName)
+                  : strings.masterBallRevealedMessage(itemName, pokemonName)
+                : strings.premierBallRevealedMessage(itemName, pokemonName)
+            vscode.window.showInformationMessage(`${revealMessage} ${cry}${dropNote}`)
+          } else {
+            vscode.window.showInformationMessage(
+              isShiny
+                ? strings.hatchMessageShiny(pokemonName, cry, dropNote)
+                : strings.hatchMessage(pokemonName, cry, dropNote)
+            )
+          }
         } else {
           vscode.window.showInformationMessage(
             isShiny

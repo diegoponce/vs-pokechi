@@ -47,10 +47,12 @@ export interface Strings {
   rareCandyEvolvedMessageShiny: (previousName: string, newName: string, cry: string) => string
 
   useMasterBallConfirm: (itemName: string) => string
+  masterBallUsedMessage: (itemName: string) => string
   masterBallRevealedMessage: (itemName: string, pokemonName: string) => string
   masterBallRevealedMessageShiny: (itemName: string, pokemonName: string) => string
 
   usePremierBallConfirm: (itemName: string) => string
+  premierBallUsedMessage: (itemName: string) => string
   premierBallRevealedMessage: (itemName: string, pokemonName: string) => string
 
   explorerModeChanged: string

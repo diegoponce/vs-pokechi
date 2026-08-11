@@ -16,9 +16,9 @@
 <td align="center"><img src="https://raw.githubusercontent.com/diegoponce/vs-pokechi/master/media/gen1/bulbasaur/default_walk_8fps.gif" width="56" /><br><sub>Bulbasaur</sub></td>
 <td align="center"><img src="https://raw.githubusercontent.com/diegoponce/vs-pokechi/master/media/gen1/charmander/default_walk_8fps.gif" width="56" /><br><sub>Salamèche</sub></td>
 <td align="center"><img src="https://raw.githubusercontent.com/diegoponce/vs-pokechi/master/media/gen1/squirtle/default_walk_8fps.gif" width="56" /><br><sub>꼬부기</sub></td>
-<td align="center"><img src="https://raw.githubusercontent.com/diegoponce/vs-pokechi/master/media/gen1/pikachu/default_walk_8fps.gif" width="58" /><br><sub>皮卡丘</sub></td>
-<td align="center"><img src="https://raw.githubusercontent.com/diegoponce/vs-pokechi/master/media/gen2/cyndaquil/default_walk_8fps.gif" width="56" /><br><sub>ヒノアラシ</sub></td>
-<td align="center"><img src="https://raw.githubusercontent.com/diegoponce/vs-pokechi/master/media/gen2/totodile/default_walk_8fps.gif" width="56" /><br><sub>Totodile</sub></td>
+<td align="center"><img src="https://raw.githubusercontent.com/diegoponce/vs-pokechi/master/media/gen1/pikachu/default_walk_8fps.gif" width="56" /><br><sub>皮卡丘</sub></td>
+<td align="center"><img src="https://raw.githubusercontent.com/diegoponce/vs-pokechi/master/media/gen2/cyndaquil/default_walk_8fps.gif" width="56" /><br><sub>Cyndaquil</sub></td>
+<td align="center"><img src="https://raw.githubusercontent.com/diegoponce/vs-pokechi/master/media/gen2/totodile/default_walk_8fps.gif" width="56" /><br><sub>ワニノコ</sub></td>
 <td align="center"><img src="https://raw.githubusercontent.com/diegoponce/vs-pokechi/master/media/gen3/treecko/default_walk_8fps.gif" width="56" /><br><sub>Arcko</sub></td>
 <td align="center"><img src="https://raw.githubusercontent.com/diegoponce/vs-pokechi/master/media/gen3/mudkip/default_walk_8fps.gif" width="56" /><br><sub>물짱이</sub></td>
 <td align="center"><img src="https://raw.githubusercontent.com/diegoponce/vs-pokechi/master/media/gen1/eevee/default_walk_8fps.gif" width="56" /><br><sub>伊布</sub></td>
@@ -33,9 +33,13 @@
 
 Install it and a Pokéball shows up in your editor. Keep coding and it hatches, walks around while you work, and evolves as it earns XP. Everything you meet is recorded in the **Pokechidex** — 553 species across Gen 1 to 4, shinies included.
 
+
 <div align="center">
-  <img src="https://raw.githubusercontent.com/diegoponce/vs-pokechi/master/media/docs/panel.gif" width="800" alt="Pokechi in panel mode" />
+  <img src="https://raw.githubusercontent.com/diegoponce/vs-pokechi/master/media/docs/explorer_1.gif" width="260" alt="Pokechi in the Explorer sidebar" />
+  <img src="https://raw.githubusercontent.com/diegoponce/vs-pokechi/master/media/docs/explorer_2.gif" width="260" alt="Pokechi in the Explorer sidebar" />
+  <img src="https://raw.githubusercontent.com/diegoponce/vs-pokechi/master/media/docs/explorer_3.gif" width="260" alt="Pokechi in the Explorer sidebar" />
 </div>
+
 
 ## Features
 
@@ -59,7 +63,7 @@ Install it and a Pokéball shows up in your editor. Keep coding and it hatches, 
 Every species you have met, in one grid. Search by name or number, filter by generation or by type, or narrow it to what you have already caught. Locked species stay hidden behind a Pokéball — the grid never gives away what you have not met yet.
 
 <div align="center">
-  <img src="https://raw.githubusercontent.com/diegoponce/vs-pokechi/master/media/docs/pokechidex_1.gif" width="800" alt="The Pokechidex" />
+  <img src="https://raw.githubusercontent.com/diegoponce/vs-pokechi/master/media/docs/pokechidex_2.gif" width="800" alt="The Pokechidex" />
 </div>
 
 Click any species you have discovered to bring it out. Caught it shiny? Its card gets a sparkle toggle, and it comes out in whichever colour is showing. Every card also has a play button for its cry, and picking one plays it too. Lost track of your current Pokémon in the grid? The locate button on its XP bar jumps straight to its card and highlights it.
@@ -69,7 +73,7 @@ Click any species you have discovered to bring it out. Caught it shiny? Its card
 Every discovered card flips over. An info button on one corner shows its Pokédex description and base stats; an attacks button on the other shows four representative moves — each with its type, power and a short description, pulled from the game matching its generation and ranked so a species' real signature moves come first.
 
 <div align="center">
-  <img src="https://raw.githubusercontent.com/diegoponce/vs-pokechi/master/media/docs/pokechidex_info.gif" width="800" alt="Flipping a Pokechidex card to see its info and attacks" />
+  <img src="https://raw.githubusercontent.com/diegoponce/vs-pokechi/master/media/docs/info-attacks.gif" width="800" alt="Flipping a Pokechidex card to see its info and attacks" />
 </div>
 
 ### The Bag
@@ -82,7 +86,16 @@ A collapsible section below the header, with two tabs. **Items** holds:
 | Master Ball | Small, independent chance on every hatch | Reveals a random sub-legendary, legendary or mythical Pokémon from any generation (60/30/10 odds across the three), with the usual 5% shiny chance |
 | Premier Ball | Automatically every 10th Pokéball you hatch | Reveals a random Pokémon, from any generation or rarity, guaranteed shiny |
 
+<div align="center">
+  <img src="https://raw.githubusercontent.com/diegoponce/vs-pokechi/master/media/docs/items.png" width="800" alt="Bag items" />
+</div>
+
 **Badges** tracks 32 achievement medals, 8 per generation, for milestones like discovering a share of that generation's species, catching your first shiny or fossil, and meeting its rarer Pokémon — each card shows what is left to earn it, grouped into a tab per generation.
+
+<div align="center">
+  <img src="https://raw.githubusercontent.com/diegoponce/vs-pokechi/master/media/docs/badges.png" width="800" alt="Bag badges" />
+</div>
+
 
 ## Getting started
 
@@ -100,9 +113,7 @@ Install, and that is it — your first Pokémon, always one of the 12 starters, 
 Pokechi lives in a panel by default, or docked in the Explorer sidebar if you would rather keep it out of the way. `Pokechi: Open Explorer View` switches, or set `pokechi.position` yourself.
 
 <div align="center">
-  <img src="https://raw.githubusercontent.com/diegoponce/vs-pokechi/master/media/docs/explorer_1.gif" width="260" alt="Pokechi in the Explorer sidebar" />
-  <img src="https://raw.githubusercontent.com/diegoponce/vs-pokechi/master/media/docs/explorer_2.gif" width="260" alt="Pokechi in the Explorer sidebar" />
-  <img src="https://raw.githubusercontent.com/diegoponce/vs-pokechi/master/media/docs/explorer_3.gif" width="260" alt="Pokechi in the Explorer sidebar" />
+  <img src="https://raw.githubusercontent.com/diegoponce/vs-pokechi/master/media/docs/panel.gif" width="800" alt="Pokechi in panel mode" />
 </div>
 
 ## Settings

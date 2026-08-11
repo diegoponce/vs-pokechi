@@ -26,6 +26,11 @@ export interface UserPokemon {
   // the moment it hatches to freeze it read-only at that point instead of
   // letting it grow into something the player already owns.
   pendingAlreadyOwned?: boolean
+  // Set on a Pokeball opened by a Master Ball or Premier Ball. The species
+  // was already promised at use time, but the announcement itself waits for
+  // this flag until the Pokeball actually hatches - same XP wait as any
+  // other catch. Cleared by the XP tracker the moment it hatches.
+  pendingBallReveal?: 'master-ball' | 'premier-ball'
 }
 
 // Progress kept for an evolution line the user has already raised. Keyed by the
